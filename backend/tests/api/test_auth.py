@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.schemas.auth import LoginResponse, RegisterRequest, RegisterResponse, VerifyEmailResponse
+from app.schemas.auth import LoginResponse, LogoutResponse, RefreshResponse, RegisterRequest, RegisterResponse, VerifyEmailResponse
 from app.services.auth import AuthError
 
 # ── helpers ────────────────────────────────────────────────────────────────────
@@ -552,6 +553,266 @@ class TestConsumeMagicToken:
             _, _, onboarding = await consume_magic_token(db=mock_db, token="tok")
 
         assert onboarding is False
+
+
+# ── Service: blacklist_refresh_token ──────────────────────────────────────────
+
+
+class TestBlacklistRefreshToken:
+    @pytest.mark.asyncio
+    async def test_valid_token_is_blacklisted(self) -> None:
+        from app.services.auth import blacklist_refresh_token
+
+        future_exp = int(datetime.now(UTC).timestamp()) + 3600
+        payload = {"sub": "user-1", "exp": future_exp, "type": "refresh", "jti": "test-jti-123"}
+
+        with (
+            patch("app.services.auth.decode_token", return_value=payload),
+            patch("app.services.auth._redis") as mock_redis_factory,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis_factory.return_value = mock_redis
+
+            await blacklist_refresh_token("any.token.here")
+
+        mock_redis.set.assert_called_once()
+        set_args = mock_redis.set.call_args
+        assert set_args[0][0] == "token_blacklist:test-jti-123"
+        assert set_args[0][1] == "1"
+        assert set_args[1]["ex"] > 0
+
+    @pytest.mark.asyncio
+    async def test_jwt_error_returns_silently(self) -> None:
+        from jose import JWTError
+
+        from app.services.auth import blacklist_refresh_token
+
+        with (
+            patch("app.services.auth.decode_token", side_effect=JWTError("bad token")),
+            patch("app.services.auth._redis") as mock_redis_factory,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis_factory.return_value = mock_redis
+
+            await blacklist_refresh_token("bad.token")
+
+        mock_redis.set.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_expired_token_returns_silently(self) -> None:
+        from app.services.auth import blacklist_refresh_token
+
+        past_exp = int(datetime.now(UTC).timestamp()) - 10
+        payload = {"sub": "user-1", "exp": past_exp, "type": "refresh", "jti": "old-jti"}
+
+        with (
+            patch("app.services.auth.decode_token", return_value=payload),
+            patch("app.services.auth._redis") as mock_redis_factory,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis_factory.return_value = mock_redis
+
+            await blacklist_refresh_token("expired.token")
+
+        mock_redis.set.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_token_without_jti_returns_silently(self) -> None:
+        from app.services.auth import blacklist_refresh_token
+
+        future_exp = int(datetime.now(UTC).timestamp()) + 3600
+        payload = {"sub": "user-1", "exp": future_exp, "type": "refresh"}  # sem jti
+
+        with (
+            patch("app.services.auth.decode_token", return_value=payload),
+            patch("app.services.auth._redis") as mock_redis_factory,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis_factory.return_value = mock_redis
+
+            await blacklist_refresh_token("no.jti.token")
+
+        mock_redis.set.assert_not_called()
+
+
+# ── Service: rotate_refresh_token ─────────────────────────────────────────────
+
+
+class TestRotateRefreshToken:
+    @pytest.mark.asyncio
+    async def test_valid_token_returns_new_pair(self) -> None:
+        from app.services.auth import rotate_refresh_token
+
+        future_exp = int(datetime.now(UTC).timestamp()) + 3600
+        payload = {"sub": "user-42", "exp": future_exp, "type": "refresh", "jti": "valid-jti"}
+
+        with (
+            patch("app.services.auth.decode_token", return_value=payload),
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.create_access_token", return_value="new.access") as mac,
+            patch("app.services.auth.create_refresh_token", return_value="new.refresh") as mrc,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.get.return_value = None  # não blacklistado
+            mock_redis_factory.return_value = mock_redis
+
+            new_access, new_refresh = await rotate_refresh_token("old.token")
+
+        assert new_access == "new.access"
+        assert new_refresh == "new.refresh"
+        mac.assert_called_once_with("user-42")
+        mrc.assert_called_once_with("user-42")
+
+    @pytest.mark.asyncio
+    async def test_blacklisted_token_raises_401(self) -> None:
+        from app.services.auth import rotate_refresh_token
+
+        future_exp = int(datetime.now(UTC).timestamp()) + 3600
+        payload = {"sub": "user-42", "exp": future_exp, "type": "refresh", "jti": "revoked-jti"}
+
+        with (
+            patch("app.services.auth.decode_token", return_value=payload),
+            patch("app.services.auth._redis") as mock_redis_factory,
+            pytest.raises(AuthError) as exc_info,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.get.return_value = "1"  # blacklistado
+            mock_redis_factory.return_value = mock_redis
+
+            await rotate_refresh_token("revoked.token")
+
+        assert exc_info.value.status_code == 401
+        assert "revogado" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_jwt_error_raises_401(self) -> None:
+        from jose import JWTError
+
+        from app.services.auth import rotate_refresh_token
+
+        with (
+            patch("app.services.auth.decode_token", side_effect=JWTError("bad")),
+            pytest.raises(AuthError) as exc_info,
+        ):
+            await rotate_refresh_token("bad.token")
+
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_wrong_token_type_raises_401(self) -> None:
+        from app.services.auth import rotate_refresh_token
+
+        future_exp = int(datetime.now(UTC).timestamp()) + 3600
+        payload = {"sub": "user-42", "exp": future_exp, "type": "access", "jti": "some-jti"}
+
+        with (
+            patch("app.services.auth.decode_token", return_value=payload),
+            pytest.raises(AuthError) as exc_info,
+        ):
+            await rotate_refresh_token("access.token.used.as.refresh")
+
+        assert exc_info.value.status_code == 401
+
+
+# ── Endpoint: Logout ───────────────────────────────────────────────────────────
+
+
+class TestLogoutEndpoint:
+    @pytest.mark.asyncio
+    async def test_logout_clears_cookies_and_returns_200(self) -> None:
+        from fastapi import Response
+
+        from app.api.v1.endpoints.auth import logout
+
+        mock_response = MagicMock(spec=Response)
+
+        with patch(
+            "app.api.v1.endpoints.auth.blacklist_refresh_token",
+            new_callable=AsyncMock,
+        ) as mock_blacklist:
+            result = await logout(response=mock_response, refresh_token="some.refresh.token")
+
+        mock_blacklist.assert_called_once_with("some.refresh.token")
+        mock_response.delete_cookie.assert_any_call("access_token", path="/")
+        mock_response.delete_cookie.assert_any_call("refresh_token", path="/")
+        assert isinstance(result, LogoutResponse)
+        assert "sucesso" in result.message
+
+    @pytest.mark.asyncio
+    async def test_logout_no_token_still_returns_200(self) -> None:
+        from fastapi import Response
+
+        from app.api.v1.endpoints.auth import logout
+
+        mock_response = MagicMock(spec=Response)
+
+        with patch(
+            "app.api.v1.endpoints.auth.blacklist_refresh_token",
+            new_callable=AsyncMock,
+        ) as mock_blacklist:
+            result = await logout(response=mock_response, refresh_token=None)
+
+        mock_blacklist.assert_not_called()
+        mock_response.delete_cookie.assert_any_call("access_token", path="/")
+        mock_response.delete_cookie.assert_any_call("refresh_token", path="/")
+        assert isinstance(result, LogoutResponse)
+
+
+# ── Endpoint: Refresh ──────────────────────────────────────────────────────────
+
+
+class TestRefreshEndpoint:
+    @pytest.mark.asyncio
+    async def test_refresh_sets_new_cookies(self) -> None:
+        from fastapi import Response
+
+        from app.api.v1.endpoints.auth import refresh
+
+        mock_response = MagicMock(spec=Response)
+
+        with patch(
+            "app.api.v1.endpoints.auth.rotate_refresh_token",
+            new_callable=AsyncMock,
+            return_value=("new.access", "new.refresh"),
+        ):
+            result = await refresh(response=mock_response, refresh_token="valid.refresh.token")
+
+        assert isinstance(result, RefreshResponse)
+        assert "renovados" in result.message
+        mock_response.set_cookie.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_refresh_no_token_returns_401(self) -> None:
+        from fastapi import HTTPException, Response
+
+        from app.api.v1.endpoints.auth import refresh
+
+        mock_response = MagicMock(spec=Response)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await refresh(response=mock_response, refresh_token=None)
+
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_refresh_invalid_token_returns_401(self) -> None:
+        from fastapi import HTTPException, Response
+
+        from app.api.v1.endpoints.auth import refresh
+
+        mock_response = MagicMock(spec=Response)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.auth.rotate_refresh_token",
+                new_callable=AsyncMock,
+                side_effect=AuthError("Token inválido ou expirado.", status_code=401),
+            ),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await refresh(response=mock_response, refresh_token="invalid.token")
+
+        assert exc_info.value.status_code == 401
 
 
 # ── Service: google_oauth_callback ────────────────────────────────────────────

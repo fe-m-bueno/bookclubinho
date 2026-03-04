@@ -8,6 +8,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from jose import JWTError
+
 import httpx
 import redis.asyncio as aioredis
 import structlog
@@ -20,6 +22,7 @@ from app.core.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    decode_token,
     generate_magic_token,
     hash_password,
     verify_password,
@@ -38,6 +41,8 @@ _MAGIC_KEY_PREFIX = "magic:"
 _MAGIC_RATE_KEY_PREFIX = "magic_rate:"
 _MAGIC_RATE_LIMIT = 5
 _MAGIC_RATE_TTL = 3600  # 1 hora
+
+_TOKEN_BLACKLIST_PREFIX = "token_blacklist:"
 
 
 def _redis() -> aioredis.Redis:
@@ -383,3 +388,75 @@ async def authenticate_user(
 
     logger.info("user_logged_in", user_id=str(user.id))
     return access_token, refresh_token
+
+
+# ── Token Blacklist & Rotation ────────────────────────────────────────────────
+
+
+async def blacklist_refresh_token(token: str) -> None:
+    """Invalida um refresh token adicionando seu JTI ao blacklist no Redis.
+
+    Retorna silenciosamente se o token já for inválido ou expirado.
+    """
+    try:
+        payload = decode_token(token)
+    except JWTError:
+        return
+
+    jti: str | None = payload.get("jti")
+    exp: int | None = payload.get("exp")
+
+    if not jti or exp is None:
+        return
+
+    remaining_ttl = max(0, int(exp - datetime.now(UTC).timestamp()))
+    if remaining_ttl <= 0:
+        return
+
+    redis_client = _redis()
+    try:
+        await redis_client.set(f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl)
+    finally:
+        await redis_client.aclose()
+
+
+async def rotate_refresh_token(token: str) -> tuple[str, str]:
+    """Valida o refresh token, verifica blacklist e emite novo par access+refresh.
+
+    Raises AuthError(401) para token inválido, expirado, tipo errado ou revogado.
+    Returns (new_access_token, new_refresh_token).
+    """
+    try:
+        payload = decode_token(token)
+    except JWTError as exc:
+        raise AuthError("Token inválido ou expirado.", status_code=401) from exc
+
+    if payload.get("type") != "refresh":
+        raise AuthError("Token inválido ou expirado.", status_code=401)
+
+    jti: str | None = payload.get("jti")
+    user_id: str | None = payload.get("sub")
+
+    if not jti or not user_id:
+        raise AuthError("Token inválido ou expirado.", status_code=401)
+
+    redis_client = _redis()
+    try:
+        is_blacklisted = await redis_client.get(f"{_TOKEN_BLACKLIST_PREFIX}{jti}")
+        if is_blacklisted:
+            raise AuthError("Token revogado.", status_code=401)
+
+        # Blacklista o token atual antes de emitir o novo par
+        exp: int | None = payload.get("exp")
+        if exp is not None:
+            remaining_ttl = max(0, int(exp - datetime.now(UTC).timestamp()))
+            if remaining_ttl > 0:
+                await redis_client.set(
+                    f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl
+                )
+    finally:
+        await redis_client.aclose()
+
+    new_access = create_access_token(user_id)
+    new_refresh = create_refresh_token(user_id)
+    return new_access, new_refresh

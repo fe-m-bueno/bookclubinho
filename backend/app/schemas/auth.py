@@ -42,3 +42,11 @@ class MagicLinkRequest(BaseModel):
 
 class MagicLinkResponse(BaseModel):
     message: str
+
+
+class LogoutResponse(BaseModel):
+    message: str
+
+
+class RefreshResponse(BaseModel):
+    message: str
