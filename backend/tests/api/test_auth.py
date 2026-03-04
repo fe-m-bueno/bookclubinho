@@ -130,6 +130,120 @@ class TestRegisterUser:
         mock_redis.set.assert_not_called()
 
 
+# ── Service: resend_verification_email ─────────────────────────────────────────
+
+
+class TestResendVerificationEmail:
+    @pytest.mark.asyncio
+    async def test_sends_email_for_unverified_user(self) -> None:
+        from app.services.auth import resend_verification_email
+
+        user_id = uuid.uuid4()
+        mock_user = MagicMock()
+        mock_user.id = user_id
+        mock_user.email_verified = False
+        mock_user.display_name = "Alice"
+        mock_db = _mock_db_returning(mock_user)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 1
+            mock_redis_factory.return_value = mock_redis
+
+            await resend_verification_email(db=mock_db, email="alice@example.com")
+
+        mock_thread.assert_called_once()
+        # Redis set should store verify token
+        mock_redis.set.assert_called_once()
+        set_args = mock_redis.set.call_args
+        assert set_args[0][0].startswith("verify:")
+        assert set_args[1]["ex"] == 86_400
+
+    @pytest.mark.asyncio
+    async def test_silently_returns_for_nonexistent_email(self) -> None:
+        from app.services.auth import resend_verification_email
+
+        mock_db = _mock_db_returning(None)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 1
+            mock_redis_factory.return_value = mock_redis
+
+            await resend_verification_email(db=mock_db, email="ghost@example.com")
+
+        mock_thread.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_silently_returns_for_already_verified_email(self) -> None:
+        from app.services.auth import resend_verification_email
+
+        mock_user = MagicMock()
+        mock_user.email_verified = True
+        mock_db = _mock_db_returning(mock_user)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 1
+            mock_redis_factory.return_value = mock_redis
+
+            await resend_verification_email(db=mock_db, email="verified@example.com")
+
+        mock_thread.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_silently_skips(self) -> None:
+        from app.services.auth import resend_verification_email
+
+        mock_db = _mock_db_returning(None)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 4  # acima do limite de 3
+            mock_redis_factory.return_value = mock_redis
+
+            await resend_verification_email(db=mock_db, email="spam@example.com")
+
+        mock_thread.assert_not_called()
+        mock_db.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_first_request_sets_expire(self) -> None:
+        from app.services.auth import resend_verification_email
+
+        mock_user = MagicMock()
+        mock_user.id = uuid.uuid4()
+        mock_user.email_verified = False
+        mock_user.display_name = "Test"
+        mock_db = _mock_db_returning(mock_user)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 1
+            mock_redis_factory.return_value = mock_redis
+
+            await resend_verification_email(db=mock_db, email="first@example.com")
+
+        mock_redis.expire.assert_called_once_with(
+            "resend_verify_rate:first@example.com", 3600
+        )
+
+
 # ── Service: verify_email_token ────────────────────────────────────────────────
 
 

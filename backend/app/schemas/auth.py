@@ -50,3 +50,11 @@ class LogoutResponse(BaseModel):
 
 class RefreshResponse(BaseModel):
     message: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class ResendVerificationResponse(BaseModel):
+    message: str

@@ -42,6 +42,10 @@ _MAGIC_RATE_KEY_PREFIX = "magic_rate:"
 _MAGIC_RATE_LIMIT = 5
 _MAGIC_RATE_TTL = 3600  # 1 hora
 
+_RESEND_VERIFY_RATE_KEY_PREFIX = "resend_verify_rate:"
+_RESEND_VERIFY_RATE_LIMIT = 3
+_RESEND_VERIFY_RATE_TTL = 3600  # 1 hora
+
 _TOKEN_BLACKLIST_PREFIX = "token_blacklist:"
 
 
@@ -118,6 +122,58 @@ async def register_user(
 
     await db.commit()
     logger.info("user_registered", user_id=str(user.id))
+
+
+# ── Resend verification ───────────────────────────────────────────────────────
+
+
+async def resend_verification_email(db: AsyncSession, email: str) -> None:
+    """Resend verification email.
+
+    Returns silently in all cases to prevent email enumeration.
+    """
+    email_lower = email.lower().strip()
+
+    redis_client = _redis()
+    try:
+        rate_key = f"{_RESEND_VERIFY_RATE_KEY_PREFIX}{email_lower}"
+        count = await redis_client.incr(rate_key)
+        if count == 1:
+            await redis_client.expire(rate_key, _RESEND_VERIFY_RATE_TTL)
+        if count > _RESEND_VERIFY_RATE_LIMIT:
+            logger.info("resend_verification_rate_limited", email=email_lower)
+            return
+    finally:
+        await redis_client.aclose()
+
+    result = await db.execute(select(User).where(User.email == email_lower))
+    user = result.scalar_one_or_none()
+
+    if user is None or user.email_verified:
+        logger.info("resend_verification_silenced", email=email_lower)
+        return
+
+    token = secrets.token_urlsafe(32)
+    verify_url = f"{settings.APP_URL.rstrip('/')}/verify-email?token={token}"
+
+    redis_client = _redis()
+    try:
+        await redis_client.set(
+            f"{_VERIFY_KEY_PREFIX}{token}",
+            str(user.id),
+            ex=_VERIFY_TOKEN_TTL,
+        )
+    finally:
+        await redis_client.aclose()
+
+    await asyncio.to_thread(
+        send_verification_email,
+        to_email=email_lower,
+        display_name=user.display_name or email_lower,
+        verify_url=verify_url,
+    )
+
+    logger.info("resend_verification_sent", user_id=str(user.id))
 
 
 # ── Verify email ──────────────────────────────────────────────────────────────

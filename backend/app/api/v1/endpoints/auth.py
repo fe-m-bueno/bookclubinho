@@ -29,6 +29,8 @@ from app.schemas.auth import (
     RefreshResponse,
     RegisterRequest,
     RegisterResponse,
+    ResendVerificationRequest,
+    ResendVerificationResponse,
     VerifyEmailResponse,
 )
 from app.security.rate_limit import limiter
@@ -39,6 +41,7 @@ from app.services.auth import (
     consume_magic_token,
     google_oauth_callback,
     register_user,
+    resend_verification_email,
     rotate_refresh_token,
     send_magic_link,
     verify_email_token,
@@ -111,6 +114,32 @@ async def verify_email(token: str, db: DBSession) -> VerifyEmailResponse:  # noq
             detail="Token inválido ou expirado.",
         )
     return VerifyEmailResponse(message="E-mail verificado com sucesso.")
+
+
+# ── Resend verification ───────────────────────────────────────────────────────
+
+
+@router.post(
+    "/resend-verification",
+    status_code=status.HTTP_200_OK,
+    response_model=ResendVerificationResponse,
+    summary="Reenviar e-mail de verificação",
+)
+@limiter.limit("5/hour")
+async def resend_verification(
+    request: Request,
+    body: ResendVerificationRequest,
+    db: DBSession,  # noqa: TC001
+) -> ResendVerificationResponse:
+    """Reenvia e-mail de verificação.
+
+    Retorna sempre 200 com a mesma mensagem (anti-enumeration).
+    Rate limit: 5 requisições por hora por IP.
+    """
+    await resend_verification_email(db=db, email=body.email)
+    return ResendVerificationResponse(
+        message="Se o e-mail estiver cadastrado, enviaremos um novo link de verificação."
+    )
 
 
 # ── Login ─────────────────────────────────────────────────────────────────────
