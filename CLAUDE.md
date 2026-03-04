@@ -89,6 +89,8 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
 
 **TypeScript:** strict mode, preferir Server Components, Tailwind only (zero CSS custom), camelCase para vars/funções, PascalCase para componentes, kebab-case para arquivos/rotas.
 
+**Composição React:** Pages devem ser finas — orquestram componentes, não contêm lógica. Extrair formulários, seções e blocos visuais em componentes reutilizáveis (`src/components/`). Hooks customizados para lógica de estado/fetch. Sempre consultar as skills `vercel-composition-patterns`, `vercel-react-best-practices`, `next-best-practices`, `web-design-guidelines` e `frontend-design` ao criar ou modificar código frontend.
+
 ---
 
 ## Padrões de API
