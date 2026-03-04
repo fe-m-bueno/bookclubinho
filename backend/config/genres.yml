@@ -1,0 +1,100 @@
+genres:
+  - slug: ficcao
+    display_name: Ficção
+    emoji: "📖"
+    description: "Narrativas imaginárias que exploram mundos, personagens e situações criadas pela imaginação do autor."
+
+  - slug: nao-ficcao
+    display_name: Não-Ficção
+    emoji: "📰"
+    description: "Obras baseadas em fatos reais, documentando eventos, pessoas e fenômenos do mundo real."
+
+  - slug: fantasia
+    display_name: Fantasia
+    emoji: "🧙"
+    description: "Histórias com elementos mágicos, criaturas míticas e mundos completamente imaginários além da realidade."
+
+  - slug: sci-fi
+    display_name: Ficção Científica
+    emoji: "🚀"
+    description: "Narrativas que exploram o impacto de ciência e tecnologia na sociedade, frequentemente ambientadas no futuro."
+
+  - slug: romance
+    display_name: Romance
+    emoji: "💕"
+    description: "Histórias centradas em relacionamentos amorosos e sua evolução ao longo da narrativa."
+
+  - slug: terror
+    display_name: Terror
+    emoji: "👻"
+    description: "Obras projetadas para provocar medo, tensão e desconforto através de elementos sobrenaturais ou psicológicos."
+
+  - slug: misterio-thriller
+    display_name: Mistério & Thriller
+    emoji: "🔍"
+    description: "Narrativas de suspense que envolvem crimes, investigações ou situações de perigo iminente."
+
+  - slug: biografia
+    display_name: Biografia
+    emoji: "👤"
+    description: "Relatos da vida de pessoas reais, escritos por terceiros ou pelos próprios protagonistas (autobiografia)."
+
+  - slug: autoajuda
+    display_name: Autoajuda
+    emoji: "🌱"
+    description: "Livros com orientações práticas para desenvolvimento pessoal, produtividade e bem-estar."
+
+  - slug: poesia
+    display_name: Poesia
+    emoji: "✍️"
+    description: "Expressão artística através da linguagem rítmica e figurada, explorando emoções e beleza estética."
+
+  - slug: hq-manga
+    display_name: HQ & Mangá
+    emoji: "💬"
+    description: "Narrativas visuais em quadrinhos, abrangendo desde super-heróis ocidentais até mangás japoneses."
+
+  - slug: classicos
+    display_name: Clássicos
+    emoji: "🏛️"
+    description: "Obras literárias de reconhecido valor histórico e artístico, que resistiram ao teste do tempo."
+
+  - slug: jovem-adulto
+    display_name: Jovem Adulto
+    emoji: "🎒"
+    description: "Literatura voltada para adolescentes e jovens adultos, frequentemente com temas de identidade e amadurecimento."
+
+  - slug: historia
+    display_name: História
+    emoji: "📜"
+    description: "Obras que narram ou analisam eventos do passado, civilizações e transformações da humanidade."
+
+  - slug: filosofia
+    display_name: Filosofia
+    emoji: "🤔"
+    description: "Textos que exploram questões fundamentais sobre existência, conhecimento, ética e a natureza da realidade."
+
+  - slug: true-crime
+    display_name: True Crime
+    emoji: "🔎"
+    description: "Relatos não-ficcionais sobre crimes reais, investigações policiais e a psicologia dos criminosos."
+
+  - slug: humor
+    display_name: Humor
+    emoji: "😂"
+    description: "Obras cômicas que buscam entreter o leitor através do riso, sátira e situações absurdas."
+
+  - slug: drama
+    display_name: Drama
+    emoji: "🎭"
+    description: "Narrativas com forte carga emocional, explorando conflitos humanos profundos e complexidades da vida."
+
+  - slug: distopia
+    display_name: Distopia
+    emoji: "🌑"
+    description: "Ficções ambientadas em sociedades opressivas e disfuncionais, geralmente como crítica ao mundo contemporâneo."
+
+  - slug: aventura
+    display_name: Aventura
+    emoji: "🗺️"
+    description: "Histórias repletas de ação, exploração e desafios, onde personagens enfrentam perigos em busca de objetivos."
