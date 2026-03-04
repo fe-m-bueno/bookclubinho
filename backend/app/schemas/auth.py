@@ -34,3 +34,11 @@ class VerifyEmailResponse(BaseModel):
 
 class LoginResponse(BaseModel):
     message: str
+
+
+class MagicLinkRequest(BaseModel):
+    email: EmailStr
+
+
+class MagicLinkResponse(BaseModel):
+    message: str

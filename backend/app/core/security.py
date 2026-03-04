@@ -1,4 +1,5 @@
 import hmac
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -39,3 +40,17 @@ def decode_token(token: str) -> dict[str, Any]:
 def safe_compare(a: str, b: str) -> bool:
     """Constant-time string comparison to prevent timing attacks."""
     return hmac.compare_digest(a.encode(), b.encode())
+
+
+# Excludes ambiguous chars: 0, O, 1, I, L
+_GROUP_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def generate_group_code() -> str:
+    """Generate a cryptographically secure 8-char invite code, excluding ambiguous characters."""
+    return "".join(secrets.choice(_GROUP_CODE_ALPHABET) for _ in range(8))
+
+
+def generate_magic_token() -> str:
+    """Generate a cryptographically secure URL-safe token for magic link auth."""
+    return secrets.token_urlsafe(32)

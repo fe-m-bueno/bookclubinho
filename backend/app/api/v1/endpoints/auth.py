@@ -2,6 +2,8 @@
 POST /api/v1/auth/register  — cria conta e envia e-mail de verificação
 POST /api/v1/auth/verify-email  — valida token do Redis e marca e-mail como verificado
 POST /api/v1/auth/login  — autentica e seta cookies httpOnly (access + refresh)
+POST /api/v1/auth/magic-link  — solicita magic link por e-mail
+GET  /api/v1/auth/magic/callback  — valida magic token e autentica
 """
 
 from __future__ import annotations
@@ -9,12 +11,28 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
+from app.core.config import settings
 from app.core.deps import DBSession  # noqa: TC001
-from app.schemas.auth import LoginResponse, RegisterRequest, RegisterResponse, VerifyEmailResponse
+from app.schemas.auth import (
+    LoginResponse,
+    MagicLinkRequest,
+    MagicLinkResponse,
+    RegisterRequest,
+    RegisterResponse,
+    VerifyEmailResponse,
+)
 from app.security.rate_limit import limiter
-from app.services.auth import AuthError, authenticate_user, register_user, verify_email_token
+from app.services.auth import (
+    AuthError,
+    authenticate_user,
+    consume_magic_token,
+    register_user,
+    send_magic_link,
+    verify_email_token,
+)
 
 router = APIRouter(tags=["auth"])
 
@@ -105,3 +123,38 @@ async def login(
     response.set_cookie("refresh_token", refresh_token, **_COOKIE_KWARGS)
 
     return LoginResponse(message="Login realizado com sucesso.")
+
+
+# ── Magic Link ────────────────────────────────────────────────────────────────
+
+
+@router.post("/magic-link", status_code=200, response_model=MagicLinkResponse)
+async def request_magic_link(body: MagicLinkRequest, db: DBSession) -> MagicLinkResponse:  # noqa: TC001
+    """Solicita magic link por e-mail.
+
+    Retorna sempre 200 independentemente de o e-mail já existir (anti-enumeration).
+    Rate limit por e-mail é gerenciado no service layer.
+    """
+    await send_magic_link(db=db, email=body.email)
+    return MagicLinkResponse(
+        message="Se o e-mail estiver cadastrado, você receberá um link em breve."
+    )
+
+
+@router.get("/magic/callback", response_class=RedirectResponse)
+async def magic_link_callback(token: str, db: DBSession) -> RedirectResponse:  # noqa: TC001
+    """Valida magic token, autentica o usuário e redireciona."""
+    try:
+        access_token, refresh_token, onboarding_completed = await consume_magic_token(
+            db=db, token=token
+        )
+    except AuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    base_url = settings.APP_URL.rstrip("/")
+    redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
+
+    response = RedirectResponse(url=redirect_url, status_code=303)
+    response.set_cookie("access_token", access_token, **_COOKIE_KWARGS)
+    response.set_cookie("refresh_token", refresh_token, **_COOKIE_KWARGS)
+    return response
