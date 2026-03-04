@@ -15,7 +15,7 @@ from typing import Annotated
 from urllib.parse import urlencode
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -23,8 +23,10 @@ from app.core.config import settings
 from app.core.deps import DBSession  # noqa: TC001
 from app.schemas.auth import (
     LoginResponse,
+    LogoutResponse,
     MagicLinkRequest,
     MagicLinkResponse,
+    RefreshResponse,
     RegisterRequest,
     RegisterResponse,
     VerifyEmailResponse,
@@ -33,9 +35,11 @@ from app.security.rate_limit import limiter
 from app.services.auth import (
     AuthError,
     authenticate_user,
+    blacklist_refresh_token,
     consume_magic_token,
     google_oauth_callback,
     register_user,
+    rotate_refresh_token,
     send_magic_link,
     verify_email_token,
 )
@@ -174,6 +178,41 @@ async def magic_link_callback(token: str, db: DBSession) -> RedirectResponse:  #
     response = RedirectResponse(url=redirect_url, status_code=303)
     _set_auth_cookies(response, access_token, refresh_token)
     return response
+
+
+# ── Logout ────────────────────────────────────────────────────────────────────
+
+
+@router.post("/logout", response_model=LogoutResponse)
+async def logout(
+    response: Response,
+    refresh_token: Annotated[str | None, Cookie(alias="refresh_token")] = None,
+) -> LogoutResponse:
+    """Invalida o refresh token (blacklist no Redis) e limpa os cookies de auth."""
+    if refresh_token:
+        await blacklist_refresh_token(refresh_token)
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
+    return LogoutResponse(message="Logout realizado com sucesso.")
+
+
+# ── Refresh ────────────────────────────────────────────────────────────────────
+
+
+@router.post("/refresh", response_model=RefreshResponse)
+async def refresh(
+    response: Response,
+    refresh_token: Annotated[str | None, Cookie(alias="refresh_token")] = None,
+) -> RefreshResponse:
+    """Valida o refresh token, verifica blacklist e emite novo par de tokens (rotação)."""
+    if not refresh_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Não autenticado.")
+    try:
+        new_access, new_refresh = await rotate_refresh_token(refresh_token)
+    except AuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    _set_auth_cookies(response, new_access, new_refresh)
+    return RefreshResponse(message="Tokens renovados com sucesso.")
 
 
 # ── Google OAuth2 ─────────────────────────────────────────────────────────────
