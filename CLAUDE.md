@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Workflow do Agente (Obrigatório)
+
+- **Nova Branch:** Sempre inicie uma tarefa criando uma nova branch descritiva.
+- **Git Best Practices:** Siga as melhores práticas de Git (mensagens de commit claras, commits atômicos).
+- **Push & PR:** Ao finalizar, realize o push da branch e crie um Pull Request.
+- **Co-autoria:** **NUNCA** se adicione como co-autor do projeto no GitHub.
+- **Testes Unitários:** Sempre crie ou atualize testes unitários ao final de cada solicitação.
+
+---
+
 ## O que é esse projeto
 
 Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover API), chat estilo iMessage, tracking de leitura com streaks, reviews pós-livro, encontros, badges e wrapped anual.
