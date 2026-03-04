@@ -92,6 +92,12 @@ class User(TimestampMixin, Base):
         server_default="America/Sao_Paulo",
         default="America/Sao_Paulo",
     )
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
