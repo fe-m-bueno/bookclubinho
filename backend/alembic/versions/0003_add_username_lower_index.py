@@ -1,0 +1,27 @@
+"""add case-insensitive unique index on users.username
+
+Revision ID: 0003
+Revises: 0002
+Create Date: 2026-03-04
+"""
+
+from alembic import op
+
+revision = "0003"
+down_revision = "0002"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    op.create_index(
+        "ix_users_username_lower",
+        "users",
+        [op.f("lower(username)")],
+        unique=True,
+        postgresql_using="btree",
+    )
+
+
+def downgrade() -> None:
+    op.drop_index("ix_users_username_lower", table_name="users")
