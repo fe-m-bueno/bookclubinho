@@ -1,24 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { FormField } from "@/components/auth/form-field";
+import { PasswordInput } from "@/components/auth/password-input";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
+import { useResendCooldown } from "@/hooks/use-resend-cooldown";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -39,12 +41,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [resendLoading, setResendLoading] = useState(false);
-  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { remaining, start: startCooldown } = useResendCooldown();
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -56,285 +53,196 @@ export default function RegisterPage() {
     },
   });
 
-  useEffect(() => {
-    return () => {
-      if (cooldownRef.current) clearInterval(cooldownRef.current);
-    };
-  }, []);
+  const { submit: submitRegister, loading } = useAuthSubmit({
+    url: `${API_URL}/api/v1/auth/register`,
+    onSuccess: () => {
+      setSubmittedEmail(form.getValues("email"));
+      setSubmitted(true);
+    },
+    statusHandlers: [
+      {
+        status: 422,
+        handler: async (res) => {
+          const body = await res.json();
+          toast.error(body.detail || "Erro de validação");
+        },
+      },
+    ],
+  });
 
-  const startCooldown = useCallback(() => {
-    setResendCooldown(60);
-    if (cooldownRef.current) clearInterval(cooldownRef.current);
-    cooldownRef.current = setInterval(() => {
-      setResendCooldown((prev) => {
-        if (prev <= 1) {
-          if (cooldownRef.current) clearInterval(cooldownRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, []);
+  const { submit: submitResend, loading: resendLoading } = useAuthSubmit({
+    url: `${API_URL}/api/v1/auth/resend-verification`,
+    onSuccess: () => {
+      toast.success("E-mail reenviado!");
+      startCooldown();
+    },
+    antiEnumeration: true,
+  });
 
   async function onSubmit(data: RegisterFormData) {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/api/v1/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          display_name: data.display_name,
-          email: data.email,
-          password: data.password,
-        }),
-        credentials: "include",
-      });
-
-      if (res.status === 201 || res.ok) {
-        setSubmittedEmail(data.email);
-        setSubmitted(true);
-        return;
-      }
-
-      if (res.status === 422) {
-        const body = await res.json();
-        toast.error(body.detail || "Erro de validação");
-      } else if (res.status === 429) {
-        toast.error("Muitas tentativas. Aguarde um momento.");
-      } else {
-        toast.error("Erro ao criar conta. Tente novamente.");
-      }
-    } catch {
-      toast.error("Erro de conexão. Verifique sua internet.");
-    } finally {
-      setLoading(false);
-    }
+    await submitRegister(
+      JSON.stringify({
+        display_name: data.display_name,
+        email: data.email,
+        password: data.password,
+      })
+    );
   }
 
   async function handleResend() {
-    setResendLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/api/v1/auth/resend-verification`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: submittedEmail }),
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        toast.success("E-mail reenviado!");
-        startCooldown();
-      } else if (res.status === 429) {
-        toast.error("Muitas tentativas. Aguarde um momento.");
-      } else {
-        toast.success("E-mail reenviado!");
-        startCooldown();
-      }
-    } catch {
-      toast.error("Erro de conexão. Verifique sua internet.");
-    } finally {
-      setResendLoading(false);
-    }
+    await submitResend(JSON.stringify({ email: submittedEmail }));
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center px-4">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
+    <Card className="max-w-sm w-full">
+      {!submitted ? (
+        <>
+          <CardHeader className="text-center space-y-1">
+            <p className="text-4xl" aria-hidden="true">
+              📚
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight">Criar conta</h1>
+            <p className="text-sm text-muted-foreground">
+              Junte-se ao clube
+            </p>
+          </CardHeader>
 
-      <Card className="max-w-sm w-full">
-        {!submitted ? (
-          <>
-            <CardHeader className="text-center space-y-1">
-              <p className="text-4xl" aria-hidden="true">
-                📚
-              </p>
-              <h1 className="text-2xl font-bold tracking-tight">Criar conta</h1>
-              <p className="text-sm text-muted-foreground">
-                Junte-se ao clube
-              </p>
-            </CardHeader>
-
-            <CardContent>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-                noValidate
+          <CardContent>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-4"
+              noValidate
+            >
+              <FormField
+                label="Nome"
+                htmlFor="register-name"
+                error={form.formState.errors.display_name?.message}
               >
-                <div className="space-y-2">
-                  <Label htmlFor="register-name">Nome</Label>
-                  <Input
-                    id="register-name"
-                    type="text"
-                    placeholder="Seu nome"
-                    autoComplete="name"
-                    {...form.register("display_name")}
-                  />
-                  {form.formState.errors.display_name && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.display_name.message}
-                    </p>
-                  )}
-                </div>
+                <Input
+                  id="register-name"
+                  type="text"
+                  placeholder="Seu nome"
+                  autoComplete="name"
+                  {...form.register("display_name")}
+                />
+              </FormField>
 
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">E-mail</Label>
-                  <Input
-                    id="register-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    autoComplete="email"
-                    {...form.register("email")}
-                  />
-                  {form.formState.errors.email && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.email.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Senha</Label>
-                  <div className="relative">
-                    <Input
-                      id="register-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Mínimo 8 caracteres"
-                      autoComplete="new-password"
-                      {...form.register("password")}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                  {form.formState.errors.password && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.password.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="register-confirm-password">
-                    Confirmar senha
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="register-confirm-password"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Repita a senha"
-                      autoComplete="new-password"
-                      {...form.register("confirmPassword")}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label={
-                        showConfirmPassword
-                          ? "Ocultar confirmação de senha"
-                          : "Mostrar confirmação de senha"
-                      }
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                  {form.formState.errors.confirmPassword && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.confirmPassword.message}
-                    </p>
-                  )}
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full h-11"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Criar conta"
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-
-            <CardFooter className="justify-center">
-              <p className="text-sm text-muted-foreground">
-                Já tem conta?{" "}
-                <Link
-                  href="/auth/login"
-                  className="text-foreground font-medium hover:underline"
-                >
-                  Entrar
-                </Link>
-              </p>
-            </CardFooter>
-          </>
-        ) : (
-          <>
-            <CardHeader className="text-center space-y-4">
-              <motion.div
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="flex justify-center"
+              <FormField
+                label="E-mail"
+                htmlFor="register-email"
+                error={form.formState.errors.email?.message}
               >
-                <Mail className="h-16 w-16 text-primary" />
-              </motion.div>
-              <h1 className="text-2xl font-bold tracking-tight">
-                Verifique seu e-mail
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Enviamos um link de verificação para{" "}
-                <strong className="text-foreground">{submittedEmail}</strong>
-              </p>
-            </CardHeader>
+                <Input
+                  id="register-email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  autoComplete="email"
+                  {...form.register("email")}
+                />
+              </FormField>
 
-            <CardContent className="space-y-4">
+              <FormField
+                label="Senha"
+                htmlFor="register-password"
+                error={form.formState.errors.password?.message}
+              >
+                <PasswordInput
+                  id="register-password"
+                  placeholder="Mínimo 8 caracteres"
+                  autoComplete="new-password"
+                  showLabel="Mostrar senha"
+                  hideLabel="Ocultar senha"
+                  {...form.register("password")}
+                />
+              </FormField>
+
+              <FormField
+                label="Confirmar senha"
+                htmlFor="register-confirm-password"
+                error={form.formState.errors.confirmPassword?.message}
+              >
+                <PasswordInput
+                  id="register-confirm-password"
+                  placeholder="Repita a senha"
+                  autoComplete="new-password"
+                  showLabel="Mostrar confirmação de senha"
+                  hideLabel="Ocultar confirmação de senha"
+                  {...form.register("confirmPassword")}
+                />
+              </FormField>
+
               <Button
-                variant="outline"
+                type="submit"
                 className="w-full h-11"
-                onClick={handleResend}
-                disabled={resendCooldown > 0 || resendLoading}
+                disabled={loading}
               >
-                {resendLoading ? (
+                {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
-                ) : resendCooldown > 0 ? (
-                  `Reenviar em ${resendCooldown}s`
                 ) : (
-                  "Reenviar e-mail"
+                  "Criar conta"
                 )}
               </Button>
+            </form>
+          </CardContent>
 
-              <div className="text-center">
-                <Link
-                  href="/auth/login"
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Voltar para o login
-                </Link>
-              </div>
-            </CardContent>
-          </>
-        )}
-      </Card>
-    </div>
+          <CardFooter className="justify-center">
+            <p className="text-sm text-muted-foreground">
+              Já tem conta?{" "}
+              <Link
+                href="/auth/login"
+                className="text-foreground font-medium hover:underline"
+              >
+                Entrar
+              </Link>
+            </p>
+          </CardFooter>
+        </>
+      ) : (
+        <>
+          <CardHeader className="text-center space-y-4">
+            <motion.div
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="flex justify-center"
+            >
+              <Mail className="h-16 w-16 text-primary" />
+            </motion.div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Verifique seu e-mail
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Enviamos um link de verificação para{" "}
+              <strong className="text-foreground">{submittedEmail}</strong>
+            </p>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <Button
+              variant="outline"
+              className="w-full h-11"
+              onClick={handleResend}
+              disabled={remaining > 0 || resendLoading}
+            >
+              {resendLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : remaining > 0 ? (
+                `Reenviar em ${remaining}s`
+              ) : (
+                "Reenviar e-mail"
+              )}
+            </Button>
+
+            <div className="text-center">
+              <Link
+                href="/auth/login"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Voltar para o login
+              </Link>
+            </div>
+          </CardContent>
+        </>
+      )}
+    </Card>
   );
 }
