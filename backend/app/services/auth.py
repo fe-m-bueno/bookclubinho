@@ -8,6 +8,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+import httpx
 import redis.asyncio as aioredis
 import structlog
 from sqlalchemy import select
@@ -253,6 +254,92 @@ async def consume_magic_token(
     refresh_token = create_refresh_token(str(user.id))
 
     logger.info("magic_link_authenticated", user_id=str(user.id))
+    return access_token, refresh_token, user.onboarding_completed
+
+
+# ── Google OAuth2 ─────────────────────────────────────────────────────────────
+
+_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+_GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+
+
+async def google_oauth_callback(
+    code: str,
+    db: AsyncSession,
+) -> tuple[str, str, bool]:
+    """Troca o authorization code do Google por tokens, faz upsert do usuário.
+
+    Returns (access_token, refresh_token, onboarding_completed).
+    Raises AuthError(400) para falhas no OAuth ou e-mail não verificado.
+    """
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            _GOOGLE_TOKEN_URL,
+            data={
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                "grant_type": "authorization_code",
+                "code": code,
+            },
+        )
+
+    if token_resp.status_code != 200:
+        logger.warning("google_token_exchange_failed", status=token_resp.status_code)
+        raise AuthError("Falha na autenticação via Google.", status_code=400)
+
+    google_access_token = token_resp.json().get("access_token")
+
+    async with httpx.AsyncClient() as client:
+        userinfo_resp = await client.get(
+            _GOOGLE_USERINFO_URL,
+            headers={"Authorization": f"Bearer {google_access_token}"},
+        )
+
+    if userinfo_resp.status_code != 200:
+        logger.warning("google_userinfo_failed", status=userinfo_resp.status_code)
+        raise AuthError("Falha na autenticação via Google.", status_code=400)
+
+    userinfo = userinfo_resp.json()
+    email: str | None = userinfo.get("email")
+    verified_email: bool = userinfo.get("verified_email", False)
+
+    if not email or not verified_email:
+        raise AuthError("E-mail do Google não verificado.", status_code=400)
+
+    email_lower = email.lower().strip()
+    raw_name: str = userinfo.get("name") or email_lower.split("@")[0]
+    clean_name = sanitize(raw_name)
+    avatar_url: str | None = userinfo.get("picture")
+
+    result = await db.execute(select(User).where(User.email == email_lower))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        user = User(
+            id=uuid.uuid4(),
+            email=email_lower,
+            hashed_password=None,
+            display_name=clean_name,
+            auth_provider="google",
+            email_verified=True,
+            avatar_url=avatar_url,
+        )
+        db.add(user)
+        await db.flush()
+        logger.info("google_oauth_new_user", email=email_lower)
+    else:
+        user.auth_provider = "google"
+        if user.avatar_url is None:
+            user.avatar_url = avatar_url
+        logger.info("google_oauth_merged_user", user_id=str(user.id))
+
+    user.last_login_at = datetime.now(UTC)
+    await db.commit()
+
+    access_token = create_access_token(str(user.id))
+    refresh_token = create_refresh_token(str(user.id))
+
     return access_token, refresh_token, user.onboarding_completed
 
 

@@ -552,3 +552,276 @@ class TestConsumeMagicToken:
             _, _, onboarding = await consume_magic_token(db=mock_db, token="tok")
 
         assert onboarding is False
+
+
+# ── Service: google_oauth_callback ────────────────────────────────────────────
+
+
+def _mock_httpx_client(token_status: int = 200, userinfo_status: int = 200) -> MagicMock:
+    """Cria um mock de httpx.AsyncClient context manager."""
+    token_resp = MagicMock()
+    token_resp.status_code = token_status
+    token_resp.json.return_value = {"access_token": "google_access_token"}
+
+    userinfo_resp = MagicMock()
+    userinfo_resp.status_code = userinfo_status
+    userinfo_resp.json.return_value = {
+        "email": "user@gmail.com",
+        "verified_email": True,
+        "name": "Test User",
+        "picture": "https://lh3.googleusercontent.com/photo.jpg",
+    }
+
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(return_value=token_resp)
+    mock_client.get = AsyncMock(return_value=userinfo_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    return mock_client
+
+
+class TestGoogleOAuthCallback:
+    @pytest.mark.asyncio
+    async def test_exchanges_code_and_creates_new_user(self) -> None:
+        from app.services.auth import google_oauth_callback
+
+        mock_db = _mock_db_returning(None)  # usuário não existe
+        user_id = uuid.uuid4()
+        mock_client = _mock_httpx_client()
+
+        with (
+            patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
+            patch("app.services.auth.uuid.uuid4", return_value=user_id),
+            patch("app.services.auth.create_access_token", return_value="acc"),
+            patch("app.services.auth.create_refresh_token", return_value="ref"),
+        ):
+            access, refresh, onboarding = await google_oauth_callback(
+                code="authcode", db=mock_db
+            )
+
+        assert access == "acc"
+        assert refresh == "ref"
+        mock_db.flush.assert_called_once()
+        mock_db.commit.assert_called_once()
+
+        added_user = mock_db.add.call_args[0][0]
+        assert added_user.auth_provider == "google"
+        assert added_user.email_verified is True
+        assert added_user.hashed_password is None
+        assert added_user.email == "user@gmail.com"
+
+    @pytest.mark.asyncio
+    async def test_merges_existing_local_user(self) -> None:
+        from app.services.auth import google_oauth_callback
+
+        existing_user = MagicMock()
+        existing_user.id = uuid.uuid4()
+        existing_user.auth_provider = "local"
+        existing_user.avatar_url = None
+        existing_user.onboarding_completed = True
+        mock_db = _mock_db_returning(existing_user)
+        mock_client = _mock_httpx_client()
+
+        with (
+            patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
+            patch("app.services.auth.create_access_token", return_value="a"),
+            patch("app.services.auth.create_refresh_token", return_value="r"),
+        ):
+            await google_oauth_callback(code="code", db=mock_db)
+
+        assert existing_user.auth_provider == "google"
+        mock_db.flush.assert_not_called()
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_merges_existing_magic_link_user(self) -> None:
+        from app.services.auth import google_oauth_callback
+
+        existing_user = MagicMock()
+        existing_user.id = uuid.uuid4()
+        existing_user.auth_provider = "magic_link"
+        existing_user.avatar_url = None
+        existing_user.onboarding_completed = False
+        mock_db = _mock_db_returning(existing_user)
+        mock_client = _mock_httpx_client()
+
+        with (
+            patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
+            patch("app.services.auth.create_access_token", return_value="a"),
+            patch("app.services.auth.create_refresh_token", return_value="r"),
+        ):
+            await google_oauth_callback(code="code", db=mock_db)
+
+        assert existing_user.auth_provider == "google"
+
+    @pytest.mark.asyncio
+    async def test_preserves_existing_avatar_on_merge(self) -> None:
+        from app.services.auth import google_oauth_callback
+
+        existing_user = MagicMock()
+        existing_user.id = uuid.uuid4()
+        existing_user.auth_provider = "local"
+        existing_user.avatar_url = "https://existing-avatar.com/photo.jpg"
+        existing_user.onboarding_completed = True
+        mock_db = _mock_db_returning(existing_user)
+        mock_client = _mock_httpx_client()
+
+        with (
+            patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
+            patch("app.services.auth.create_access_token", return_value="a"),
+            patch("app.services.auth.create_refresh_token", return_value="r"),
+        ):
+            await google_oauth_callback(code="code", db=mock_db)
+
+        # avatar existente deve ser preservado
+        assert existing_user.avatar_url == "https://existing-avatar.com/photo.jpg"
+
+    @pytest.mark.asyncio
+    async def test_unverified_google_email_raises_auth_error(self) -> None:
+        from app.services.auth import google_oauth_callback
+
+        mock_db = _mock_db_returning(None)
+
+        token_resp = MagicMock()
+        token_resp.status_code = 200
+        token_resp.json.return_value = {"access_token": "tok"}
+
+        userinfo_resp = MagicMock()
+        userinfo_resp.status_code = 200
+        userinfo_resp.json.return_value = {
+            "email": "user@gmail.com",
+            "verified_email": False,
+        }
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=token_resp)
+        mock_client.get = AsyncMock(return_value=userinfo_resp)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
+            pytest.raises(AuthError) as exc_info,
+        ):
+            await google_oauth_callback(code="code", db=mock_db)
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_google_token_exchange_failure_raises_auth_error(self) -> None:
+        from app.services.auth import google_oauth_callback
+
+        mock_db = _mock_db_returning(None)
+        mock_client = _mock_httpx_client(token_status=400)
+
+        with (
+            patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
+            pytest.raises(AuthError) as exc_info,
+        ):
+            await google_oauth_callback(code="bad_code", db=mock_db)
+
+        assert exc_info.value.status_code == 400
+
+
+# ── Endpoint: Google OAuth ─────────────────────────────────────────────────────
+
+
+class TestGoogleOAuthEndpoints:
+    @pytest.mark.asyncio
+    async def test_google_login_redirects_to_google(self) -> None:
+        from app.api.v1.endpoints.auth import google_login
+
+        mock_redis = AsyncMock()
+
+        with patch("app.api.v1.endpoints.auth._redis_client", return_value=mock_redis):
+            response = await google_login()
+
+        assert response.status_code == 302
+        location = response.headers["location"]
+        assert "accounts.google.com" in location
+        assert "response_type=code" in location
+        assert "scope=" in location
+        assert "state=" in location
+        mock_redis.set.assert_called_once()
+        set_args = mock_redis.set.call_args
+        assert set_args[0][0].startswith("oauth_state:")
+        assert set_args[1]["ex"] == 600
+
+    @pytest.mark.asyncio
+    async def test_google_callback_invalid_state_redirects_error(self) -> None:
+        from app.api.v1.endpoints.auth import google_callback
+
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_redis.get.return_value = None  # state não encontrado
+
+        with patch("app.api.v1.endpoints.auth._redis_client", return_value=mock_redis):
+            response = await google_callback(
+                db=mock_db, code="somecode", state="invalidstate", error=None
+            )
+
+        assert response.status_code == 303
+        assert "login?error=oauth_failed" in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_google_callback_sets_cookies_and_redirects(self) -> None:
+        from app.api.v1.endpoints.auth import google_callback
+
+        mock_db = _mock_db_returning(None)
+        mock_redis = AsyncMock()
+        mock_redis.get.return_value = "1"  # state válido
+
+        with (
+            patch("app.api.v1.endpoints.auth._redis_client", return_value=mock_redis),
+            patch(
+                "app.api.v1.endpoints.auth.google_oauth_callback",
+                new_callable=AsyncMock,
+                return_value=("acc.tok", "ref.tok", True),
+            ),
+        ):
+            response = await google_callback(
+                db=mock_db, code="validcode", state="validstate", error=None
+            )
+
+        assert response.status_code == 303
+        # redireciona para / quando onboarding_completed=True
+        location = response.headers["location"]
+        assert location.endswith("/")
+        mock_redis.delete.assert_called_once_with("oauth_state:validstate")
+
+    @pytest.mark.asyncio
+    async def test_google_callback_error_param_redirects(self) -> None:
+        from app.api.v1.endpoints.auth import google_callback
+
+        mock_db = AsyncMock()
+
+        response = await google_callback(
+            db=mock_db, code=None, state=None, error="access_denied"
+        )
+
+        assert response.status_code == 303
+        assert "login?error=oauth_failed" in response.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_google_callback_auth_error_redirects(self) -> None:
+        from app.api.v1.endpoints.auth import google_callback
+
+        mock_db = _mock_db_returning(None)
+        mock_redis = AsyncMock()
+        mock_redis.get.return_value = "1"
+
+        with (
+            patch("app.api.v1.endpoints.auth._redis_client", return_value=mock_redis),
+            patch(
+                "app.api.v1.endpoints.auth.google_oauth_callback",
+                new_callable=AsyncMock,
+                side_effect=AuthError("Falha OAuth", status_code=400),
+            ),
+        ):
+            response = await google_callback(
+                db=mock_db, code="badcode", state="validstate", error=None
+            )
+
+        assert response.status_code == 303
+        assert "login?error=oauth_failed" in response.headers["location"]

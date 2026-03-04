@@ -4,12 +4,17 @@ POST /api/v1/auth/verify-email  — valida token do Redis e marca e-mail como ve
 POST /api/v1/auth/login  — autentica e seta cookies httpOnly (access + refresh)
 POST /api/v1/auth/magic-link  — solicita magic link por e-mail
 GET  /api/v1/auth/magic/callback  — valida magic token e autentica
+GET  /api/v1/auth/google/login  — redireciona para consentimento Google
+GET  /api/v1/auth/google/callback  — recebe code, autentica e redireciona
 """
 
 from __future__ import annotations
 
+import secrets
 from typing import Annotated
+from urllib.parse import urlencode
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -29,6 +34,7 @@ from app.services.auth import (
     AuthError,
     authenticate_user,
     consume_magic_token,
+    google_oauth_callback,
     register_user,
     send_magic_link,
     verify_email_token,
@@ -45,6 +51,18 @@ _COOKIE_KWARGS = {
 
 # Annotated alias evita B008 (Depends() em default de argumento)
 _FormData = Annotated[OAuth2PasswordRequestForm, Depends()]  # noqa: TC002
+
+_OAUTH_STATE_TTL = 600  # 10 minutos
+
+
+def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    """Seta os cookies httpOnly de autenticação na resposta."""
+    response.set_cookie("access_token", access_token, **_COOKIE_KWARGS)
+    response.set_cookie("refresh_token", refresh_token, **_COOKIE_KWARGS)
+
+
+def _redis_client() -> aioredis.Redis:
+    return aioredis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 # ── Register ──────────────────────────────────────────────────────────────────
@@ -119,8 +137,7 @@ async def login(
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
-    response.set_cookie("access_token", access_token, **_COOKIE_KWARGS)
-    response.set_cookie("refresh_token", refresh_token, **_COOKIE_KWARGS)
+    _set_auth_cookies(response, access_token, refresh_token)
 
     return LoginResponse(message="Login realizado com sucesso.")
 
@@ -155,6 +172,74 @@ async def magic_link_callback(token: str, db: DBSession) -> RedirectResponse:  #
     redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
 
     response = RedirectResponse(url=redirect_url, status_code=303)
-    response.set_cookie("access_token", access_token, **_COOKIE_KWARGS)
-    response.set_cookie("refresh_token", refresh_token, **_COOKIE_KWARGS)
+    _set_auth_cookies(response, access_token, refresh_token)
+    return response
+
+
+# ── Google OAuth2 ─────────────────────────────────────────────────────────────
+
+
+@router.get("/google/login", response_class=RedirectResponse)
+async def google_login() -> RedirectResponse:
+    """Redireciona para a tela de consentimento do Google."""
+    state = secrets.token_urlsafe(32)
+
+    redis = _redis_client()
+    try:
+        await redis.set(f"oauth_state:{state}", "1", ex=_OAUTH_STATE_TTL)
+    finally:
+        await redis.aclose()
+
+    params = urlencode(
+        {
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            "response_type": "code",
+            "scope": "openid email profile",
+            "state": state,
+            "access_type": "offline",
+            "prompt": "select_account",
+        }
+    )
+    return RedirectResponse(
+        url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}",
+        status_code=302,
+    )
+
+
+@router.get("/google/callback", response_class=RedirectResponse)
+async def google_callback(
+    db: DBSession,  # noqa: TC001
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+) -> RedirectResponse:
+    """Recebe o authorization code do Google, autentica e redireciona."""
+    base_url = settings.APP_URL.rstrip("/")
+    error_redirect = RedirectResponse(
+        url=f"{base_url}/login?error=oauth_failed", status_code=303
+    )
+
+    if error or not code or not state:
+        return error_redirect
+
+    redis = _redis_client()
+    try:
+        stored = await redis.get(f"oauth_state:{state}")
+        if not stored:
+            return error_redirect
+        await redis.delete(f"oauth_state:{state}")
+    finally:
+        await redis.aclose()
+
+    try:
+        access_token, refresh_token, onboarding_completed = await google_oauth_callback(
+            code=code, db=db
+        )
+    except AuthError:
+        return error_redirect
+
+    redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
+    response = RedirectResponse(url=redirect_url, status_code=303)
+    _set_auth_cookies(response, access_token, refresh_token)
     return response
