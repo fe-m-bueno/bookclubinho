@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Nova Branch:** Sempre inicie uma tarefa criando uma nova branch descritiva.
 - **Git Best Practices:** Siga as melhores práticas de Git (mensagens de commit claras, commits atômicos).
-- **Push & PR:** Ao finalizar, realize o push da branch e crie um Pull Request.
+- **Push & PR:** Ao finalizar, realize o push da branch e crie um Pull Request (não coloque menção ao claude code no PR nem na commit message).
 - **Co-autoria:** **NUNCA** se adicione como co-autor do projeto no GitHub.
 - **Testes Unitários:** Sempre crie ou atualize testes unitários ao final de cada solicitação.
 

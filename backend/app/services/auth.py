@@ -19,21 +19,36 @@ from app.core.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    generate_magic_token,
     hash_password,
     verify_password,
 )
 from app.db.models.user import User
 from app.security.sanitizer import sanitize
-from app.services.email import send_verification_email
+from app.services.email import send_magic_link_email, send_verification_email
 
 logger = structlog.get_logger(__name__)
 
 _VERIFY_TOKEN_TTL = 86_400  # 24 h in seconds
 _VERIFY_KEY_PREFIX = "verify:"
 
+_MAGIC_TOKEN_TTL = 900  # 15 min
+_MAGIC_KEY_PREFIX = "magic:"
+_MAGIC_RATE_KEY_PREFIX = "magic_rate:"
+_MAGIC_RATE_LIMIT = 5
+_MAGIC_RATE_TTL = 3600  # 1 hora
+
 
 def _redis() -> aioredis.Redis:
     return aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+
+
+class AuthError(Exception):
+    """Raised when credentials are invalid or the account is not ready."""
+
+    def __init__(self, message: str, status_code: int = 401) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 # ── Register ──────────────────────────────────────────────────────────────────
@@ -137,15 +152,111 @@ async def verify_email_token(db: AsyncSession, token: str) -> bool:
     return True
 
 
+# ── Magic Link ────────────────────────────────────────────────────────────────
+
+
+async def send_magic_link(db: AsyncSession, email: str) -> None:
+    """Solicita magic link para o e-mail informado.
+
+    Cria o usuário se não existir (auth_provider='magic_link').
+    Retorna silenciosamente em todos os casos — anti-enumeration.
+    """
+    email_lower = email.lower().strip()
+
+    redis_client = _redis()
+    try:
+        rate_key = f"{_MAGIC_RATE_KEY_PREFIX}{email_lower}"
+        count = await redis_client.incr(rate_key)
+        if count == 1:
+            await redis_client.expire(rate_key, _MAGIC_RATE_TTL)
+        if count > _MAGIC_RATE_LIMIT:
+            logger.info("magic_link_rate_limited", email=email_lower)
+            return
+    finally:
+        await redis_client.aclose()
+
+    result = await db.execute(select(User).where(User.email == email_lower))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        display_name = sanitize(email_lower.split("@")[0])
+        user = User(
+            id=uuid.uuid4(),
+            email=email_lower,
+            hashed_password=None,
+            display_name=display_name,
+            auth_provider="magic_link",
+            email_verified=True,
+        )
+        db.add(user)
+        await db.flush()
+
+    token = generate_magic_token()
+    magic_url = f"{settings.APP_URL.rstrip('/')}/api/v1/auth/magic/callback?token={token}"
+
+    redis_client = _redis()
+    try:
+        await redis_client.set(
+            f"{_MAGIC_KEY_PREFIX}{token}",
+            str(user.id),
+            ex=_MAGIC_TOKEN_TTL,
+        )
+    finally:
+        await redis_client.aclose()
+
+    await asyncio.to_thread(
+        send_magic_link_email,
+        to_email=email_lower,
+        display_name=user.display_name or email_lower,
+        magic_url=magic_url,
+    )
+
+    await db.commit()
+    logger.info("magic_link_sent", user_id=str(user.id))
+
+
+async def consume_magic_token(
+    db: AsyncSession, token: str
+) -> tuple[str, str, bool]:
+    """Consome um magic token e retorna (access_token, refresh_token, onboarding_completed).
+
+    Raises AuthError(400) para token inválido/expirado, UUID corrompido ou usuário inativo.
+    """
+    redis_client = _redis()
+    try:
+        key = f"{_MAGIC_KEY_PREFIX}{token}"
+        user_id_str = await redis_client.get(key)
+        if not user_id_str:
+            raise AuthError("Token inválido ou expirado.", status_code=400)
+
+        # Deleta ANTES do DB lookup para garantir one-time use
+        await redis_client.delete(key)
+    finally:
+        await redis_client.aclose()
+
+    try:
+        user_id = uuid.UUID(user_id_str)
+    except ValueError as exc:
+        logger.warning("magic_token_invalid_uuid", raw=user_id_str)
+        raise AuthError("Token inválido ou expirado.", status_code=400) from exc
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if user is None or not user.is_active:
+        raise AuthError("Token inválido ou expirado.", status_code=400)
+
+    user.last_login_at = datetime.now(UTC)
+    await db.commit()
+
+    access_token = create_access_token(str(user.id))
+    refresh_token = create_refresh_token(str(user.id))
+
+    logger.info("magic_link_authenticated", user_id=str(user.id))
+    return access_token, refresh_token, user.onboarding_completed
+
+
 # ── Login ─────────────────────────────────────────────────────────────────────
-
-
-class AuthError(Exception):
-    """Raised when credentials are invalid or the account is not ready."""
-
-    def __init__(self, message: str, status_code: int = 401) -> None:
-        super().__init__(message)
-        self.status_code = status_code
 
 
 async def authenticate_user(

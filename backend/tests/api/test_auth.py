@@ -283,3 +283,272 @@ class TestAuthenticateUser:
             await authenticate_user(db=mock_db, email="u@e.com", password="pass")
 
         assert exc_info.value.status_code == 401
+
+
+# ── Service: send_magic_link ───────────────────────────────────────────────────
+
+
+class TestSendMagicLink:
+    @pytest.mark.asyncio
+    async def test_new_user_created_with_magic_link_provider(self) -> None:
+        from app.services.auth import send_magic_link
+
+        mock_db = _mock_db_returning(None)  # no existing user
+
+        user_id = uuid.uuid4()
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
+            patch("app.services.auth.uuid.uuid4", return_value=user_id),
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 1
+            mock_redis_factory.return_value = mock_redis
+
+            await send_magic_link(db=mock_db, email="new@example.com")
+
+        # flush chamado para obter o id antes do commit
+        mock_db.flush.assert_called_once()
+        mock_db.commit.assert_called_once()
+
+        # verifica que o usuário criado tem os campos corretos
+        added_user = mock_db.add.call_args[0][0]
+        assert added_user.auth_provider == "magic_link"
+        assert added_user.email_verified is True
+        assert added_user.hashed_password is None
+
+    @pytest.mark.asyncio
+    async def test_existing_user_skips_flush(self) -> None:
+        from app.services.auth import send_magic_link
+
+        existing_user = MagicMock()
+        existing_user.id = uuid.uuid4()
+        existing_user.display_name = "Felipe"
+        mock_db = _mock_db_returning(existing_user)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 1
+            mock_redis_factory.return_value = mock_redis
+
+            await send_magic_link(db=mock_db, email="existing@example.com")
+
+        mock_db.flush.assert_not_called()
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_silently_skips_email(self) -> None:
+        from app.services.auth import send_magic_link
+
+        mock_db = _mock_db_returning(None)
+
+        with patch("app.services.auth._redis") as mock_redis_factory:
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 6  # acima do limite de 5
+            mock_redis_factory.return_value = mock_redis
+
+            await send_magic_link(db=mock_db, email="spam@example.com")
+
+        # nenhuma operação de DB ou email
+        mock_db.commit.assert_not_called()
+        mock_db.flush.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_first_request_sets_expire(self) -> None:
+        from app.services.auth import send_magic_link
+
+        existing_user = MagicMock()
+        existing_user.id = uuid.uuid4()
+        existing_user.display_name = "Test"
+        mock_db = _mock_db_returning(existing_user)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 1  # primeira requisição
+            mock_redis_factory.return_value = mock_redis
+
+            await send_magic_link(db=mock_db, email="first@example.com")
+
+        mock_redis.expire.assert_called_once_with("magic_rate:first@example.com", 3600)
+
+    @pytest.mark.asyncio
+    async def test_display_name_defaults_to_email_prefix(self) -> None:
+        from app.services.auth import send_magic_link
+
+        mock_db = _mock_db_returning(None)
+        user_id = uuid.uuid4()
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
+            patch("app.services.auth.uuid.uuid4", return_value=user_id),
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.incr.return_value = 1
+            mock_redis_factory.return_value = mock_redis
+
+            await send_magic_link(db=mock_db, email="myuser@domain.com")
+
+        added_user = mock_db.add.call_args[0][0]
+        assert added_user.display_name == "myuser"
+
+
+# ── Service: consume_magic_token ──────────────────────────────────────────────
+
+
+class TestConsumeMagicToken:
+    @pytest.mark.asyncio
+    async def test_valid_token_returns_tokens_and_onboarding(self) -> None:
+        from app.services.auth import consume_magic_token
+
+        user_id = uuid.uuid4()
+        mock_user = MagicMock()
+        mock_user.id = user_id
+        mock_user.is_active = True
+        mock_user.onboarding_completed = True
+        mock_db = _mock_db_returning(mock_user)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.create_access_token", return_value="acc.tok"),
+            patch("app.services.auth.create_refresh_token", return_value="ref.tok"),
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.get.return_value = str(user_id)
+            mock_redis_factory.return_value = mock_redis
+
+            access, refresh, onboarding = await consume_magic_token(
+                db=mock_db, token="validtoken"
+            )
+
+        assert access == "acc.tok"
+        assert refresh == "ref.tok"
+        assert onboarding is True
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_missing_token_raises_auth_error(self) -> None:
+        from app.services.auth import consume_magic_token
+
+        mock_db = AsyncMock()
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            pytest.raises(AuthError) as exc_info,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.get.return_value = None
+            mock_redis_factory.return_value = mock_redis
+
+            await consume_magic_token(db=mock_db, token="expired")
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_corrupted_uuid_raises_auth_error(self) -> None:
+        from app.services.auth import consume_magic_token
+
+        mock_db = AsyncMock()
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            pytest.raises(AuthError) as exc_info,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.get.return_value = "not-a-uuid"
+            mock_redis_factory.return_value = mock_redis
+
+            await consume_magic_token(db=mock_db, token="badtoken")
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_inactive_user_raises_auth_error(self) -> None:
+        from app.services.auth import consume_magic_token
+
+        user_id = uuid.uuid4()
+        mock_user = MagicMock()
+        mock_user.is_active = False
+        mock_db = _mock_db_returning(mock_user)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            pytest.raises(AuthError) as exc_info,
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.get.return_value = str(user_id)
+            mock_redis_factory.return_value = mock_redis
+
+            await consume_magic_token(db=mock_db, token="inactivetoken")
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_token_deleted_before_db_lookup(self) -> None:
+        from app.services.auth import consume_magic_token
+
+        user_id = uuid.uuid4()
+        call_order: list[str] = []
+
+        mock_user = MagicMock()
+        mock_user.is_active = True
+        mock_user.onboarding_completed = False
+
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = mock_user
+
+        mock_db = AsyncMock()
+
+        async def fake_execute(_stmt: object) -> MagicMock:
+            call_order.append("db_execute")
+            return result
+
+        mock_db.execute = fake_execute
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.create_access_token", return_value="a"),
+            patch("app.services.auth.create_refresh_token", return_value="r"),
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.get.return_value = str(user_id)
+
+            async def fake_delete(_key: str) -> None:
+                call_order.append("redis_delete")
+
+            mock_redis.delete = fake_delete
+            mock_redis_factory.return_value = mock_redis
+
+            await consume_magic_token(db=mock_db, token="ordertoken")
+
+        assert call_order.index("redis_delete") < call_order.index("db_execute")
+
+    @pytest.mark.asyncio
+    async def test_onboarding_not_completed_returns_false(self) -> None:
+        from app.services.auth import consume_magic_token
+
+        user_id = uuid.uuid4()
+        mock_user = MagicMock()
+        mock_user.is_active = True
+        mock_user.onboarding_completed = False
+        mock_db = _mock_db_returning(mock_user)
+
+        with (
+            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.create_access_token", return_value="a"),
+            patch("app.services.auth.create_refresh_token", return_value="r"),
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.get.return_value = str(user_id)
+            mock_redis_factory.return_value = mock_redis
+
+            _, _, onboarding = await consume_magic_token(db=mock_db, token="tok")
+
+        assert onboarding is False
