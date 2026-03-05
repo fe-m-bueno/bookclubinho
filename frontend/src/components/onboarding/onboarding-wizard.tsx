@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { ProgressHeader } from "./progress-header";
 import { StepProfileForm } from "./step-profile-form";
-import { StepPreferencesPlaceholder } from "./step-preferences-placeholder";
+import { StepGenresForm } from "./step-genres-form";
 import { StepCompletePlaceholder } from "./step-complete-placeholder";
 
 const STEP_LABELS = ["Perfil", "Preferências", "Pronto"];
@@ -43,7 +43,7 @@ export function OnboardingWizard() {
   const transitionDuration = shouldReduceMotion ? 0 : 0.25;
 
   return (
-    <Card className="max-w-md w-full">
+    <Card className="max-w-lg w-full">
       <CardHeader>
         <ProgressHeader
           currentStep={currentStep}
@@ -63,7 +63,7 @@ export function OnboardingWizard() {
           >
             {currentStep === 0 && <StepProfileForm onNext={goNext} />}
             {currentStep === 1 && (
-              <StepPreferencesPlaceholder onNext={goNext} onBack={goBack} />
+              <StepGenresForm onNext={goNext} onBack={goBack} />
             )}
             {currentStep === 2 && <StepCompletePlaceholder onBack={goBack} />}
           </motion.div>
