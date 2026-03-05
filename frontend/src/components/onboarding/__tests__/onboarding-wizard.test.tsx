@@ -49,7 +49,7 @@ describe("OnboardingWizard", () => {
 
     expect(screen.getByText("Perfil")).toBeInTheDocument();
     expect(screen.getByText("Preferências")).toBeInTheDocument();
-    expect(screen.getByText("Pronto")).toBeInTheDocument();
+    expect(screen.getByText("Clube")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
