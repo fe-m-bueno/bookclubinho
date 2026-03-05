@@ -219,7 +219,7 @@ export default function RegisterPage() {
           <CardContent className="space-y-4">
             <Button
               variant="outline"
-              className="w-full h-11"
+              className="w-full h-11 cursor-pointer"
               onClick={handleResend}
               disabled={remaining > 0 || resendLoading}
             >

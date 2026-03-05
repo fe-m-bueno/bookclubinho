@@ -99,7 +99,7 @@ async def register_user(
     # Generate verification token and store in Redis
     token = secrets.token_urlsafe(32)
     verify_url = (
-        f"{settings.APP_URL.rstrip('/')}/verify-email?token={token}"
+        f"{settings.APP_URL.rstrip('/')}/auth/verify-email?token={token}"
     )
 
     redis_client = _redis()
@@ -154,7 +154,7 @@ async def resend_verification_email(db: AsyncSession, email: str) -> None:
         return
 
     token = secrets.token_urlsafe(32)
-    verify_url = f"{settings.APP_URL.rstrip('/')}/verify-email?token={token}"
+    verify_url = f"{settings.APP_URL.rstrip('/')}/auth/verify-email?token={token}"
 
     redis_client = _redis()
     try:
