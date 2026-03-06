@@ -6,9 +6,11 @@ POST /api/v1/onboarding/complete    — marca onboarding como concluído
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Form, HTTPException, Response, UploadFile
 
+from app.core.cookies import set_auth_cookies
 from app.core.deps import CurrentUser, DBSession  # noqa: TC001
+from app.core.security import create_token_pair
 from app.schemas.onboarding import (
     OnboardingCompleteResponse,
     OnboardingProfileResponse,
@@ -85,11 +87,17 @@ async def onboarding_preferences(
 async def onboarding_complete(
     db: DBSession,
     user: CurrentUser,
+    response: Response,
 ) -> OnboardingCompleteResponse:
     """Marca o onboarding como concluído após validar campos obrigatórios."""
     try:
         await complete_onboarding(db=db, user=user)
     except OnboardingError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    access_token, refresh_token = create_token_pair(
+        str(user.id), onboarding_completed=True,
+    )
+    set_auth_cookies(response, access_token, refresh_token)
 
     return OnboardingCompleteResponse(message="Onboarding concluído com sucesso.")

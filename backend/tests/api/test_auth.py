@@ -71,6 +71,32 @@ class TestRegisterRequest:
         assert r.message == "verified"
 
 
+# ── Security: JWT extra_claims ────────────────────────────────────────────────
+
+
+class TestJwtOnbClaim:
+    def test_access_token_contains_onb_claim(self) -> None:
+        from app.core.security import create_access_token, decode_token
+
+        token = create_access_token("user-1", extra_claims={"onb": True})
+        payload = decode_token(token)
+        assert payload["onb"] is True
+
+    def test_access_token_without_onb_claim(self) -> None:
+        from app.core.security import create_access_token, decode_token
+
+        token = create_access_token("user-1")
+        payload = decode_token(token)
+        assert "onb" not in payload
+
+    def test_refresh_token_contains_onb_claim(self) -> None:
+        from app.core.security import create_refresh_token, decode_token
+
+        token = create_refresh_token("user-1", extra_claims={"onb": False})
+        payload = decode_token(token)
+        assert payload["onb"] is False
+
+
 # ── Service: register_user ─────────────────────────────────────────────────────
 
 
@@ -314,12 +340,12 @@ class TestAuthenticateUser:
         mock_user.is_active = True
         mock_user.email_verified = True
         mock_user.id = uuid.uuid4()
+        mock_user.onboarding_completed = True
         mock_db = _mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.verify_password", return_value=True),
-            patch("app.services.auth.create_access_token", return_value="access.tok") as mac,
-            patch("app.services.auth.create_refresh_token", return_value="refresh.tok") as mrc,
+            patch("app.services.auth.create_token_pair", return_value=("access.tok", "refresh.tok")) as mtp,
         ):
             access, refresh = await authenticate_user(
                 db=mock_db, email="user@example.com", password="pass"
@@ -327,8 +353,7 @@ class TestAuthenticateUser:
 
         assert access == "access.tok"
         assert refresh == "refresh.tok"
-        mac.assert_called_once_with(str(mock_user.id))
-        mrc.assert_called_once_with(str(mock_user.id))
+        mtp.assert_called_once_with(str(mock_user.id), onboarding_completed=True)
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
@@ -532,8 +557,7 @@ class TestConsumeMagicToken:
 
         with (
             patch("app.services.auth._redis") as mock_redis_factory,
-            patch("app.services.auth.create_access_token", return_value="acc.tok"),
-            patch("app.services.auth.create_refresh_token", return_value="ref.tok"),
+            patch("app.services.auth.create_token_pair", return_value=("acc.tok", "ref.tok")),
         ):
             mock_redis = AsyncMock()
             mock_redis.get.return_value = str(user_id)
@@ -629,8 +653,7 @@ class TestConsumeMagicToken:
 
         with (
             patch("app.services.auth._redis") as mock_redis_factory,
-            patch("app.services.auth.create_access_token", return_value="a"),
-            patch("app.services.auth.create_refresh_token", return_value="r"),
+            patch("app.services.auth.create_token_pair", return_value=("a", "r")),
         ):
             mock_redis = AsyncMock()
             mock_redis.get.return_value = str(user_id)
@@ -657,8 +680,7 @@ class TestConsumeMagicToken:
 
         with (
             patch("app.services.auth._redis") as mock_redis_factory,
-            patch("app.services.auth.create_access_token", return_value="a"),
-            patch("app.services.auth.create_refresh_token", return_value="r"),
+            patch("app.services.auth.create_token_pair", return_value=("a", "r")),
         ):
             mock_redis = AsyncMock()
             mock_redis.get.return_value = str(user_id)
@@ -758,13 +780,12 @@ class TestRotateRefreshToken:
         from app.services.auth import rotate_refresh_token
 
         future_exp = int(datetime.now(UTC).timestamp()) + 3600
-        payload = {"sub": "user-42", "exp": future_exp, "type": "refresh", "jti": "valid-jti"}
+        payload = {"sub": "user-42", "exp": future_exp, "type": "refresh", "jti": "valid-jti", "onb": True}
 
         with (
             patch("app.services.auth.decode_token", return_value=payload),
             patch("app.services.auth._redis") as mock_redis_factory,
-            patch("app.services.auth.create_access_token", return_value="new.access") as mac,
-            patch("app.services.auth.create_refresh_token", return_value="new.refresh") as mrc,
+            patch("app.services.auth.create_token_pair", return_value=("new.access", "new.refresh")) as mtp,
         ):
             mock_redis = AsyncMock()
             mock_redis.get.return_value = None  # não blacklistado
@@ -774,8 +795,7 @@ class TestRotateRefreshToken:
 
         assert new_access == "new.access"
         assert new_refresh == "new.refresh"
-        mac.assert_called_once_with("user-42")
-        mrc.assert_called_once_with("user-42")
+        mtp.assert_called_once_with("user-42", onboarding_completed=True)
 
     @pytest.mark.asyncio
     async def test_blacklisted_token_raises_401(self) -> None:
@@ -968,8 +988,7 @@ class TestGoogleOAuthCallback:
         with (
             patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
             patch("app.services.auth.uuid.uuid4", return_value=user_id),
-            patch("app.services.auth.create_access_token", return_value="acc"),
-            patch("app.services.auth.create_refresh_token", return_value="ref"),
+            patch("app.services.auth.create_token_pair", return_value=("acc", "ref")),
         ):
             access, refresh, onboarding = await google_oauth_callback(
                 code="authcode", db=mock_db
@@ -1000,8 +1019,7 @@ class TestGoogleOAuthCallback:
 
         with (
             patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
-            patch("app.services.auth.create_access_token", return_value="a"),
-            patch("app.services.auth.create_refresh_token", return_value="r"),
+            patch("app.services.auth.create_token_pair", return_value=("a", "r")),
         ):
             await google_oauth_callback(code="code", db=mock_db)
 
@@ -1023,8 +1041,7 @@ class TestGoogleOAuthCallback:
 
         with (
             patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
-            patch("app.services.auth.create_access_token", return_value="a"),
-            patch("app.services.auth.create_refresh_token", return_value="r"),
+            patch("app.services.auth.create_token_pair", return_value=("a", "r")),
         ):
             await google_oauth_callback(code="code", db=mock_db)
 
@@ -1044,8 +1061,7 @@ class TestGoogleOAuthCallback:
 
         with (
             patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
-            patch("app.services.auth.create_access_token", return_value="a"),
-            patch("app.services.auth.create_refresh_token", return_value="r"),
+            patch("app.services.auth.create_token_pair", return_value=("a", "r")),
         ):
             await google_oauth_callback(code="code", db=mock_db)
 

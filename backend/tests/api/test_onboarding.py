@@ -515,15 +515,22 @@ class TestOnboardingCompleteEndpoint:
 
         mock_db = AsyncMock()
         mock_user = _make_user()
+        mock_response = MagicMock()
 
-        with patch(
-            "app.api.v1.endpoints.onboarding.complete_onboarding",
-            new_callable=AsyncMock,
+        with (
+            patch(
+                "app.api.v1.endpoints.onboarding.complete_onboarding",
+                new_callable=AsyncMock,
+            ),
+            patch("app.api.v1.endpoints.onboarding.create_token_pair", return_value=("new.acc", "new.ref")) as mtp,
+            patch("app.api.v1.endpoints.onboarding.set_auth_cookies") as mock_cookies,
         ):
-            result = await onboarding_complete(db=mock_db, user=mock_user)
+            result = await onboarding_complete(db=mock_db, user=mock_user, response=mock_response)
 
         assert isinstance(result, OnboardingCompleteResponse)
         assert "sucesso" in result.message
+        mtp.assert_called_once_with(str(mock_user.id), onboarding_completed=True)
+        mock_cookies.assert_called_once_with(mock_response, "new.acc", "new.ref")
 
     @pytest.mark.asyncio
     async def test_error_returns_400(self) -> None:
@@ -533,6 +540,7 @@ class TestOnboardingCompleteEndpoint:
 
         mock_db = AsyncMock()
         mock_user = _make_user()
+        mock_response = MagicMock()
 
         with (
             patch(
@@ -542,6 +550,6 @@ class TestOnboardingCompleteEndpoint:
             ),
             pytest.raises(HTTPException) as exc_info,
         ):
-            await onboarding_complete(db=mock_db, user=mock_user)
+            await onboarding_complete(db=mock_db, user=mock_user, response=mock_response)
 
         assert exc_info.value.status_code == 400

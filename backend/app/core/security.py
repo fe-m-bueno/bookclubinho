@@ -17,23 +17,58 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
-def create_access_token(subject: str | Any, expires_delta: timedelta | None = None) -> str:
+_RESERVED_CLAIMS = frozenset({"sub", "exp", "type", "jti"})
+
+
+def _safe_extra(extra_claims: dict[str, Any] | None) -> dict[str, Any]:
+    if not extra_claims:
+        return {}
+    return {k: v for k, v in extra_claims.items() if k not in _RESERVED_CLAIMS}
+
+
+def create_access_token(
+    subject: str | Any,
+    expires_delta: timedelta | None = None,
+    extra_claims: dict[str, Any] | None = None,
+) -> str:
     expire = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    payload = {"sub": str(subject), "exp": expire, "type": "access"}
+    payload: dict[str, Any] = {
+        **_safe_extra(extra_claims),
+        "sub": str(subject),
+        "exp": expire,
+        "type": "access",
+    }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_refresh_token(subject: str | Any) -> str:
+def create_refresh_token(
+    subject: str | Any,
+    extra_claims: dict[str, Any] | None = None,
+) -> str:
     expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    payload = {
+    payload: dict[str, Any] = {
+        **_safe_extra(extra_claims),
         "sub": str(subject),
         "exp": expire,
         "type": "refresh",
         "jti": secrets.token_urlsafe(16),
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def create_token_pair(
+    subject: str,
+    *,
+    onboarding_completed: bool,
+) -> tuple[str, str]:
+    """Cria par access+refresh com claim de onboarding."""
+    claims = {"onb": onboarding_completed}
+    return (
+        create_access_token(subject, extra_claims=claims),
+        create_refresh_token(subject, extra_claims=claims),
+    )
 
 
 def decode_token(token: str) -> dict[str, Any]:

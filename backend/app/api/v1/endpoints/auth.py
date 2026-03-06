@@ -20,6 +20,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.config import settings
+from app.core.cookies import clear_auth_cookies, set_auth_cookies
 from app.core.deps import DBSession  # noqa: TC001
 from app.schemas.auth import (
     LoginResponse,
@@ -49,23 +50,10 @@ from app.services.auth import (
 
 router = APIRouter(tags=["auth"])
 
-_COOKIE_KWARGS = {
-    "httponly": True,
-    "secure": True,
-    "samesite": "lax",
-    "path": "/",
-}
-
 # Annotated alias evita B008 (Depends() em default de argumento)
 _FormData = Annotated[OAuth2PasswordRequestForm, Depends()]  # noqa: TC002
 
 _OAUTH_STATE_TTL = 600  # 10 minutos
-
-
-def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
-    """Seta os cookies httpOnly de autenticação na resposta."""
-    response.set_cookie("access_token", access_token, **_COOKIE_KWARGS)
-    response.set_cookie("refresh_token", refresh_token, **_COOKIE_KWARGS)
 
 
 def _redis_client() -> aioredis.Redis:
@@ -170,7 +158,7 @@ async def login(
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
-    _set_auth_cookies(response, access_token, refresh_token)
+    set_auth_cookies(response, access_token, refresh_token)
 
     return LoginResponse(message="Login realizado com sucesso.")
 
@@ -205,7 +193,7 @@ async def magic_link_callback(token: str, db: DBSession) -> RedirectResponse:  #
     redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
 
     response = RedirectResponse(url=redirect_url, status_code=303)
-    _set_auth_cookies(response, access_token, refresh_token)
+    set_auth_cookies(response, access_token, refresh_token)
     return response
 
 
@@ -220,8 +208,7 @@ async def logout(
     """Invalida o refresh token (blacklist no Redis) e limpa os cookies de auth."""
     if refresh_token:
         await blacklist_refresh_token(refresh_token)
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    clear_auth_cookies(response)
     return LogoutResponse(message="Logout realizado com sucesso.")
 
 
@@ -240,7 +227,7 @@ async def refresh(
         new_access, new_refresh = await rotate_refresh_token(refresh_token)
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-    _set_auth_cookies(response, new_access, new_refresh)
+    set_auth_cookies(response, new_access, new_refresh)
     return RefreshResponse(message="Tokens renovados com sucesso.")
 
 
@@ -309,5 +296,5 @@ async def google_callback(
 
     redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
     response = RedirectResponse(url=redirect_url, status_code=303)
-    _set_auth_cookies(response, access_token, refresh_token)
+    set_auth_cookies(response, access_token, refresh_token)
     return response
