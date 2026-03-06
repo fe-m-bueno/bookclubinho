@@ -20,8 +20,7 @@ if TYPE_CHECKING:
 
 from app.core.config import settings
 from app.core.security import (
-    create_access_token,
-    create_refresh_token,
+    create_token_pair,
     decode_token,
     generate_magic_token,
     hash_password,
@@ -311,8 +310,9 @@ async def consume_magic_token(
     user.last_login_at = datetime.now(UTC)
     await db.commit()
 
-    access_token = create_access_token(str(user.id))
-    refresh_token = create_refresh_token(str(user.id))
+    access_token, refresh_token = create_token_pair(
+        str(user.id), onboarding_completed=user.onboarding_completed,
+    )
 
     logger.info("magic_link_authenticated", user_id=str(user.id))
     return access_token, refresh_token, user.onboarding_completed
@@ -398,8 +398,9 @@ async def google_oauth_callback(
     user.last_login_at = datetime.now(UTC)
     await db.commit()
 
-    access_token = create_access_token(str(user.id))
-    refresh_token = create_refresh_token(str(user.id))
+    access_token, refresh_token = create_token_pair(
+        str(user.id), onboarding_completed=user.onboarding_completed,
+    )
 
     return access_token, refresh_token, user.onboarding_completed
 
@@ -439,8 +440,9 @@ async def authenticate_user(
     user.last_login_at = datetime.now(UTC)
     await db.commit()
 
-    access_token = create_access_token(str(user.id))
-    refresh_token = create_refresh_token(str(user.id))
+    access_token, refresh_token = create_token_pair(
+        str(user.id), onboarding_completed=user.onboarding_completed,
+    )
 
     logger.info("user_logged_in", user_id=str(user.id))
     return access_token, refresh_token
@@ -513,6 +515,6 @@ async def rotate_refresh_token(token: str) -> tuple[str, str]:
     finally:
         await redis_client.aclose()
 
-    new_access = create_access_token(user_id)
-    new_refresh = create_refresh_token(user_id)
-    return new_access, new_refresh
+    return create_token_pair(
+        user_id, onboarding_completed=payload.get("onb", False),
+    )
