@@ -1,7 +1,7 @@
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
-import { OnboardingWizard } from "../onboarding-wizard";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -10,28 +10,34 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const motionPropsFilter = ([key]: [string, unknown]) =>
+  !["variants", "initial", "animate", "exit", "custom", "transition", "whileHover", "whileTap"].includes(key);
+
+function makeMotionComponent(Tag: string) {
+  return ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
+    const htmlProps = Object.fromEntries(Object.entries(props).filter(motionPropsFilter));
+    return React.createElement(Tag, htmlProps, children);
+  };
+}
+
 vi.mock("framer-motion", async () => {
   const actual = await vi.importActual("framer-motion");
   return {
     ...actual,
     AnimatePresence: ({ children }: React.PropsWithChildren) => <>{children}</>,
     motion: {
-      div: ({
-        children,
-        ...props
-      }: React.PropsWithChildren<Record<string, unknown>>) => {
-        const htmlProps = Object.fromEntries(
-          Object.entries(props).filter(
-            ([key]) =>
-              !["variants", "initial", "animate", "exit", "custom", "transition"].includes(key)
-          )
-        );
-        return <div {...htmlProps}>{children}</div>;
-      },
+      div: makeMotionComponent("div"),
+      span: makeMotionComponent("span"),
+      button: makeMotionComponent("button"),
+      img: makeMotionComponent("img"),
+      p: makeMotionComponent("p"),
+      h2: makeMotionComponent("h2"),
     },
     useReducedMotion: () => false,
   };
 });
+
+import { OnboardingWizard } from "../onboarding-wizard";
 
 describe("OnboardingWizard", () => {
   it("renders step 1 (profile) by default", () => {

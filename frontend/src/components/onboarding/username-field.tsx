@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check, Loader2, X } from "lucide-react";
 import type { FieldError, UseFormRegisterReturn } from "react-hook-form";
 
@@ -14,6 +15,14 @@ interface UsernameFieldProps {
   username: string;
   onStatusChange?: (status: UsernameStatus) => void;
 }
+
+const iconVariants = {
+  hidden: { opacity: 0, scale: 0.5 },
+  visible: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.5 },
+};
+
+const iconTransition = { type: "spring" as const, stiffness: 500, damping: 28 };
 
 export function UsernameField({ registration, error, username, onStatusChange }: UsernameFieldProps) {
   const { status } = useUsernameCheck(username);
@@ -42,15 +51,44 @@ export function UsernameField({ registration, error, username, onStatusChange }:
           className="absolute right-3 top-1/2 -translate-y-1/2"
           aria-live="polite"
         >
-          {status === "checking" && (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          )}
-          {status === "available" && !error && (
-            <Check className="h-4 w-4 text-green-500" />
-          )}
-          {status === "taken" && !error && (
-            <X className="h-4 w-4 text-destructive" />
-          )}
+          <AnimatePresence mode="wait">
+            {status === "checking" && (
+              <motion.div
+                key="checking"
+                variants={iconVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={iconTransition}
+              >
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </motion.div>
+            )}
+            {status === "available" && !error && (
+              <motion.div
+                key="available"
+                variants={iconVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={iconTransition}
+              >
+                <Check className="h-4 w-4 text-green-500" />
+              </motion.div>
+            )}
+            {status === "taken" && !error && (
+              <motion.div
+                key="taken"
+                variants={iconVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={iconTransition}
+              >
+                <X className="h-4 w-4 text-destructive" />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </FormField>
