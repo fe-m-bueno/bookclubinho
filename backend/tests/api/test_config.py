@@ -16,7 +16,8 @@ EXPECTED_SLUGS = {
     "sci-fi",
     "romance",
     "terror",
-    "misterio-thriller",
+    "misterio",
+    "thriller",
     "biografia",
     "autoajuda",
     "poesia",
@@ -51,7 +52,7 @@ class TestListGenres:
         response = client.get("/api/v1/config/genres")
         data = response.json()
         assert "genres" in data
-        assert len(data["genres"]) == 20
+        assert len(data["genres"]) == 21
 
     def test_genre_fields_present(self, client: TestClient) -> None:
         response = client.get("/api/v1/config/genres")
@@ -83,7 +84,7 @@ class TestListGenres:
 class TestGenresConfig:
     def test_genres_singleton_loaded(self) -> None:
         assert isinstance(GENRES, list)
-        assert len(GENRES) == 20
+        assert len(GENRES) == 21
 
     def test_all_slugs_unique(self) -> None:
         slugs = [g.slug for g in GENRES]

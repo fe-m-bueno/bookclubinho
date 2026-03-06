@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from fastapi import Response
 
+from app.core.config import settings
+
 COOKIE_KWARGS = {
     "httponly": True,
-    "secure": True,
+    "secure": not settings.DEBUG,
     "samesite": "lax",
     "path": "/",
 }

@@ -41,12 +41,12 @@ def _make_user(**overrides: object) -> MagicMock:
 
 class TestPreferencesRequest:
     def test_valid_genres(self) -> None:
-        req = PreferencesRequest(preferred_genres=["fantasy", "sci-fi", "romance"])
-        assert req.preferred_genres == ["fantasy", "sci-fi", "romance"]
+        req = PreferencesRequest(preferred_genres=["fantasia", "sci-fi", "romance"])
+        assert req.preferred_genres == ["fantasia", "sci-fi", "romance"]
 
     def test_invalid_genre_raises(self) -> None:
         with pytest.raises(ValidationError, match="inválidos"):
-            PreferencesRequest(preferred_genres=["fantasy", "invalid-genre"])
+            PreferencesRequest(preferred_genres=["fantasia", "invalid-genre"])
 
     def test_empty_list_raises(self) -> None:
         with pytest.raises(ValidationError, match="pelo menos 1"):
@@ -54,16 +54,16 @@ class TestPreferencesRequest:
 
     def test_exceeds_max_raises(self) -> None:
         genres = [
-            "fantasy", "sci-fi", "romance", "mystery", "thriller",
-            "horror", "memoir", "biography", "self-help", "psychology",
-            "philosophy",
+            "fantasia", "sci-fi", "romance", "misterio", "thriller",
+            "terror", "biografia", "autoajuda", "poesia", "historia",
+            "filosofia",
         ]
         with pytest.raises(ValidationError, match="máximo 10"):
             PreferencesRequest(preferred_genres=genres)
 
     def test_deduplication(self) -> None:
-        req = PreferencesRequest(preferred_genres=["fantasy", "fantasy", "romance"])
-        assert req.preferred_genres == ["fantasy", "romance"]
+        req = PreferencesRequest(preferred_genres=["fantasia", "fantasia", "romance"])
+        assert req.preferred_genres == ["fantasia", "romance"]
 
 
 class TestUsernameCheckResponse:
@@ -320,10 +320,10 @@ class TestUpdatePreferences:
         mock_db = AsyncMock()
 
         await update_preferences(
-            db=mock_db, user=user, preferred_genres=["fantasy", "sci-fi"]
+            db=mock_db, user=user, preferred_genres=["fantasia", "sci-fi"]
         )
 
-        assert user.preferred_genres == ["fantasy", "sci-fi"]
+        assert user.preferred_genres == ["fantasia", "sci-fi"]
 
     @pytest.mark.asyncio
     async def test_invalid_genre(self) -> None:
@@ -334,7 +334,7 @@ class TestUpdatePreferences:
 
         with pytest.raises(OnboardingError, match="inválidos"):
             await update_preferences(
-                db=mock_db, user=user, preferred_genres=["fantasy", "bogus"]
+                db=mock_db, user=user, preferred_genres=["fantasia", "bogus"]
             )
 
 
@@ -349,7 +349,7 @@ class TestCompleteOnboarding:
         user = _make_user(
             username="validuser",
             display_name="Valid Name",
-            preferred_genres=["fantasy"],
+            preferred_genres=["fantasia"],
         )
         mock_db = AsyncMock()
 
@@ -364,7 +364,7 @@ class TestCompleteOnboarding:
         user = _make_user(
             username=None,
             display_name="Valid Name",
-            preferred_genres=["fantasy"],
+            preferred_genres=["fantasia"],
         )
         mock_db = AsyncMock()
 
@@ -378,7 +378,7 @@ class TestCompleteOnboarding:
         user = _make_user(
             username="validuser",
             display_name=None,
-            preferred_genres=["fantasy"],
+            preferred_genres=["fantasia"],
         )
         mock_db = AsyncMock()
 
@@ -468,7 +468,7 @@ class TestOnboardingPreferencesEndpoint:
 
         mock_db = AsyncMock()
         mock_user = _make_user()
-        body = PreferencesRequest(preferred_genres=["fantasy", "sci-fi"])
+        body = PreferencesRequest(preferred_genres=["fantasia", "sci-fi"])
 
         with patch(
             "app.api.v1.endpoints.onboarding.update_preferences",
@@ -489,7 +489,7 @@ class TestOnboardingPreferencesEndpoint:
 
         mock_db = AsyncMock()
         mock_user = _make_user()
-        body = PreferencesRequest(preferred_genres=["fantasy"])
+        body = PreferencesRequest(preferred_genres=["fantasia"])
 
         with (
             patch(
