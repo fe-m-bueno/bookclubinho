@@ -8,12 +8,13 @@ import {
   CardContent,
   CardHeader,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { ProgressHeader } from "./progress-header";
 import { StepProfileForm } from "./step-profile-form";
-import { StepPreferencesPlaceholder } from "./step-preferences-placeholder";
-import { StepCompletePlaceholder } from "./step-complete-placeholder";
+import { StepGenresForm } from "./step-genres-form";
+import { StepClubForm } from "./step-club-form";
 
-const STEP_LABELS = ["Perfil", "Preferências", "Pronto"];
+const STEP_LABELS = ["Perfil", "Preferências", "Clube"];
 
 const stepVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 50 : -50, opacity: 0 }),
@@ -57,7 +58,7 @@ export function OnboardingWizard() {
           ? { duration: 0 }
           : { type: "spring", stiffness: 380, damping: 30 }
       }
-      className="max-w-md w-full"
+      className={cn("w-full transition-all duration-300", currentStep === 2 ? "max-w-2xl" : "max-w-lg")}
     >
       <Card>
         <CardHeader>
@@ -84,9 +85,9 @@ export function OnboardingWizard() {
             >
               {currentStep === 0 && <StepProfileForm onNext={goNext} />}
               {currentStep === 1 && (
-                <StepPreferencesPlaceholder onNext={goNext} onBack={goBack} />
+                <StepGenresForm onNext={goNext} onBack={goBack} />
               )}
-              {currentStep === 2 && <StepCompletePlaceholder onBack={goBack} />}
+              {currentStep === 2 && <StepClubForm onBack={goBack} />}
             </motion.div>
           </AnimatePresence>
         </CardContent>
