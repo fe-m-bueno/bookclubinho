@@ -55,10 +55,11 @@ class Settings(BaseSettings):
     # ── OAuth — Google ────────────────────────────────────────────────────────
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+    BACKEND_URL: str = "http://localhost:8000"
 
     @property
     def GOOGLE_REDIRECT_URI(self) -> str:  # noqa: N802
-        return f"{self.APP_URL.rstrip('/')}/api/v1/auth/google/callback"
+        return f"{self.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback"
 
     # ── Email — Resend ────────────────────────────────────────────────────────
     RESEND_API_KEY: str = ""
