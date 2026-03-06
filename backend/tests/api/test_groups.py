@@ -29,7 +29,7 @@ def _make_user(**overrides: object) -> MagicMock:
     user.id = overrides.get("id", uuid.uuid4())
     user.username = overrides.get("username", "testuser")
     user.display_name = overrides.get("display_name", "Test User")
-    user.preferred_genres = overrides.get("preferred_genres", ["fantasy"])
+    user.preferred_genres = overrides.get("preferred_genres", ["fantasia"])
     user.onboarding_completed = overrides.get("onboarding_completed", False)
     return user
 

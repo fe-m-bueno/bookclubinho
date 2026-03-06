@@ -39,7 +39,11 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
         status: 422,
         handler: async (res) => {
           const body = await res.json();
-          toast.error(body.detail || "Erro de validação");
+          const msg =
+            typeof body.detail === "string"
+              ? body.detail
+              : "Erro de validação";
+          toast.error(msg);
         },
       },
     ],
@@ -56,7 +60,7 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
         });
         if (res.ok) {
           const data = await res.json();
-          setGenres(data);
+          setGenres(data.genres);
         } else {
           toast.error("Erro ao carregar gêneros.");
         }
