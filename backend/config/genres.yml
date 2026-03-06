@@ -29,10 +29,15 @@ genres:
     emoji: "👻"
     description: "Obras projetadas para provocar medo, tensão e desconforto através de elementos sobrenaturais ou psicológicos."
 
-  - slug: misterio-thriller
-    display_name: Mistério & Thriller
+  - slug: misterio
+    display_name: Mistério
     emoji: "🔍"
-    description: "Narrativas de suspense que envolvem crimes, investigações ou situações de perigo iminente."
+    description: "Narrativas que envolvem crimes, enigmas e investigações para desvendar segredos ocultos."
+
+  - slug: thriller
+    display_name: Thriller
+    emoji: "😰"
+    description: "Histórias de suspense intenso com situações de perigo iminente e reviravoltas inesperadas."
 
   - slug: biografia
     display_name: Biografia

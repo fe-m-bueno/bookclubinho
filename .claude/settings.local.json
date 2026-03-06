@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx vitest:*)",
       "Bash(venv/Scripts/python.exe:*)",
-      "mcp__claude_ai_Context7__resolve-library-id"
+      "mcp__claude_ai_Context7__resolve-library-id",
+      "mcp__claude_ai_Context7__query-docs"
     ]
   }
 }
