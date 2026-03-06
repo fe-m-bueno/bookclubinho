@@ -1,7 +1,7 @@
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
-import { AvatarUpload } from "../avatar-upload";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -9,6 +9,31 @@ vi.mock("sonner", () => ({
     success: vi.fn(),
   },
 }));
+
+const motionPropsFilter = ([key]: [string, unknown]) =>
+  !["variants", "initial", "animate", "exit", "custom", "transition", "whileHover", "whileTap"].includes(key);
+
+function makeMotionComponent(Tag: string) {
+  return ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
+    const htmlProps = Object.fromEntries(Object.entries(props).filter(motionPropsFilter));
+    return React.createElement(Tag, htmlProps, children);
+  };
+}
+
+vi.mock("framer-motion", async () => {
+  const actual = await vi.importActual("framer-motion");
+  return {
+    ...actual,
+    AnimatePresence: ({ children }: React.PropsWithChildren) => <>{children}</>,
+    motion: {
+      div: makeMotionComponent("div"),
+      button: makeMotionComponent("button"),
+      img: makeMotionComponent("img"),
+    },
+  };
+});
+
+import { AvatarUpload } from "../avatar-upload";
 
 describe("AvatarUpload", () => {
   it("renders with placeholder when no file", () => {

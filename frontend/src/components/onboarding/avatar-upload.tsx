@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Camera, User } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,6 +15,7 @@ const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 export function AvatarUpload({ value, onChange }: AvatarUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -35,29 +37,48 @@ export function AvatarUpload({ value, onChange }: AvatarUploadProps) {
     }
 
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-    objectUrlRef.current = URL.createObjectURL(file);
+    const url = URL.createObjectURL(file);
+    objectUrlRef.current = url;
+    setPreviewUrl(url);
     onChange(file);
   }
 
   return (
     <div className="flex justify-center">
-      <button
+      <motion.button
         type="button"
         className="relative w-24 h-24 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer"
         onClick={() => inputRef.current?.click()}
         aria-label="Enviar foto de perfil"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
       >
-        {objectUrlRef.current && value ? (
-          <img
-            src={objectUrlRef.current}
-            alt="Preview do avatar"
-            className="w-24 h-24 rounded-full object-cover border-2 border-border"
-          />
-        ) : (
-          <div className="w-24 h-24 rounded-full border-2 border-dashed border-muted-foreground/50 bg-muted flex items-center justify-center">
-            <User className="h-10 w-10 text-muted-foreground" />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {previewUrl && value ? (
+            <motion.img
+              key="preview"
+              src={previewUrl}
+              alt="Preview do avatar"
+              className="w-24 h-24 rounded-full object-cover border-2 border-border"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
+            />
+          ) : (
+            <motion.div
+              key="placeholder"
+              className="w-24 h-24 rounded-full border-2 border-dashed border-muted-foreground/50 bg-muted flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <User className="h-10 w-10 text-muted-foreground" />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
           <Camera className="h-4 w-4" />
         </div>
@@ -69,7 +90,7 @@ export function AvatarUpload({ value, onChange }: AvatarUploadProps) {
           onChange={handleChange}
           tabIndex={-1}
         />
-      </button>
+      </motion.button>
     </div>
   );
 }

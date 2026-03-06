@@ -144,6 +144,22 @@ def _process_image(data: bytes, bucket_path: str) -> bytes:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+_bucket_ensured: bool = False
+
+
+def _ensure_bucket() -> None:
+    """Create the bucket if it doesn't exist (idempotent, useful for local MinIO)."""
+    global _bucket_ensured
+    if _bucket_ensured:
+        return
+    client = _client()
+    try:
+        client.head_bucket(Bucket=settings.S3_BUCKET_NAME)
+    except client.exceptions.ClientError:
+        client.create_bucket(Bucket=settings.S3_BUCKET_NAME)
+    _bucket_ensured = True
+
+
 def upload_file(bucket_path: str, data: bytes, content_type: str) -> str:
     """
     Process (if image) and upload *data* to *bucket_path* in the configured bucket.
@@ -157,6 +173,7 @@ def upload_file(bucket_path: str, data: bytes, content_type: str) -> str:
         data = _process_image(data, bucket_path)
         content_type = WEBP_CONTENT_TYPE
 
+    _ensure_bucket()
     _client().put_object(
         Bucket=settings.S3_BUCKET_NAME,
         Key=bucket_path,

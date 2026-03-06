@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 interface StepPreferencesPlaceholderProps {
@@ -7,24 +8,59 @@ interface StepPreferencesPlaceholderProps {
   onBack: () => void;
 }
 
+const stagger = {
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+};
+
 export function StepPreferencesPlaceholder({ onNext, onBack }: StepPreferencesPlaceholderProps) {
   return (
-    <div className="space-y-6 text-center py-8">
+    <motion.div
+      className="space-y-6 text-center py-8"
+      variants={stagger}
+      initial="hidden"
+      animate="visible"
+    >
       <div>
-        <p className="text-4xl" aria-hidden="true">
+        <motion.p
+          className="text-4xl"
+          aria-hidden="true"
+          variants={fadeUp}
+          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+        >
           📖
-        </p>
-        <h2 className="text-lg font-semibold mt-3">Preferências de leitura</h2>
-        <p className="text-sm text-muted-foreground mt-1">Em breve...</p>
+        </motion.p>
+        <motion.h2
+          className="text-lg font-semibold mt-3"
+          variants={fadeUp}
+          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+        >
+          Preferências de leitura
+        </motion.h2>
+        <motion.p
+          className="text-sm text-muted-foreground mt-1"
+          variants={fadeUp}
+          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+        >
+          Em breve...
+        </motion.p>
       </div>
-      <div className="flex gap-3">
+      <motion.div
+        className="flex gap-3"
+        variants={fadeUp}
+        transition={{ type: "spring", stiffness: 400, damping: 28 }}
+      >
         <Button variant="outline" className="flex-1 h-11" onClick={onBack}>
           Voltar
         </Button>
         <Button className="flex-1 h-11" onClick={onNext}>
           Próximo
         </Button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
