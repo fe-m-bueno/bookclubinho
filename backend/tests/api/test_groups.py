@@ -492,56 +492,54 @@ class TestValidateCodeEndpoint:
 
         group = _make_group(name="Meu Clube", photo_url=None, members=[MagicMock()])
         mock_db = AsyncMock()
-        mock_user = make_user()
 
         with patch(
             "app.api.v1.endpoints.groups.validate_group_code",
             new_callable=AsyncMock,
             return_value=group,
         ):
-            result = await validate_code(code="ABCD2345", db=mock_db, user=mock_user)
+            result = await validate_code(code="ABCD2345", db=mock_db)
 
         assert isinstance(result, GroupValidateResponse)
+        assert result.valid is True
         assert result.name == "Meu Clube"
         assert result.member_count == 1
 
     @pytest.mark.asyncio
-    async def test_404_invalid_code(self) -> None:
+    async def test_invalid_code_returns_valid_false(self) -> None:
         from app.api.v1.endpoints.groups import validate_code
+        from app.schemas.group import GroupValidateResponse
 
         mock_db = AsyncMock()
-        mock_user = make_user()
 
-        with (
-            patch(
-                "app.api.v1.endpoints.groups.validate_group_code",
-                new_callable=AsyncMock,
-                side_effect=GroupError("Clube não encontrado.", status_code=404),
-            ),
-            pytest.raises(HTTPException) as exc_info,
+        with patch(
+            "app.api.v1.endpoints.groups.validate_group_code",
+            new_callable=AsyncMock,
+            side_effect=GroupError("Clube não encontrado.", status_code=404),
         ):
-            await validate_code(code="ZZZZZZZZ", db=mock_db, user=mock_user)
+            result = await validate_code(code="ZZZZZZZZ", db=mock_db)
 
-        assert exc_info.value.status_code == 404
+        assert isinstance(result, GroupValidateResponse)
+        assert result.valid is False
+        assert result.name is None
+        assert result.member_count == 0
 
     @pytest.mark.asyncio
-    async def test_410_inactive_group(self) -> None:
+    async def test_inactive_group_returns_valid_false(self) -> None:
         from app.api.v1.endpoints.groups import validate_code
+        from app.schemas.group import GroupValidateResponse
 
         mock_db = AsyncMock()
-        mock_user = make_user()
 
-        with (
-            patch(
-                "app.api.v1.endpoints.groups.validate_group_code",
-                new_callable=AsyncMock,
-                side_effect=GroupError("Este clube foi desativado.", status_code=410),
-            ),
-            pytest.raises(HTTPException) as exc_info,
+        with patch(
+            "app.api.v1.endpoints.groups.validate_group_code",
+            new_callable=AsyncMock,
+            side_effect=GroupError("Este clube foi desativado.", status_code=410),
         ):
-            await validate_code(code="ABCD2345", db=mock_db, user=mock_user)
+            result = await validate_code(code="ABCD2345", db=mock_db)
 
-        assert exc_info.value.status_code == 410
+        assert isinstance(result, GroupValidateResponse)
+        assert result.valid is False
 
 
 # ── Endpoint: POST /groups/join ──────────────────────────────────────────────
@@ -842,5 +840,166 @@ class TestDeleteGroupEndpoint:
             pytest.raises(HTTPException) as exc_info,
         ):
             await delete_group_endpoint(db=mock_db, user=user, admin=admin_mock)
+
+        assert exc_info.value.status_code == 404
+
+
+# ── Service: leave_group ───────────────────────────────────────────────────
+
+
+class TestLeaveGroup:
+    @pytest.mark.asyncio
+    async def test_leave_success(self) -> None:
+        from app.services.group import leave_group
+
+        user = make_user()
+        group_id = uuid.uuid4()
+        member = _make_member(user_id=user.id, group_id=group_id, role="member")
+        admin = _make_member(
+            user_id=uuid.uuid4(),
+            group_id=group_id,
+            role="admin",
+        )
+        group = _make_group(id=group_id, members=[admin, member])
+        mock_db = mock_db_returning(group)
+        mock_db.delete = AsyncMock()
+
+        await leave_group(db=mock_db, user=user, group_id=group_id)
+        mock_db.delete.assert_called_once_with(member)
+
+    @pytest.mark.asyncio
+    async def test_leave_only_admin_promotes_oldest(self) -> None:
+        from app.services.group import leave_group
+
+        user = make_user()
+        group_id = uuid.uuid4()
+        admin_member = _make_member(
+            user_id=user.id,
+            group_id=group_id,
+            role="admin",
+        )
+        older_member = _make_member(
+            user_id=uuid.uuid4(),
+            group_id=group_id,
+            role="member",
+            joined_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+        newer_member = _make_member(
+            user_id=uuid.uuid4(),
+            group_id=group_id,
+            role="member",
+            joined_at=datetime(2026, 6, 1, tzinfo=UTC),
+        )
+        group = _make_group(
+            id=group_id, members=[admin_member, older_member, newer_member]
+        )
+        mock_db = mock_db_returning(group)
+        mock_db.delete = AsyncMock()
+
+        await leave_group(db=mock_db, user=user, group_id=group_id)
+        assert older_member.role == "admin"
+        mock_db.delete.assert_called_once_with(admin_member)
+
+    @pytest.mark.asyncio
+    async def test_leave_last_member_deactivates_group(self) -> None:
+        from app.services.group import leave_group
+
+        user = make_user()
+        group_id = uuid.uuid4()
+        member = _make_member(user_id=user.id, group_id=group_id, role="admin")
+        group = _make_group(id=group_id, members=[member])
+        mock_db = mock_db_returning(group)
+        mock_db.delete = AsyncMock()
+
+        await leave_group(db=mock_db, user=user, group_id=group_id)
+        assert group.is_active is False
+        mock_db.delete.assert_called_once_with(member)
+
+    @pytest.mark.asyncio
+    async def test_leave_admin_with_other_admins_no_promotion(self) -> None:
+        from app.services.group import leave_group
+
+        user = make_user()
+        group_id = uuid.uuid4()
+        admin1 = _make_member(user_id=user.id, group_id=group_id, role="admin")
+        admin2 = _make_member(user_id=uuid.uuid4(), group_id=group_id, role="admin")
+        regular = _make_member(user_id=uuid.uuid4(), group_id=group_id, role="member")
+        group = _make_group(id=group_id, members=[admin1, admin2, regular])
+        mock_db = mock_db_returning(group)
+        mock_db.delete = AsyncMock()
+
+        await leave_group(db=mock_db, user=user, group_id=group_id)
+        assert regular.role == "member"
+        mock_db.delete.assert_called_once_with(admin1)
+
+    @pytest.mark.asyncio
+    async def test_leave_not_member_raises_404(self) -> None:
+        from app.services.group import leave_group
+
+        user = make_user()
+        group_id = uuid.uuid4()
+        other = _make_member(user_id=uuid.uuid4(), group_id=group_id)
+        group = _make_group(id=group_id, members=[other])
+        mock_db = mock_db_returning(group)
+
+        with pytest.raises(GroupError, match="não encontrado") as exc_info:
+            await leave_group(db=mock_db, user=user, group_id=group_id)
+        assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_leave_group_not_found_raises_404(self) -> None:
+        from app.services.group import leave_group
+
+        user = make_user()
+        mock_db = mock_db_returning(None)
+
+        with pytest.raises(GroupError, match="não encontrado") as exc_info:
+            await leave_group(db=mock_db, user=user, group_id=uuid.uuid4())
+        assert exc_info.value.status_code == 404
+
+
+# ── Endpoint: POST /groups/{group_id}/leave ──────────────────────────────────
+
+
+class TestLeaveGroupEndpoint:
+    @pytest.mark.asyncio
+    async def test_success(self) -> None:
+        from app.api.v1.endpoints.groups import leave_group_endpoint
+        from app.schemas.group import MessageResponse
+
+        group_id = uuid.uuid4()
+        user = make_user()
+        member_mock = _make_member(user_id=user.id, group_id=group_id)
+        mock_db = AsyncMock()
+
+        with patch(
+            "app.api.v1.endpoints.groups.leave_group",
+            new_callable=AsyncMock,
+        ):
+            result = await leave_group_endpoint(
+                db=mock_db, user=user, member=member_mock
+            )
+
+        assert isinstance(result, MessageResponse)
+        assert result.message == "Você saiu do clube."
+
+    @pytest.mark.asyncio
+    async def test_service_error(self) -> None:
+        from app.api.v1.endpoints.groups import leave_group_endpoint
+
+        group_id = uuid.uuid4()
+        user = make_user()
+        member_mock = _make_member(user_id=user.id, group_id=group_id)
+        mock_db = AsyncMock()
+
+        with (
+            patch(
+                "app.api.v1.endpoints.groups.leave_group",
+                new_callable=AsyncMock,
+                side_effect=GroupError("Clube não encontrado.", status_code=404),
+            ),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await leave_group_endpoint(db=mock_db, user=user, member=member_mock)
 
         assert exc_info.value.status_code == 404
