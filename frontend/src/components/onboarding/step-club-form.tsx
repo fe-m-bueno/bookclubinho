@@ -18,20 +18,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { withCsrf } from "@/lib/csrf";
+import { formatInviteCode } from "@/lib/format-invite-code";
 import {
-  INVITE_CODE_CHARS,
   useGroupCodeCheck,
   type GroupCodeStatus,
 } from "@/hooks/use-group-code-check";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-const INVALID_CHARS_RE = new RegExp(`[^${INVITE_CODE_CHARS}]`, "gi");
-
-function formatGroupCode(raw: string): string {
-  const clean = raw.replace(INVALID_CHARS_RE, "").toUpperCase().slice(0, 8);
-  return clean.length > 4 ? clean.slice(0, 4) + "-" + clean.slice(4) : clean;
-}
 
 function stripDashes(formatted: string): string {
   return formatted.replace(/-/g, "");
@@ -138,7 +131,7 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
           <div className="relative">
             <Input
               value={codeInput}
-              onChange={(e) => setCodeInput(formatGroupCode(e.target.value))}
+              onChange={(e) => setCodeInput(formatInviteCode(e.target.value))}
               placeholder="ABCD-EFGH"
               className="h-12 font-mono text-center uppercase tracking-widest text-lg"
               maxLength={9}
