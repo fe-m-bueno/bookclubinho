@@ -63,16 +63,23 @@ class TestCSRFMiddleware:
     async def test_exempt_paths_pass_through(self) -> None:
         middleware = CSRFMiddleware(app=MagicMock())
 
-        for path in ("/api/v1/auth/google/callback", "/api/v1/auth/magic/callback"):
+        exempt_paths = (
+            "/api/v1/auth/register",
+            "/api/v1/auth/login",
+            "/api/v1/auth/verify-email",
+            "/api/v1/auth/resend-verification",
+            "/api/v1/auth/magic-link",
+            "/api/v1/auth/google/callback",
+            "/api/v1/auth/magic/callback",
+        )
+        for path in exempt_paths:
             mock_request = MagicMock()
-            mock_request.method = "GET"  # these are GET redirects anyway
+            mock_request.method = "POST"
             mock_request.url.path = path
             mock_request.cookies = {}
+            mock_request.headers = {}
 
             resp = MagicMock()
-
-            # For exempt paths, method is POST but still skipped
-            mock_request.method = "POST"
 
             async def call_next(req: object, _r: MagicMock = resp) -> MagicMock:
                 return _r
@@ -86,7 +93,7 @@ class TestCSRFMiddleware:
 
         mock_request = MagicMock()
         mock_request.method = "POST"
-        mock_request.url.path = "/api/v1/auth/register"
+        mock_request.url.path = "/api/v1/groups"
         mock_request.cookies = {}
         mock_request.headers = {}
 
@@ -102,7 +109,7 @@ class TestCSRFMiddleware:
 
         mock_request = MagicMock()
         mock_request.method = "POST"
-        mock_request.url.path = "/api/v1/auth/login"
+        mock_request.url.path = "/api/v1/groups"
         mock_request.cookies = {_CSRF_COOKIE: "token-a"}
         mock_request.headers = {_CSRF_HEADER: "token-b"}
 
@@ -118,7 +125,7 @@ class TestCSRFMiddleware:
 
         mock_request = MagicMock()
         mock_request.method = "POST"
-        mock_request.url.path = "/api/v1/auth/login"
+        mock_request.url.path = "/api/v1/groups"
         mock_request.cookies = {_CSRF_COOKIE: "valid-token-xyz"}
         mock_request.headers = {_CSRF_HEADER: "valid-token-xyz"}
 
