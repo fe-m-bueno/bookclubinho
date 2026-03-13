@@ -243,6 +243,7 @@ async def create_group(
     )
     db.add(group)
     db.add(member)
+    await db.flush()
 
     logger.info("group_created", group_id=str(group_id), user_id=str(user.id))
     return group
