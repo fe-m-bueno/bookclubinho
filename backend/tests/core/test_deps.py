@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 
-from app.db.models.user import User
 from tests.conftest import make_user, mock_db_returning
 
 
