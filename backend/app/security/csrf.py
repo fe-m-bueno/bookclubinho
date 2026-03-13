@@ -23,8 +23,15 @@ if TYPE_CHECKING:
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
-# Paths that are redirect-based (OAuth callbacks) — no CSRF cookie present
+# Paths exempt from CSRF validation:
+# - Auth endpoints where the client doesn't yet have a CSRF cookie
+# - OAuth/magic-link callbacks that are redirect-based
 _EXEMPT_PATHS = frozenset({
+    "/api/v1/auth/register",
+    "/api/v1/auth/login",
+    "/api/v1/auth/verify-email",
+    "/api/v1/auth/resend-verification",
+    "/api/v1/auth/magic-link",
     "/api/v1/auth/google/callback",
     "/api/v1/auth/magic/callback",
 })
