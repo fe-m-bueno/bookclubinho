@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.engine import Base
-from app.db.models.base import TimestampMixin
+from app.db.models.base import SoftDeleteMixin, TimestampMixin
 
 _EMAIL_NOTIFICATIONS_DEFAULT = {
     "meetings": True,
@@ -22,7 +22,7 @@ _EMAIL_NOTIFICATIONS_SERVER_DEFAULT = (
 )
 
 
-class User(TimestampMixin, Base):
+class User(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint(
@@ -97,12 +97,6 @@ class User(TimestampMixin, Base):
         nullable=False,
         server_default=text("false"),
         default=False,
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        server_default=text("true"),
-        default=True,
     )
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

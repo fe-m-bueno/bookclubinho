@@ -18,22 +18,7 @@ from app.schemas.auth import (
     VerifyEmailResponse,
 )
 from app.services.auth import AuthError
-
-# ── helpers ────────────────────────────────────────────────────────────────────
-
-
-def _mock_db_returning(value: object) -> AsyncMock:
-    """AsyncSession mock cujo execute() retorna um MagicMock com scalar_one_or_none = value.
-
-    scalar_one_or_none é uma chamada SYNC no objeto retornado por await db.execute(),
-    então usamos MagicMock (não AsyncMock) como return_value do execute.
-    """
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = value
-    db = AsyncMock()
-    db.execute = AsyncMock(return_value=result)
-    return db
-
+from tests.conftest import mock_db_returning
 
 # ── Schema tests ───────────────────────────────────────────────────────────────
 
@@ -113,7 +98,7 @@ class TestRegisterUser:
     async def test_creates_user_and_sends_email(self) -> None:
         from app.services.auth import register_user
 
-        mock_db = _mock_db_returning(None)  # no existing user
+        mock_db = mock_db_returning(None)  # no existing user
 
         user_id = uuid.uuid4()
 
@@ -146,7 +131,7 @@ class TestRegisterUser:
         from app.services.auth import register_user
 
         existing_user = MagicMock()
-        mock_db = _mock_db_returning(existing_user)
+        mock_db = mock_db_returning(existing_user)
 
         with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
@@ -177,7 +162,7 @@ class TestResendVerificationEmail:
         mock_user.id = user_id
         mock_user.email_verified = False
         mock_user.display_name = "Alice"
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -200,7 +185,7 @@ class TestResendVerificationEmail:
     async def test_silently_returns_for_nonexistent_email(self) -> None:
         from app.services.auth import resend_verification_email
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -220,7 +205,7 @@ class TestResendVerificationEmail:
 
         mock_user = MagicMock()
         mock_user.email_verified = True
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -238,7 +223,7 @@ class TestResendVerificationEmail:
     async def test_rate_limit_silently_skips(self) -> None:
         from app.services.auth import resend_verification_email
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -261,7 +246,7 @@ class TestResendVerificationEmail:
         mock_user.id = uuid.uuid4()
         mock_user.email_verified = False
         mock_user.display_name = "Test"
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -289,7 +274,7 @@ class TestVerifyEmailToken:
         user_id = uuid.uuid4()
         mock_user = MagicMock()
         mock_user.email_verified = False
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
@@ -357,7 +342,7 @@ class TestAuthenticateUser:
         mock_user.email_verified = True
         mock_user.id = uuid.uuid4()
         mock_user.onboarding_completed = True
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.verify_password", return_value=True),
@@ -383,7 +368,7 @@ class TestAuthenticateUser:
         mock_user.hashed_password = "hashed"
         mock_user.is_active = True
         mock_user.email_verified = True
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.verify_password", return_value=False),
@@ -397,7 +382,7 @@ class TestAuthenticateUser:
     async def test_nonexistent_user_raises_auth_error(self) -> None:
         from app.services.auth import authenticate_user
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
 
         with (
             patch("app.services.auth.verify_password", return_value=False),
@@ -415,7 +400,7 @@ class TestAuthenticateUser:
         mock_user.hashed_password = "hashed"
         mock_user.is_active = True
         mock_user.email_verified = False
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.verify_password", return_value=True),
@@ -433,7 +418,7 @@ class TestAuthenticateUser:
         mock_user.hashed_password = "hashed"
         mock_user.is_active = False
         mock_user.email_verified = True
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.verify_password", return_value=True),
@@ -452,7 +437,7 @@ class TestSendMagicLink:
     async def test_new_user_created_with_magic_link_provider(self) -> None:
         from app.services.auth import send_magic_link
 
-        mock_db = _mock_db_returning(None)  # no existing user
+        mock_db = mock_db_returning(None)  # no existing user
 
         user_id = uuid.uuid4()
 
@@ -484,7 +469,7 @@ class TestSendMagicLink:
         existing_user = MagicMock()
         existing_user.id = uuid.uuid4()
         existing_user.display_name = "Felipe"
-        mock_db = _mock_db_returning(existing_user)
+        mock_db = mock_db_returning(existing_user)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -503,7 +488,7 @@ class TestSendMagicLink:
     async def test_rate_limit_silently_skips_email(self) -> None:
         from app.services.auth import send_magic_link
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
 
         with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
@@ -523,7 +508,7 @@ class TestSendMagicLink:
         existing_user = MagicMock()
         existing_user.id = uuid.uuid4()
         existing_user.display_name = "Test"
-        mock_db = _mock_db_returning(existing_user)
+        mock_db = mock_db_returning(existing_user)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -541,7 +526,7 @@ class TestSendMagicLink:
     async def test_display_name_defaults_to_email_prefix(self) -> None:
         from app.services.auth import send_magic_link
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
         user_id = uuid.uuid4()
 
         with (
@@ -572,7 +557,7 @@ class TestConsumeMagicToken:
         mock_user.id = user_id
         mock_user.is_active = True
         mock_user.onboarding_completed = True
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -634,7 +619,7 @@ class TestConsumeMagicToken:
         user_id = uuid.uuid4()
         mock_user = MagicMock()
         mock_user.is_active = False
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -695,7 +680,7 @@ class TestConsumeMagicToken:
         mock_user = MagicMock()
         mock_user.is_active = True
         mock_user.onboarding_completed = False
-        mock_db = _mock_db_returning(mock_user)
+        mock_db = mock_db_returning(mock_user)
 
         with (
             patch("app.services.auth.get_redis") as mock_redis_factory,
@@ -1013,7 +998,7 @@ class TestGoogleOAuthCallback:
     async def test_exchanges_code_and_creates_new_user(self) -> None:
         from app.services.auth import google_oauth_callback
 
-        mock_db = _mock_db_returning(None)  # usuário não existe
+        mock_db = mock_db_returning(None)  # usuário não existe
         user_id = uuid.uuid4()
         mock_client = _mock_httpx_client()
 
@@ -1046,7 +1031,7 @@ class TestGoogleOAuthCallback:
         existing_user.auth_provider = "local"
         existing_user.avatar_url = None
         existing_user.onboarding_completed = True
-        mock_db = _mock_db_returning(existing_user)
+        mock_db = mock_db_returning(existing_user)
         mock_client = _mock_httpx_client()
 
         with (
@@ -1068,7 +1053,7 @@ class TestGoogleOAuthCallback:
         existing_user.auth_provider = "magic_link"
         existing_user.avatar_url = None
         existing_user.onboarding_completed = False
-        mock_db = _mock_db_returning(existing_user)
+        mock_db = mock_db_returning(existing_user)
         mock_client = _mock_httpx_client()
 
         with (
@@ -1088,7 +1073,7 @@ class TestGoogleOAuthCallback:
         existing_user.auth_provider = "local"
         existing_user.avatar_url = "https://existing-avatar.com/photo.jpg"
         existing_user.onboarding_completed = True
-        mock_db = _mock_db_returning(existing_user)
+        mock_db = mock_db_returning(existing_user)
         mock_client = _mock_httpx_client()
 
         with (
@@ -1104,7 +1089,7 @@ class TestGoogleOAuthCallback:
     async def test_unverified_google_email_raises_auth_error(self) -> None:
         from app.services.auth import google_oauth_callback
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
 
         token_resp = MagicMock()
         token_resp.status_code = 200
@@ -1135,7 +1120,7 @@ class TestGoogleOAuthCallback:
     async def test_google_token_exchange_failure_raises_auth_error(self) -> None:
         from app.services.auth import google_oauth_callback
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
         mock_client = _mock_httpx_client(token_status=400)
 
         with (
@@ -1191,7 +1176,7 @@ class TestGoogleOAuthEndpoints:
     async def test_google_callback_sets_cookies_and_redirects(self) -> None:
         from app.api.v1.endpoints.auth import google_callback
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
         mock_redis = AsyncMock()
         mock_redis.get.return_value = "1"  # state válido
 
@@ -1230,7 +1215,7 @@ class TestGoogleOAuthEndpoints:
     async def test_google_callback_auth_error_redirects(self) -> None:
         from app.api.v1.endpoints.auth import google_callback
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
         mock_redis = AsyncMock()
         mock_redis.get.return_value = "1"
 

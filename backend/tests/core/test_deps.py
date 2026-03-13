@@ -7,35 +7,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.db.models.user import User
-
-
-def _make_request(cached_user: User | None = None) -> MagicMock:
-    request = MagicMock()
-    if cached_user is not None:
-        request.state._resolved_user = cached_user
-    else:
-        # getattr fallback returns None when attr missing
-        type(request.state)._resolved_user = property(
-            lambda self: None,
-            lambda self, v: None,
-        )
-        request.state = MagicMock(spec=[])
-    return request
-
-
-def _make_db(user_or_none: User | None) -> AsyncMock:
-    scalar_result = MagicMock()
-    scalar_result.scalar_one_or_none.return_value = user_or_none
-    db = AsyncMock()
-    db.execute = AsyncMock(return_value=scalar_result)
-    return db
-
-
-def _make_user(is_active: bool = True) -> User:
-    user = MagicMock(spec=User)
-    user.id = uuid.uuid4()
-    user.is_active = is_active
-    return user
+from tests.conftest import make_user, mock_db_returning
 
 
 class TestGetCurrentUser:
@@ -43,10 +15,10 @@ class TestGetCurrentUser:
     async def test_valid_token_returns_user(self) -> None:
         from app.core.deps import get_current_user
 
-        user = _make_user()
+        user = make_user()
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(user)
+        db = mock_db_returning(user)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=str(user.id)):
             result = await get_current_user(request, db, access_token="valid.token.here")
@@ -57,10 +29,10 @@ class TestGetCurrentUser:
     async def test_cache_hit_skips_db(self) -> None:
         from app.core.deps import get_current_user
 
-        user = _make_user()
+        user = make_user()
         request = MagicMock()
         request.state._resolved_user = user
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         result = await get_current_user(request, db, access_token="any.token")
 
@@ -73,7 +45,7 @@ class TestGetCurrentUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_current_user(request, db, access_token=None)
@@ -86,7 +58,7 @@ class TestGetCurrentUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         with (
             patch("app.core.deps.extract_access_token_sub", return_value=None),
@@ -102,7 +74,7 @@ class TestGetCurrentUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         with (
             patch("app.core.deps.extract_access_token_sub", return_value=None),
@@ -118,7 +90,7 @@ class TestGetCurrentUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         with (
             patch("app.core.deps.extract_access_token_sub", return_value=str(uuid.uuid4())),
@@ -132,10 +104,10 @@ class TestGetCurrentUser:
     async def test_caches_user_in_request_state(self) -> None:
         from app.core.deps import get_current_user
 
-        user = _make_user()
+        user = make_user()
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(user)
+        db = mock_db_returning(user)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=str(user.id)):
             await get_current_user(request, db, access_token="valid.token")
@@ -148,7 +120,7 @@ class TestGetCurrentActiveUser:
     async def test_active_user_passes(self) -> None:
         from app.core.deps import get_current_active_user
 
-        user = _make_user(is_active=True)
+        user = make_user(is_active=True)
         result = await get_current_active_user(user)
         assert result is user
 
@@ -156,7 +128,7 @@ class TestGetCurrentActiveUser:
     async def test_inactive_user_raises_403(self) -> None:
         from app.core.deps import get_current_active_user
 
-        user = _make_user(is_active=False)
+        user = make_user(is_active=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_current_active_user(user)
@@ -171,7 +143,7 @@ class TestGetOptionalUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         result = await get_optional_user(request, db, access_token=None)
         assert result is None
@@ -182,7 +154,7 @@ class TestGetOptionalUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=None):
             result = await get_optional_user(request, db, access_token="bad.token")
@@ -195,7 +167,7 @@ class TestGetOptionalUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=None):
             result = await get_optional_user(request, db, access_token="refresh.token")
@@ -208,7 +180,7 @@ class TestGetOptionalUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=str(uuid.uuid4())):
             result = await get_optional_user(request, db, access_token="valid.token")
@@ -219,10 +191,10 @@ class TestGetOptionalUser:
     async def test_valid_token_returns_user(self) -> None:
         from app.core.deps import get_optional_user
 
-        user = _make_user()
+        user = make_user()
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        db = _make_db(user)
+        db = mock_db_returning(user)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=str(user.id)):
             result = await get_optional_user(request, db, access_token="valid.token")
@@ -233,10 +205,10 @@ class TestGetOptionalUser:
     async def test_cache_hit_returns_cached_user(self) -> None:
         from app.core.deps import get_optional_user
 
-        user = _make_user()
+        user = make_user()
         request = MagicMock()
         request.state._resolved_user = user
-        db = _make_db(None)
+        db = mock_db_returning(None)
 
         result = await get_optional_user(request, db, access_token="any.token")
 
