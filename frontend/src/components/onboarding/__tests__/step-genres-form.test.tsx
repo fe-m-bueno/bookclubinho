@@ -51,7 +51,7 @@ const mockGenres = [
 function mockFetchGenres() {
   vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
     ok: true,
-    json: async () => mockGenres,
+    json: async () => ({ genres: mockGenres }),
   } as Response);
 }
 
