@@ -10,31 +10,7 @@ from pydantic import ValidationError
 
 from app.schemas.onboarding import PreferencesRequest, UsernameCheckResponse
 from app.services.onboarding import OnboardingError
-
-# ── helpers ────────────────────────────────────────────────────────────────────
-
-
-def _mock_db_returning(value: object) -> AsyncMock:
-    """AsyncSession mock cujo execute() retorna scalar_one_or_none = value."""
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = value
-    db = AsyncMock()
-    db.execute = AsyncMock(return_value=result)
-    return db
-
-
-def _make_user(**overrides: object) -> MagicMock:
-    """Cria um mock de User com defaults sensíveis."""
-    user = MagicMock()
-    user.id = overrides.get("id", uuid.uuid4())
-    user.username = overrides.get("username")
-    user.display_name = overrides.get("display_name")
-    user.avatar_url = overrides.get("avatar_url")
-    user.status_text = overrides.get("status_text")
-    user.preferred_genres = overrides.get("preferred_genres", [])
-    user.onboarding_completed = overrides.get("onboarding_completed", False)
-    return user
-
+from tests.conftest import make_user, mock_db_returning
 
 # ── Schema: PreferencesRequest ────────────────────────────────────────────────
 
@@ -84,7 +60,7 @@ class TestCheckUsernameAvailable:
     async def test_available_username(self) -> None:
         from app.services.onboarding import check_username_available
 
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
         result = await check_username_available(db=mock_db, username="newuser")
         assert result is True
 
@@ -93,7 +69,7 @@ class TestCheckUsernameAvailable:
         from app.services.onboarding import check_username_available
 
         existing = MagicMock()
-        mock_db = _mock_db_returning(existing)
+        mock_db = mock_db_returning(existing)
         result = await check_username_available(db=mock_db, username="taken")
         assert result is False
 
@@ -106,8 +82,8 @@ class TestUpdateProfile:
     async def test_success(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
-        mock_db = _mock_db_returning(None)  # no username conflict
+        user = make_user()
+        mock_db = mock_db_returning(None)  # no username conflict
 
         await update_profile(
             db=mock_db,
@@ -125,7 +101,7 @@ class TestUpdateProfile:
     async def test_username_too_short(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
+        user = make_user()
         mock_db = AsyncMock()
 
         with pytest.raises(OnboardingError, match="3-20 caracteres"):
@@ -137,7 +113,7 @@ class TestUpdateProfile:
     async def test_username_starts_with_number(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
+        user = make_user()
         mock_db = AsyncMock()
 
         with pytest.raises(OnboardingError, match="começar com letra"):
@@ -149,7 +125,7 @@ class TestUpdateProfile:
     async def test_username_invalid_chars(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
+        user = make_user()
         mock_db = AsyncMock()
 
         with pytest.raises(OnboardingError, match="começar com letra"):
@@ -161,9 +137,9 @@ class TestUpdateProfile:
     async def test_username_duplicate(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
+        user = make_user()
         existing = MagicMock()
-        mock_db = _mock_db_returning(existing)  # conflict found
+        mock_db = mock_db_returning(existing)  # conflict found
 
         with pytest.raises(OnboardingError, match="já está em uso"):
             await update_profile(
@@ -174,9 +150,9 @@ class TestUpdateProfile:
     async def test_resave_own_username(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user(username="myuser")
+        user = make_user(username="myuser")
         # Return None = no conflict (self is excluded in the query)
-        mock_db = _mock_db_returning(None)
+        mock_db = mock_db_returning(None)
 
         await update_profile(
             db=mock_db, user=user, username="myuser", display_name="My Name"
@@ -188,8 +164,8 @@ class TestUpdateProfile:
     async def test_display_name_too_short(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
-        mock_db = _mock_db_returning(None)  # no username conflict
+        user = make_user()
+        mock_db = mock_db_returning(None)  # no username conflict
 
         with pytest.raises(OnboardingError, match="pelo menos 2"):
             await update_profile(
@@ -200,8 +176,8 @@ class TestUpdateProfile:
     async def test_display_name_too_long(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
-        mock_db = _mock_db_returning(None)  # no username conflict
+        user = make_user()
+        mock_db = mock_db_returning(None)  # no username conflict
 
         with pytest.raises(OnboardingError, match="máximo 50"):
             await update_profile(
@@ -212,8 +188,8 @@ class TestUpdateProfile:
     async def test_status_text_too_long(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
-        mock_db = _mock_db_returning(None)
+        user = make_user()
+        mock_db = mock_db_returning(None)
 
         with pytest.raises(OnboardingError, match="máximo 100"):
             await update_profile(
@@ -228,8 +204,8 @@ class TestUpdateProfile:
     async def test_avatar_upload(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
-        mock_db = _mock_db_returning(None)
+        user = make_user()
+        mock_db = mock_db_returning(None)
 
         mock_avatar = AsyncMock()
         mock_avatar.read = AsyncMock(return_value=b"fake-image-data")
@@ -255,8 +231,8 @@ class TestUpdateProfile:
     async def test_avatar_too_large(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
-        mock_db = _mock_db_returning(None)
+        user = make_user()
+        mock_db = mock_db_returning(None)
 
         mock_avatar = AsyncMock()
         mock_avatar.read = AsyncMock(return_value=b"x" * (5 * 1024 * 1024 + 1))
@@ -275,8 +251,8 @@ class TestUpdateProfile:
     async def test_html_sanitization(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user()
-        mock_db = _mock_db_returning(None)
+        user = make_user()
+        mock_db = mock_db_returning(None)
 
         await update_profile(
             db=mock_db,
@@ -293,8 +269,8 @@ class TestUpdateProfile:
     async def test_no_avatar(self) -> None:
         from app.services.onboarding import update_profile
 
-        user = _make_user(avatar_url="https://old.com/avatar.webp")
-        mock_db = _mock_db_returning(None)
+        user = make_user(avatar_url="https://old.com/avatar.webp")
+        mock_db = mock_db_returning(None)
 
         await update_profile(
             db=mock_db,
@@ -316,7 +292,7 @@ class TestUpdatePreferences:
     async def test_success(self) -> None:
         from app.services.onboarding import update_preferences
 
-        user = _make_user()
+        user = make_user()
         mock_db = AsyncMock()
 
         await update_preferences(
@@ -329,7 +305,7 @@ class TestUpdatePreferences:
     async def test_invalid_genre(self) -> None:
         from app.services.onboarding import update_preferences
 
-        user = _make_user()
+        user = make_user()
         mock_db = AsyncMock()
 
         with pytest.raises(OnboardingError, match="inválidos"):
@@ -346,7 +322,7 @@ class TestCompleteOnboarding:
     async def test_success(self) -> None:
         from app.services.onboarding import complete_onboarding
 
-        user = _make_user(
+        user = make_user(
             username="validuser",
             display_name="Valid Name",
             preferred_genres=["fantasia"],
@@ -361,7 +337,7 @@ class TestCompleteOnboarding:
     async def test_missing_username(self) -> None:
         from app.services.onboarding import complete_onboarding
 
-        user = _make_user(
+        user = make_user(
             username=None,
             display_name="Valid Name",
             preferred_genres=["fantasia"],
@@ -375,7 +351,7 @@ class TestCompleteOnboarding:
     async def test_missing_display_name(self) -> None:
         from app.services.onboarding import complete_onboarding
 
-        user = _make_user(
+        user = make_user(
             username="validuser",
             display_name=None,
             preferred_genres=["fantasia"],
@@ -389,7 +365,7 @@ class TestCompleteOnboarding:
     async def test_missing_genres(self) -> None:
         from app.services.onboarding import complete_onboarding
 
-        user = _make_user(
+        user = make_user(
             username="validuser",
             display_name="Valid Name",
             preferred_genres=[],
@@ -410,7 +386,7 @@ class TestOnboardingProfileEndpoint:
         from app.schemas.onboarding import OnboardingProfileResponse
 
         mock_db = AsyncMock()
-        mock_user = _make_user()
+        mock_user = make_user()
 
         with patch(
             "app.api.v1.endpoints.onboarding.update_profile",
@@ -435,7 +411,7 @@ class TestOnboardingProfileEndpoint:
         from app.api.v1.endpoints.onboarding import onboarding_profile
 
         mock_db = AsyncMock()
-        mock_user = _make_user()
+        mock_user = make_user()
 
         with (
             patch(
@@ -467,7 +443,7 @@ class TestOnboardingPreferencesEndpoint:
         from app.schemas.onboarding import PreferencesResponse
 
         mock_db = AsyncMock()
-        mock_user = _make_user()
+        mock_user = make_user()
         body = PreferencesRequest(preferred_genres=["fantasia", "sci-fi"])
 
         with patch(
@@ -488,7 +464,7 @@ class TestOnboardingPreferencesEndpoint:
         from app.api.v1.endpoints.onboarding import onboarding_preferences
 
         mock_db = AsyncMock()
-        mock_user = _make_user()
+        mock_user = make_user()
         body = PreferencesRequest(preferred_genres=["fantasia"])
 
         with (
@@ -514,7 +490,7 @@ class TestOnboardingCompleteEndpoint:
         from app.schemas.onboarding import OnboardingCompleteResponse
 
         mock_db = AsyncMock()
-        mock_user = _make_user()
+        mock_user = make_user()
         mock_response = MagicMock()
 
         with (
@@ -542,7 +518,7 @@ class TestOnboardingCompleteEndpoint:
         from app.api.v1.endpoints.onboarding import onboarding_complete
 
         mock_db = AsyncMock()
-        mock_user = _make_user()
+        mock_user = make_user()
         mock_response = MagicMock()
 
         with (

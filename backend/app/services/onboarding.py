@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from fastapi import UploadFile
     from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import ServiceError
 from app.db.models.user import User
 from app.schemas.onboarding import USERNAME_REGEX, VALID_GENRE_SLUGS
 from app.security.sanitizer import sanitize
@@ -22,12 +23,8 @@ logger = structlog.get_logger(__name__)
 _MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
-class OnboardingError(Exception):
+class OnboardingError(ServiceError):
     """Raised when onboarding validation fails."""
-
-    def __init__(self, message: str, status_code: int = 400) -> None:
-        super().__init__(message)
-        self.status_code = status_code
 
 
 async def check_username_available(db: AsyncSession, username: str) -> bool:

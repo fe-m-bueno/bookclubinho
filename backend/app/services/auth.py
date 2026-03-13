@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
 from app.core.security import (
     create_token_pair,
@@ -65,12 +66,11 @@ def _hash_token(token: str) -> str:
     return hmac.new(settings.JWT_SECRET.encode(), token.encode(), "sha256").hexdigest()
 
 
-class AuthError(Exception):
+class AuthError(ServiceError):
     """Raised when credentials are invalid or the account is not ready."""
 
     def __init__(self, message: str, status_code: int = 401) -> None:
-        super().__init__(message)
-        self.status_code = status_code
+        super().__init__(message, status_code)
 
 
 # ── Register ──────────────────────────────────────────────────────────────────

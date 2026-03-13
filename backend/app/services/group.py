@@ -13,17 +13,14 @@ if TYPE_CHECKING:
 
     from app.db.models.user import User
 
-from app.db.models.group import Group, GroupMember
+from app.core.exceptions import ServiceError
+from app.db.models.group import Group, GroupMember, GroupRole
 
 logger = structlog.get_logger(__name__)
 
 
-class GroupError(Exception):
+class GroupError(ServiceError):
     """Raised when group validation fails."""
-
-    def __init__(self, message: str, status_code: int = 400) -> None:
-        super().__init__(message)
-        self.status_code = status_code
 
 
 async def validate_group_code(db: AsyncSession, code: str) -> Group:
@@ -36,6 +33,8 @@ async def validate_group_code(db: AsyncSession, code: str) -> Group:
     group = result.scalar_one_or_none()
     if group is None:
         raise GroupError("Clube não encontrado.", status_code=404)
+    if not group.is_active:
+        raise GroupError("Este clube foi desativado.", status_code=410)
     return group
 
 
@@ -50,7 +49,7 @@ async def join_group(db: AsyncSession, user: User, invite_code: str) -> Group:
     if len(group.members) >= group.max_members:
         raise GroupError("Este clube está cheio.", status_code=403)
 
-    member = GroupMember(user_id=user.id, group_id=group.id, role="member")
+    member = GroupMember(user_id=user.id, group_id=group.id, role=GroupRole.MEMBER)
     db.add(member)
 
     logger.info("group_joined", user_id=str(user.id), group_id=str(group.id))
