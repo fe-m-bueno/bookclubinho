@@ -13,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Push & PR:** Ao finalizar, realize o push da branch e crie um Pull Request (não coloque menção ao claude code no PR nem na commit message).
 - **Co-autoria:** **NUNCA** se adicione como co-autor do projeto no GitHub.
 - **Testes Unitários:** Sempre crie ou atualize testes unitários ao final de cada solicitação.
+- **Correção de Bugs:** Ao receber um pedido para resolver um bug, **primeiro escreva um teste que reproduza e falhe por causa do bug**, depois implemente a correção até o teste passar.
 
 ---
 
@@ -26,7 +27,7 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
 
 ## Stack
 
-**Frontend (Vercel):** Next.js 15+ App Router, TypeScript strict, Tailwind CSS, shadcn/ui (new-york), Framer Motion, Zustand, React Query, Tiptap
+**Frontend (Vercel):** Next.js 16+ App Router, TypeScript strict, Tailwind CSS, shadcn/ui (new-york), Framer Motion, Zustand, React Query, Tiptap
 
 **Backend (Railway):** FastAPI Python 3.12+, Pydantic v2, SQLAlchemy 2.0 async + asyncpg, Alembic
 
@@ -116,6 +117,7 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
 
 ## Segurança — Regras Não-Negociáveis
 
+- **ROW LEVEL SECURITY (RLS) É OBRIGATÓRIO SEMPRE** — toda tabela no PostgreSQL deve ter RLS habilitado com políticas explícitas. Nunca desabilitar.
 - NUNCA expor stack traces, tabelas, paths internos em respostas
 - NUNCA SE COLOQUE COMO CO-AUTOR DO PROJETO NO GITHUB
 - NUNCA secrets no frontend — só `NEXT_PUBLIC_*`

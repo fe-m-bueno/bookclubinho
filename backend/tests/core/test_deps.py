@@ -12,10 +12,10 @@ from app.db.models.user import User
 def _make_request(cached_user: User | None = None) -> MagicMock:
     request = MagicMock()
     if cached_user is not None:
-        request.state._current_user = cached_user
+        request.state._resolved_user = cached_user
     else:
         # getattr fallback returns None when attr missing
-        type(request.state)._current_user = property(
+        type(request.state)._resolved_user = property(
             lambda self: None,
             lambda self, v: None,
         )
@@ -40,27 +40,26 @@ def _make_user(is_active: bool = True) -> User:
 
 class TestGetCurrentUser:
     @pytest.mark.asyncio
-    async def test_valid_token_returns_user(self):
+    async def test_valid_token_returns_user(self) -> None:
         from app.core.deps import get_current_user
 
         user = _make_user()
         request = MagicMock()
         request.state = MagicMock(spec=[])
         db = _make_db(user)
-        payload = {"type": "access", "sub": str(user.id)}
 
-        with patch("app.core.deps.decode_token", return_value=payload):
+        with patch("app.core.deps.extract_access_token_sub", return_value=str(user.id)):
             result = await get_current_user(request, db, access_token="valid.token.here")
 
         assert result is user
 
     @pytest.mark.asyncio
-    async def test_cache_hit_skips_db(self):
+    async def test_cache_hit_skips_db(self) -> None:
         from app.core.deps import get_current_user
 
         user = _make_user()
         request = MagicMock()
-        request.state._current_user = user
+        request.state._resolved_user = user
         db = _make_db(None)
 
         result = await get_current_user(request, db, access_token="any.token")
@@ -69,7 +68,7 @@ class TestGetCurrentUser:
         assert result is user
 
     @pytest.mark.asyncio
-    async def test_missing_cookie_raises_401(self):
+    async def test_missing_cookie_raises_401(self) -> None:
         from app.core.deps import get_current_user
 
         request = MagicMock()
@@ -82,70 +81,71 @@ class TestGetCurrentUser:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_invalid_jwt_raises_401(self):
-        from jose import JWTError
-
+    async def test_invalid_jwt_raises_401(self) -> None:
         from app.core.deps import get_current_user
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
         db = _make_db(None)
 
-        with patch("app.core.deps.decode_token", side_effect=JWTError("bad token")):
-            with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(request, db, access_token="bad.token")
+        with (
+            patch("app.core.deps.extract_access_token_sub", return_value=None),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await get_current_user(request, db, access_token="bad.token")
 
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_wrong_token_type_raises_401(self):
+    async def test_wrong_token_type_raises_401(self) -> None:
         from app.core.deps import get_current_user
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
         db = _make_db(None)
-        payload = {"type": "refresh", "sub": str(uuid.uuid4())}
 
-        with patch("app.core.deps.decode_token", return_value=payload):
-            with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(request, db, access_token="refresh.token")
+        with (
+            patch("app.core.deps.extract_access_token_sub", return_value=None),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await get_current_user(request, db, access_token="refresh.token")
 
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_user_not_found_raises_401(self):
+    async def test_user_not_found_raises_401(self) -> None:
         from app.core.deps import get_current_user
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
         db = _make_db(None)
-        payload = {"type": "access", "sub": str(uuid.uuid4())}
 
-        with patch("app.core.deps.decode_token", return_value=payload):
-            with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(request, db, access_token="valid.token")
+        with (
+            patch("app.core.deps.extract_access_token_sub", return_value=str(uuid.uuid4())),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await get_current_user(request, db, access_token="valid.token")
 
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_caches_user_in_request_state(self):
+    async def test_caches_user_in_request_state(self) -> None:
         from app.core.deps import get_current_user
 
         user = _make_user()
         request = MagicMock()
         request.state = MagicMock(spec=[])
         db = _make_db(user)
-        payload = {"type": "access", "sub": str(user.id)}
 
-        with patch("app.core.deps.decode_token", return_value=payload):
+        with patch("app.core.deps.extract_access_token_sub", return_value=str(user.id)):
             await get_current_user(request, db, access_token="valid.token")
 
-        assert request.state._current_user is user
+        assert request.state._resolved_user is user
 
 
 class TestGetCurrentActiveUser:
     @pytest.mark.asyncio
-    async def test_active_user_passes(self):
+    async def test_active_user_passes(self) -> None:
         from app.core.deps import get_current_active_user
 
         user = _make_user(is_active=True)
@@ -153,7 +153,7 @@ class TestGetCurrentActiveUser:
         assert result is user
 
     @pytest.mark.asyncio
-    async def test_inactive_user_raises_403(self):
+    async def test_inactive_user_raises_403(self) -> None:
         from app.core.deps import get_current_active_user
 
         user = _make_user(is_active=False)
@@ -166,7 +166,7 @@ class TestGetCurrentActiveUser:
 
 class TestGetOptionalUser:
     @pytest.mark.asyncio
-    async def test_missing_cookie_returns_none(self):
+    async def test_missing_cookie_returns_none(self) -> None:
         from app.core.deps import get_optional_user
 
         request = MagicMock()
@@ -177,70 +177,65 @@ class TestGetOptionalUser:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_invalid_token_returns_none(self):
-        from jose import JWTError
-
+    async def test_invalid_token_returns_none(self) -> None:
         from app.core.deps import get_optional_user
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
         db = _make_db(None)
 
-        with patch("app.core.deps.decode_token", side_effect=JWTError("bad")):
+        with patch("app.core.deps.extract_access_token_sub", return_value=None):
             result = await get_optional_user(request, db, access_token="bad.token")
 
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_wrong_type_returns_none(self):
+    async def test_wrong_type_returns_none(self) -> None:
         from app.core.deps import get_optional_user
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
         db = _make_db(None)
-        payload = {"type": "refresh", "sub": str(uuid.uuid4())}
 
-        with patch("app.core.deps.decode_token", return_value=payload):
+        with patch("app.core.deps.extract_access_token_sub", return_value=None):
             result = await get_optional_user(request, db, access_token="refresh.token")
 
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_user_not_found_returns_none(self):
+    async def test_user_not_found_returns_none(self) -> None:
         from app.core.deps import get_optional_user
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
         db = _make_db(None)
-        payload = {"type": "access", "sub": str(uuid.uuid4())}
 
-        with patch("app.core.deps.decode_token", return_value=payload):
+        with patch("app.core.deps.extract_access_token_sub", return_value=str(uuid.uuid4())):
             result = await get_optional_user(request, db, access_token="valid.token")
 
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_valid_token_returns_user(self):
+    async def test_valid_token_returns_user(self) -> None:
         from app.core.deps import get_optional_user
 
         user = _make_user()
         request = MagicMock()
         request.state = MagicMock(spec=[])
         db = _make_db(user)
-        payload = {"type": "access", "sub": str(user.id)}
 
-        with patch("app.core.deps.decode_token", return_value=payload):
+        with patch("app.core.deps.extract_access_token_sub", return_value=str(user.id)):
             result = await get_optional_user(request, db, access_token="valid.token")
 
         assert result is user
 
     @pytest.mark.asyncio
-    async def test_cache_hit_returns_cached_user(self):
+    async def test_cache_hit_returns_cached_user(self) -> None:
         from app.core.deps import get_optional_user
 
         user = _make_user()
         request = MagicMock()
-        request.state._current_user = user
+        request.state._resolved_user = user
         db = _make_db(None)
 
         result = await get_optional_user(request, db, access_token="any.token")

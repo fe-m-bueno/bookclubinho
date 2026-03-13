@@ -11,8 +11,9 @@ from sqlalchemy.orm import selectinload
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.db.models.user import User
+
 from app.db.models.group import Group, GroupMember
-from app.db.models.user import User
 
 logger = structlog.get_logger(__name__)
 

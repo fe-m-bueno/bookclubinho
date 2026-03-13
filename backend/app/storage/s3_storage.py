@@ -18,8 +18,8 @@ Sizing rules (longest side, aspect ratio preserved):
 
 from __future__ import annotations
 
+import functools
 import io
-import struct
 from typing import Final
 
 import boto3
@@ -56,14 +56,9 @@ _WEBP_MARKER: Final = b"WEBP"
 
 # ── Boto3 client factory ──────────────────────────────────────────────────────
 
-def _client() -> "boto3.client":  # type: ignore[name-defined]
-    """
-    Return a new boto3 S3 client configured for R2 or MinIO.
-
-    A new client is created per call (lightweight, thread-safe).
-    For hot paths that upload many files concurrently, consider a module-level
-    cached client, but that adds complexity with credential rotation.
-    """
+@functools.lru_cache(maxsize=1)
+def _client() -> boto3.client:  # type: ignore[name-defined]
+    """Return a cached boto3 S3 client configured for R2 or MinIO."""
     return BotoSession().client(
         "s3",
         endpoint_url=settings.S3_ENDPOINT,

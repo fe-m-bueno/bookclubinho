@@ -522,7 +522,10 @@ class TestOnboardingCompleteEndpoint:
                 "app.api.v1.endpoints.onboarding.complete_onboarding",
                 new_callable=AsyncMock,
             ),
-            patch("app.api.v1.endpoints.onboarding.create_token_pair", return_value=("new.acc", "new.ref")) as mtp,
+            patch(
+                "app.api.v1.endpoints.onboarding.create_token_pair",
+                return_value=("new.acc", "new.ref"),
+            ) as mtp,
             patch("app.api.v1.endpoints.onboarding.set_auth_cookies") as mock_cookies,
         ):
             result = await onboarding_complete(db=mock_db, user=mock_user, response=mock_response)

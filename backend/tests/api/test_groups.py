@@ -39,7 +39,7 @@ def _make_group(**overrides: object) -> MagicMock:
     group = MagicMock()
     group.id = overrides.get("id", uuid.uuid4())
     group.name = overrides.get("name", "Clube Literário")
-    group.photo_url = overrides.get("photo_url", None)
+    group.photo_url = overrides.get("photo_url")
     group.invite_code = overrides.get("invite_code", "ABCD2345")
     group.max_members = overrides.get("max_members", 8)
     group.members = overrides.get("members", [])

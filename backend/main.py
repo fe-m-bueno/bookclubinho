@@ -18,7 +18,10 @@ from tenacity import (
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.core.redis import close_redis_pool
+from app.core.rls import RLSMiddleware
 from app.db.engine import engine
+from app.security.csrf import CSRFMiddleware
 from app.security.rate_limit import limiter
 
 configure_logging(debug=settings.DEBUG)
@@ -55,6 +58,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
+    await close_redis_pool()
     await engine.dispose()
     logger.info("shutdown")
 
@@ -72,12 +76,16 @@ app = FastAPI(
 
 app.state.limiter = limiter
 
+# Middleware order: Starlette is LIFO — last added runs outermost (first).
+# Execution order: CORS → CSRF → RLS → route handler
+app.add_middleware(RLSMiddleware)
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-CSRF-Token"],
 )
 
 

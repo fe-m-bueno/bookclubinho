@@ -75,6 +75,17 @@ def decode_token(token: str) -> dict[str, Any]:
     return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
 
 
+def extract_access_token_sub(token: str) -> str | None:
+    """Decode an access JWT and return the ``sub`` claim, or None on any failure."""
+    try:
+        payload = decode_token(token)
+        if payload.get("type") != "access":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
+
+
 def safe_compare(a: str, b: str) -> bool:
     """Constant-time string comparison to prevent timing attacks."""
     return hmac.compare_digest(a.encode(), b.encode())

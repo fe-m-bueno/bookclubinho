@@ -57,7 +57,7 @@ class TestListGenres:
     def test_genre_fields_present(self, client: TestClient) -> None:
         response = client.get("/api/v1/config/genres")
         for genre in response.json()["genres"]:
-            assert GENRE_FIELDS == set(genre.keys()), (
+            assert set(genre.keys()) == GENRE_FIELDS, (
                 f"Gênero {genre.get('slug')} com campos inesperados: {set(genre.keys())}"
             )
 
