@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rls import get_rls_user_id
 from app.core.security import extract_access_token_sub
 from app.db.engine import AsyncSessionLocal
+from app.db.models.group import Group, GroupMember, GroupRole
 from app.db.models.user import User
 
 _NOT_RESOLVED: object = object()  # sentinel for "user not yet looked up"
@@ -119,3 +121,44 @@ async def get_optional_user(
 
 CurrentUser = Annotated[User, Depends(get_current_active_user)]
 OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
+async def get_group_membership(
+    group_id: uuid.UUID, user: CurrentUser, db: DBSession
+) -> GroupMember:
+    """Resolve the authenticated user's membership in the given group.
+
+    Returns 404 (not 403) to avoid leaking group existence.
+    """
+    result = await db.execute(
+        select(GroupMember)
+        .join(Group, GroupMember.group_id == Group.id)
+        .where(
+            GroupMember.user_id == user.id,
+            GroupMember.group_id == group_id,
+            Group.is_active.is_(True),
+        )
+    )
+    member = result.scalar_one_or_none()
+    if member is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Clube não encontrado.",
+        )
+    return member
+
+
+GroupMemberDep = Annotated[GroupMember, Depends(get_group_membership)]
+
+
+async def get_group_admin_membership(member: GroupMemberDep) -> GroupMember:
+    """Require the resolved member to have the admin role."""
+    if member.role != GroupRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem realizar esta ação.",
+        )
+    return member
+
+
+GroupAdminDep = Annotated[GroupMember, Depends(get_group_admin_membership)]
