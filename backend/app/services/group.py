@@ -301,6 +301,91 @@ async def update_group(
     return group
 
 
+async def _get_active_group_with_members(
+    db: AsyncSession, group_id: uuid.UUID
+) -> Group:
+    """Fetch an active group with eagerly loaded members, or raise 404."""
+    result = await db.execute(
+        select(Group)
+        .where(Group.id == group_id, Group.is_active.is_(True))
+        .options(selectinload(Group.members))
+    )
+    group = result.scalar_one_or_none()
+    if group is None:
+        raise GroupError("Clube não encontrado.", status_code=404)
+    return group
+
+
+def _find_member_or_raise(group: Group, user_id: uuid.UUID) -> GroupMember:
+    """Find a member in the group's loaded members, or raise 404."""
+    target = next((m for m in group.members if m.user_id == user_id), None)
+    if target is None:
+        raise GroupError("Membro não encontrado.", status_code=404)
+    return target
+
+
+async def update_member_role(
+    db: AsyncSession,
+    group_id: uuid.UUID,
+    target_user_id: uuid.UUID,
+    new_role: GroupRole,
+    requesting_user_id: uuid.UUID,
+) -> GroupMember:
+    """Update a member's role within a group (admin only)."""
+    group = await _get_active_group_with_members(db, group_id)
+    target = _find_member_or_raise(group, target_user_id)
+
+    # Prevent demoting self if sole admin
+    if (
+        target.user_id == requesting_user_id
+        and target.role == GroupRole.ADMIN
+        and new_role == GroupRole.MEMBER
+    ):
+        other_admins = [
+            m for m in group.members
+            if m.user_id != requesting_user_id and m.role == GroupRole.ADMIN
+        ]
+        if not other_admins:
+            raise GroupError(
+                "Você é o único admin. Promova outro membro antes de se rebaixar.",
+                status_code=403,
+            )
+
+    target.role = new_role
+    logger.info(
+        "member_role_updated",
+        group_id=str(group_id),
+        target_user_id=str(target_user_id),
+        new_role=new_role,
+    )
+    return target
+
+
+async def remove_group_member(
+    db: AsyncSession,
+    group_id: uuid.UUID,
+    target_user_id: uuid.UUID,
+    requesting_user_id: uuid.UUID,
+) -> None:
+    """Remove a member from the group (admin only). Admin cannot remove themselves."""
+    if target_user_id == requesting_user_id:
+        raise GroupError(
+            "Use a opção 'Sair do grupo' para remover a si mesmo.",
+            status_code=400,
+        )
+
+    group = await _get_active_group_with_members(db, group_id)
+    target = _find_member_or_raise(group, target_user_id)
+
+    await db.delete(target)
+    logger.info(
+        "member_removed",
+        group_id=str(group_id),
+        target_user_id=str(target_user_id),
+        removed_by=str(requesting_user_id),
+    )
+
+
 async def soft_delete_group(db: AsyncSession, group_id: uuid.UUID) -> None:
     """Soft-delete a group by setting is_active = False."""
     result = await db.execute(select(Group).where(Group.id == group_id, Group.is_active.is_(True)))

@@ -28,7 +28,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
                 # SET LOCAL does not support bind parameters ($1/:uid).
                 # Validate as UUID to prevent SQL injection, then interpolate.
                 _uid = str(uuid.UUID(user_id))
-                await session.execute
+                await session.execute(
                     text(f"SET LOCAL app.current_user_id = '{_uid}'")
                 )
             yield session

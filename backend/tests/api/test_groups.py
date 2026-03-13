@@ -723,6 +723,7 @@ class TestGetGroupEndpoint:
 
         assert isinstance(result, GroupDetailResponse)
         assert result.invite_code == "SECRETCD"
+        assert result.current_user_id == str(user.id)
 
     @pytest.mark.asyncio
     async def test_member_does_not_see_invite_code(self) -> None:
@@ -751,6 +752,83 @@ class TestGetGroupEndpoint:
 
 
 # ── Endpoint: PATCH /groups/{group_id} (update) ─────────────────────────────
+
+
+class TestReadUpload:
+    """Test _read_upload helper — ensures photo is read even when size is None.
+
+    Uses real Starlette UploadFile (which is the class FastAPI actually receives
+    at runtime) rather than MagicMock, to catch isinstance mismatches.
+    """
+
+    @pytest.mark.asyncio
+    async def test_photo_with_none_size_is_still_read(self) -> None:
+        """Bug: browser FormData uploads may have size=None on UploadFile.
+        _read_upload must still read the file contents."""
+        import io
+
+        from starlette.datastructures import UploadFile
+
+        from app.api.v1.endpoints.groups import _read_upload
+
+        upload = UploadFile(
+            file=io.BytesIO(b"fake-image-bytes"),
+            filename="test.png",
+            size=None,
+            headers={"content-type": "image/png"},
+        )
+
+        photo_data, content_type = await _read_upload(upload)
+        assert photo_data == b"fake-image-bytes"
+        assert content_type == "image/png"
+
+    @pytest.mark.asyncio
+    async def test_photo_with_zero_size_is_still_read(self) -> None:
+        """UploadFile with size=0 should still attempt to read."""
+        import io
+
+        from starlette.datastructures import UploadFile
+
+        from app.api.v1.endpoints.groups import _read_upload
+
+        upload = UploadFile(
+            file=io.BytesIO(b"image-data"),
+            filename="test.jpg",
+            size=0,
+            headers={"content-type": "image/jpeg"},
+        )
+
+        photo_data, content_type = await _read_upload(upload)
+        assert photo_data == b"image-data"
+        assert content_type == "image/jpeg"
+
+    @pytest.mark.asyncio
+    async def test_none_photo_returns_none(self) -> None:
+        from app.api.v1.endpoints.groups import _read_upload
+
+        photo_data, content_type = await _read_upload(None)
+        assert photo_data is None
+        assert content_type is None
+
+    @pytest.mark.asyncio
+    async def test_empty_read_returns_none(self) -> None:
+        """If the uploaded file is empty, treat as no photo."""
+        import io
+
+        from starlette.datastructures import UploadFile
+
+        from app.api.v1.endpoints.groups import _read_upload
+
+        upload = UploadFile(
+            file=io.BytesIO(b""),
+            filename="empty.png",
+            size=None,
+            headers={"content-type": "image/png"},
+        )
+
+        photo_data, content_type = await _read_upload(upload)
+        assert photo_data is None
+        assert content_type is None
 
 
 class TestUpdateGroupEndpoint:
@@ -1184,3 +1262,268 @@ class TestGetQrEndpoint:
 
         assert isinstance(result, QrCodeResponse)
         assert result.qr_url == "https://cdn.example.com/qrcodes/test.webp"
+
+
+# ── Service: update_member_role ──────────────────────────────────────────────
+
+
+class TestUpdateMemberRole:
+    @pytest.mark.asyncio
+    async def test_promote_member_to_admin(self) -> None:
+        from app.services.group import update_member_role
+
+        admin_id = uuid.uuid4()
+        target_id = uuid.uuid4()
+        group_id = uuid.uuid4()
+
+        admin = _make_member(user_id=admin_id, group_id=group_id, role="admin")
+        target = _make_member(user_id=target_id, group_id=group_id, role="member")
+        group = _make_group(id=group_id, members=[admin, target])
+        mock_db = mock_db_returning(group)
+
+        result = await update_member_role(
+            db=mock_db,
+            group_id=group_id,
+            target_user_id=target_id,
+            new_role="admin",
+            requesting_user_id=admin_id,
+        )
+        assert result.role == "admin"
+
+    @pytest.mark.asyncio
+    async def test_demote_admin_to_member(self) -> None:
+        from app.services.group import update_member_role
+
+        admin1_id = uuid.uuid4()
+        admin2_id = uuid.uuid4()
+        group_id = uuid.uuid4()
+
+        admin1 = _make_member(user_id=admin1_id, group_id=group_id, role="admin")
+        admin2 = _make_member(user_id=admin2_id, group_id=group_id, role="admin")
+        group = _make_group(id=group_id, members=[admin1, admin2])
+        mock_db = mock_db_returning(group)
+
+        result = await update_member_role(
+            db=mock_db,
+            group_id=group_id,
+            target_user_id=admin2_id,
+            new_role="member",
+            requesting_user_id=admin1_id,
+        )
+        assert result.role == "member"
+
+    @pytest.mark.asyncio
+    async def test_demote_last_admin_raises_403(self) -> None:
+        from app.services.group import update_member_role
+
+        admin_id = uuid.uuid4()
+        member_id = uuid.uuid4()
+        group_id = uuid.uuid4()
+
+        admin = _make_member(user_id=admin_id, group_id=group_id, role="admin")
+        member = _make_member(user_id=member_id, group_id=group_id, role="member")
+        group = _make_group(id=group_id, members=[admin, member])
+        mock_db = mock_db_returning(group)
+
+        with pytest.raises(GroupError, match="único admin") as exc_info:
+            await update_member_role(
+                db=mock_db,
+                group_id=group_id,
+                target_user_id=admin_id,
+                new_role="member",
+                requesting_user_id=admin_id,
+            )
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_target_not_member_raises_404(self) -> None:
+        from app.services.group import update_member_role
+
+        admin_id = uuid.uuid4()
+        group_id = uuid.uuid4()
+
+        admin = _make_member(user_id=admin_id, group_id=group_id, role="admin")
+        group = _make_group(id=group_id, members=[admin])
+        mock_db = mock_db_returning(group)
+
+        with pytest.raises(GroupError, match="não encontrado") as exc_info:
+            await update_member_role(
+                db=mock_db,
+                group_id=group_id,
+                target_user_id=uuid.uuid4(),
+                new_role="admin",
+                requesting_user_id=admin_id,
+            )
+        assert exc_info.value.status_code == 404
+
+
+# ── Service: remove_group_member ─────────────────────────────────────────────
+
+
+class TestRemoveGroupMember:
+    @pytest.mark.asyncio
+    async def test_remove_member_success(self) -> None:
+        from app.services.group import remove_group_member
+
+        admin_id = uuid.uuid4()
+        target_id = uuid.uuid4()
+        group_id = uuid.uuid4()
+
+        admin = _make_member(user_id=admin_id, group_id=group_id, role="admin")
+        target = _make_member(user_id=target_id, group_id=group_id, role="member")
+        group = _make_group(id=group_id, members=[admin, target])
+        mock_db = mock_db_returning(group)
+        mock_db.delete = AsyncMock()
+
+        await remove_group_member(
+            db=mock_db,
+            group_id=group_id,
+            target_user_id=target_id,
+            requesting_user_id=admin_id,
+        )
+        mock_db.delete.assert_called_once_with(target)
+
+    @pytest.mark.asyncio
+    async def test_admin_cannot_remove_self(self) -> None:
+        from app.services.group import remove_group_member
+
+        admin_id = uuid.uuid4()
+        group_id = uuid.uuid4()
+
+        with pytest.raises(GroupError, match="Sair do grupo") as exc_info:
+            await remove_group_member(
+                db=AsyncMock(),
+                group_id=group_id,
+                target_user_id=admin_id,
+                requesting_user_id=admin_id,
+            )
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_target_not_found_raises_404(self) -> None:
+        from app.services.group import remove_group_member
+
+        admin_id = uuid.uuid4()
+        group_id = uuid.uuid4()
+
+        admin = _make_member(user_id=admin_id, group_id=group_id, role="admin")
+        group = _make_group(id=group_id, members=[admin])
+        mock_db = mock_db_returning(group)
+
+        with pytest.raises(GroupError, match="não encontrado") as exc_info:
+            await remove_group_member(
+                db=mock_db,
+                group_id=group_id,
+                target_user_id=uuid.uuid4(),
+                requesting_user_id=admin_id,
+            )
+        assert exc_info.value.status_code == 404
+
+
+# ── Endpoint: PATCH /groups/{group_id}/members/{user_id} ────────────────────
+
+
+class TestUpdateMemberRoleEndpoint:
+    @pytest.mark.asyncio
+    async def test_success(self) -> None:
+        from app.api.v1.endpoints.groups import update_member_role_endpoint
+        from app.schemas.group import MemberRoleUpdateRequest, MemberRoleUpdateResponse
+
+        group_id = uuid.uuid4()
+        target_id = uuid.uuid4()
+        user = make_user()
+        admin_mock = _make_member(user_id=user.id, group_id=group_id, role=GroupRole.ADMIN)
+        target_member = _make_member(user_id=target_id, group_id=group_id, role="admin")
+        mock_db = AsyncMock()
+
+        body = MemberRoleUpdateRequest(role="admin")
+
+        with patch(
+            "app.api.v1.endpoints.groups.update_member_role",
+            new_callable=AsyncMock,
+            return_value=target_member,
+        ):
+            result = await update_member_role_endpoint(
+                user_id=target_id, body=body, db=mock_db, user=user, admin=admin_mock
+            )
+
+        assert isinstance(result, MemberRoleUpdateResponse)
+        assert result.user_id == str(target_id)
+
+    @pytest.mark.asyncio
+    async def test_target_not_found(self) -> None:
+        from app.api.v1.endpoints.groups import update_member_role_endpoint
+        from app.schemas.group import MemberRoleUpdateRequest
+
+        group_id = uuid.uuid4()
+        user = make_user()
+        admin_mock = _make_member(user_id=user.id, group_id=group_id, role=GroupRole.ADMIN)
+        mock_db = AsyncMock()
+
+        body = MemberRoleUpdateRequest(role="admin")
+
+        with (
+            patch(
+                "app.api.v1.endpoints.groups.update_member_role",
+                new_callable=AsyncMock,
+                side_effect=GroupError("Membro não encontrado.", status_code=404),
+            ),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await update_member_role_endpoint(
+                user_id=uuid.uuid4(), body=body, db=mock_db, user=user, admin=admin_mock
+            )
+        assert exc_info.value.status_code == 404
+
+
+# ── Endpoint: DELETE /groups/{group_id}/members/{user_id} ────────────────────
+
+
+class TestRemoveGroupMemberEndpoint:
+    @pytest.mark.asyncio
+    async def test_success(self) -> None:
+        from app.api.v1.endpoints.groups import remove_member_endpoint
+        from app.schemas.group import MessageResponse
+
+        group_id = uuid.uuid4()
+        target_id = uuid.uuid4()
+        user = make_user()
+        admin_mock = _make_member(user_id=user.id, group_id=group_id, role=GroupRole.ADMIN)
+        mock_db = AsyncMock()
+
+        with patch(
+            "app.api.v1.endpoints.groups.remove_group_member",
+            new_callable=AsyncMock,
+        ):
+            result = await remove_member_endpoint(
+                user_id=target_id, db=mock_db, user=user, admin=admin_mock
+            )
+
+        assert isinstance(result, MessageResponse)
+        assert result.message == "Membro removido com sucesso!"
+
+    @pytest.mark.asyncio
+    async def test_current_user_id_in_group_detail(self) -> None:
+        """Verify current_user_id is included in GET group detail response."""
+        from app.api.v1.endpoints.groups import get_group_endpoint
+        from app.schemas.group import GroupDetailResponse
+
+        group_id = uuid.uuid4()
+        user = make_user()
+        member_mock = _make_member(
+            user_id=user.id,
+            group_id=group_id,
+            role=GroupRole.MEMBER,
+        )
+        group = _make_group(id=group_id, members=[member_mock])
+        mock_db = AsyncMock()
+
+        with patch(
+            "app.api.v1.endpoints.groups.get_group_detail",
+            new_callable=AsyncMock,
+            return_value=group,
+        ):
+            result = await get_group_endpoint(db=mock_db, user=user, member=member_mock)
+
+        assert isinstance(result, GroupDetailResponse)
+        assert result.current_user_id == str(user.id)

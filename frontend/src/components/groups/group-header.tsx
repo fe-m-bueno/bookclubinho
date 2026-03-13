@@ -7,6 +7,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { MemberAvatarStack } from "./member-avatar-stack";
 import type { GroupDetailResponse } from "@/lib/types/group";
 
@@ -36,15 +37,18 @@ export function GroupHeader({ group }: GroupHeaderProps) {
         </div>
       </div>
 
-      {isAdmin && (
-        <Link
-          href={`/groups/${group.id}/settings`}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-muted transition-colors shrink-0"
-          aria-label="Configurações do grupo"
-        >
-          <Settings className="h-4 w-4 text-muted-foreground" />
-        </Link>
-      )}
+      <div className="flex items-center gap-1 shrink-0">
+        <ThemeToggle />
+        {isAdmin && (
+          <Link
+            href={`/groups/${group.id}/settings`}
+            className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-muted transition-colors"
+            aria-label="Configurações do grupo"
+          >
+            <Settings className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        )}
+      </div>
     </header>
   );
 }

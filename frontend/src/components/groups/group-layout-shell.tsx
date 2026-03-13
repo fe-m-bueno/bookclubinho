@@ -35,11 +35,11 @@ export function GroupLayoutShell({ groupId, children }: GroupLayoutShellProps) {
   return (
     <GroupProvider group={group} refetch={refetch}>
       <div className="flex flex-col min-h-screen">
-        <div className="px-4 pt-4">
+        <div className="mx-auto w-full max-w-7xl px-4 pt-4 space-y-2">
           <GroupHeader group={group} />
+          <GroupTabBar groupId={groupId} variant="desktop" />
         </div>
-        <GroupTabBar groupId={groupId} variant="desktop" />
-        <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <main className="mx-auto w-full max-w-7xl flex-1 overflow-y-auto px-4 pt-4 pb-20 md:pb-0">
           {children}
         </main>
         <GroupTabBar groupId={groupId} variant="mobile" />

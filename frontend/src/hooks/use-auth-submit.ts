@@ -12,7 +12,7 @@ interface StatusHandler {
 
 interface UseAuthSubmitOptions {
   url: string;
-  method?: "POST";
+  method?: "POST" | "PATCH" | "DELETE";
   headers?: Record<string, string>;
   onSuccess: (res: Response) => unknown;
   statusHandlers?: StatusHandler[];

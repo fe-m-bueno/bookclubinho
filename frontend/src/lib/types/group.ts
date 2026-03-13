@@ -25,6 +25,13 @@ export interface GroupDetailResponse {
   max_members: number;
   member_count: number;
   members: MemberSummary[];
+  current_user_id: string;
   current_round: null;
   created_at: string;
+}
+
+export interface MemberRoleUpdateResponse {
+  user_id: string;
+  role: "admin" | "member";
+  message: string;
 }
