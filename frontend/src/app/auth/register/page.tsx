@@ -22,8 +22,6 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { useResendCooldown } from "@/hooks/use-resend-cooldown";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
 const registerSchema = z
   .object({
     display_name: z.string().min(1, "Nome é obrigatório"),
@@ -54,7 +52,7 @@ export default function RegisterPage() {
   });
 
   const { submit: submitRegister, loading } = useAuthSubmit({
-    url: `${API_URL}/api/v1/auth/register`,
+    url: "/api/v1/auth/register",
     onSuccess: () => {
       setSubmittedEmail(form.getValues("email"));
       setSubmitted(true);
@@ -71,7 +69,7 @@ export default function RegisterPage() {
   });
 
   const { submit: submitResend, loading: resendLoading } = useAuthSubmit({
-    url: `${API_URL}/api/v1/auth/resend-verification`,
+    url: "/api/v1/auth/resend-verification",
     onSuccess: () => {
       toast.success("E-mail reenviado!");
       startCooldown();

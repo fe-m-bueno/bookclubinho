@@ -1,12 +1,43 @@
-"""Tests for the CSRF double-submit cookie middleware."""
+"""Tests for the CSRF double-submit cookie middleware and seed endpoint."""
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
+from app.api.v1.endpoints.auth import router as auth_router
 from app.security.csrf import _CSRF_COOKIE, _CSRF_HEADER, CSRFMiddleware
+
+# ── CSRF seed endpoint ────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def csrf_client() -> TestClient:
+    app = FastAPI()
+    app.include_router(auth_router, prefix="/api/v1/auth")
+    app.add_middleware(CSRFMiddleware)
+    return TestClient(app)
+
+
+class TestCsrfSeedEndpoint:
+    def test_returns_204(self, csrf_client: TestClient) -> None:
+        response = csrf_client.get("/api/v1/auth/csrf")
+        assert response.status_code == 204
+
+    def test_sets_csrf_cookie(self, csrf_client: TestClient) -> None:
+        response = csrf_client.get("/api/v1/auth/csrf")
+        assert _CSRF_COOKIE in response.cookies
+
+    def test_cookie_is_not_httponly(self, csrf_client: TestClient) -> None:
+        response = csrf_client.get("/api/v1/auth/csrf")
+        cookie_header = response.headers.get("set-cookie", "")
+        assert "httponly" not in cookie_header.lower()
+
+
+# ── CSRF middleware ───────────────────────────────────────────────────────────
 
 
 class TestCSRFMiddleware:

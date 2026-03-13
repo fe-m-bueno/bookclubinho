@@ -14,9 +14,7 @@ import { FormField } from "@/components/auth/form-field";
 import { AvatarUpload } from "./avatar-upload";
 import { UsernameField } from "./username-field";
 import { USERNAME_REGEX, type UsernameStatus } from "@/hooks/use-username-check";
-import { withCsrf } from "@/lib/csrf";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 
 const profileSchema = z.object({
   username: z
@@ -40,9 +38,10 @@ interface StepProfileFormProps {
   onNext: () => void;
 }
 
+const NO_CONTENT_TYPE = {} as const;
+
 export function StepProfileForm({ onNext }: StepProfileFormProps) {
   const [avatar, setAvatar] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
 
   const form = useForm<ProfileFormData>({
@@ -53,6 +52,22 @@ export function StepProfileForm({ onNext }: StepProfileFormProps) {
 
   const username = form.watch("username");
   const statusText = form.watch("statusText") ?? "";
+
+  const { submit, loading: submitting } = useAuthSubmit({
+    url: "/api/v1/onboarding/profile",
+    headers: NO_CONTENT_TYPE,
+    onSuccess: () => onNext(),
+    statusHandlers: [
+      {
+        status: 422,
+        handler: async (res) => {
+          const body = await res.json();
+          toast.error(body.detail || "Erro de validação");
+        },
+      },
+      { status: 409, handler: () => toast.error("Username já está em uso") },
+    ],
+  });
 
   const isUsernameOk = usernameStatus === "available";
   const canSubmit = form.formState.isValid && isUsernameOk && !submitting;
@@ -66,42 +81,13 @@ export function StepProfileForm({ onNext }: StepProfileFormProps) {
   }, [form]);
 
   async function onSubmit(data: ProfileFormData) {
-    setSubmitting(true);
-
     const formData = new FormData();
     formData.append("username", data.username);
     formData.append("display_name", data.displayName);
     if (data.statusText) formData.append("status_text", data.statusText);
     if (avatar) formData.append("avatar", avatar);
 
-    try {
-      const res = await fetch(`${API_URL}/api/v1/onboarding/profile`, {
-        method: "POST",
-        headers: withCsrf(),
-        body: formData,
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        onNext();
-        return;
-      }
-
-      if (res.status === 422) {
-        const body = await res.json();
-        toast.error(body.detail || "Erro de validação");
-      } else if (res.status === 409) {
-        toast.error("Username já está em uso");
-      } else if (res.status === 429) {
-        toast.error("Muitas tentativas. Aguarde um momento.");
-      } else {
-        toast.error("Erro ao salvar perfil. Tente novamente.");
-      }
-    } catch {
-      toast.error("Erro de conexão. Verifique sua internet.");
-    } finally {
-      setSubmitting(false);
-    }
+    await submit(formData);
   }
 
   return (

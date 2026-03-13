@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { withCsrf } from "@/lib/csrf";
+import { ensureCsrf, withCsrf } from "@/lib/csrf";
 
 interface StatusHandler {
   status: number;
@@ -43,6 +43,7 @@ export function useAuthSubmit(options: UseAuthSubmitOptions) {
 
     setLoading(true);
     try {
+      await ensureCsrf();
       const res = await fetch(url, {
         method,
         headers: withCsrf(headers),

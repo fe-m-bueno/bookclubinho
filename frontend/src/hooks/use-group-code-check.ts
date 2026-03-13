@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
 export const INVITE_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_REGEX = new RegExp(`^[${INVITE_CODE_CHARS}]{8}$`);
 const DEBOUNCE_MS = 500;
@@ -38,7 +36,7 @@ export function useGroupCodeCheck(code: string) {
 
       try {
         const res = await fetch(
-          `${API_URL}/api/v1/groups/validate/${encodeURIComponent(code)}`,
+          `/api/v1/groups/validate/${encodeURIComponent(code)}`,
           { credentials: "include", signal: controller.signal },
         );
 

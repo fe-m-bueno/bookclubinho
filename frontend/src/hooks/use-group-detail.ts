@@ -4,8 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GroupDetailResponse } from "@/lib/types/group";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
 interface UseGroupDetailReturn {
   group: GroupDetailResponse | null;
   loading: boolean;
@@ -31,7 +29,7 @@ export function useGroupDetail(groupId: string): UseGroupDetailReturn {
     setError(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/groups/${groupId}`, {
+      const res = await fetch(`/api/v1/groups/${groupId}`, {
         credentials: "include",
         signal: controller.signal,
       });
