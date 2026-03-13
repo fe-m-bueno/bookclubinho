@@ -82,3 +82,12 @@ class GroupDetailResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class RegenerateCodeResponse(BaseModel):
+    invite_code: str
+    qr_url: str
+
+
+class QrCodeResponse(BaseModel):
+    qr_url: str

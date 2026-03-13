@@ -37,6 +37,7 @@ dependencies = [
     # Storage (R2/S3)
     "boto3>=1.35.0",
     "Pillow>=11.0.0",
+    "qrcode[pil]>=8.0",
 
     # Email
     "resend>=2.4.0",

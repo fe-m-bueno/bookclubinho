@@ -26,14 +26,18 @@ from app.schemas.group import (
     GroupValidateResponse,
     MemberSummary,
     MessageResponse,
+    QrCodeResponse,
+    RegenerateCodeResponse,
 )
 from app.services.group import (
     GroupError,
     create_group,
     get_group_detail,
+    get_qr_url,
     join_group,
     leave_group,
     list_user_groups,
+    regenerate_invite_code,
     soft_delete_group,
     update_group,
     validate_group_code,
@@ -209,6 +213,37 @@ async def leave_group_endpoint(
     except GroupError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return MessageResponse(message="Você saiu do clube.")
+
+
+@router.post(
+    "/{group_id}/regenerate-code",
+    response_model=RegenerateCodeResponse,
+    summary="Regenerar codigo de convite",
+)
+async def regenerate_code_endpoint(
+    db: DBSession,
+    user: CurrentUser,
+    admin: GroupAdminDep,
+) -> RegenerateCodeResponse:
+    """Gera novo codigo de convite e QR code (apenas admins)."""
+    try:
+        code, qr_url = await regenerate_invite_code(db=db, group_id=admin.group_id)
+    except GroupError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return RegenerateCodeResponse(invite_code=code, qr_url=qr_url)
+
+
+@router.get(
+    "/{group_id}/qr",
+    response_model=QrCodeResponse,
+    summary="Obter URL do QR code",
+)
+async def get_qr_endpoint(
+    user: CurrentUser,
+    member: GroupMemberDep,
+) -> QrCodeResponse:
+    """Retorna a URL do QR code do grupo (apenas membros)."""
+    return QrCodeResponse(qr_url=get_qr_url(member.group_id))
 
 
 @router.patch(

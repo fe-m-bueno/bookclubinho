@@ -1003,3 +1003,184 @@ class TestLeaveGroupEndpoint:
             await leave_group_endpoint(db=mock_db, user=user, member=member_mock)
 
         assert exc_info.value.status_code == 404
+
+
+# ── Service: regenerate_invite_code ──────────────────────────────────────────
+
+
+class TestRegenerateInviteCode:
+    @pytest.mark.asyncio
+    async def test_regenerate_success(self) -> None:
+        from app.services.group import regenerate_invite_code
+
+        group_id = uuid.uuid4()
+        group = _make_group(id=group_id, invite_code="OLDCODE1")
+
+        # First call: select Group (returns group)
+        # Second call: select Group.id collision check (returns None = no collision)
+        mock_db = AsyncMock()
+        group_result = MagicMock()
+        group_result.scalar_one_or_none.return_value = group
+        no_collision = MagicMock()
+        no_collision.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(side_effect=[group_result, no_collision])
+
+        with patch(
+            "app.services.group._upload_qr_code",
+            new_callable=AsyncMock,
+            return_value="https://cdn.example.com/qrcodes/test.webp",
+        ):
+            code, qr_url = await regenerate_invite_code(db=mock_db, group_id=group_id)
+
+        assert code != "OLDCODE1"
+        assert len(code) == 8
+        assert qr_url == "https://cdn.example.com/qrcodes/test.webp"
+        assert group.invite_code == code
+
+    @pytest.mark.asyncio
+    async def test_regenerate_retries_on_collision(self) -> None:
+        from app.services.group import regenerate_invite_code
+
+        group_id = uuid.uuid4()
+        group = _make_group(id=group_id)
+
+        mock_db = AsyncMock()
+        group_result = MagicMock()
+        group_result.scalar_one_or_none.return_value = group
+        collision = MagicMock()
+        collision.scalar_one_or_none.return_value = uuid.uuid4()
+        no_collision = MagicMock()
+        no_collision.scalar_one_or_none.return_value = None
+
+        mock_db.execute = AsyncMock(
+            side_effect=[group_result, collision, collision, no_collision]
+        )
+
+        with patch(
+            "app.services.group._upload_qr_code",
+            new_callable=AsyncMock,
+            return_value="https://cdn.example.com/qrcodes/test.webp",
+        ):
+            code, qr_url = await regenerate_invite_code(db=mock_db, group_id=group_id)
+
+        assert len(code) == 8
+        assert mock_db.execute.call_count == 4  # 1 group + 2 collisions + 1 success
+
+    @pytest.mark.asyncio
+    async def test_regenerate_exhausts_retries(self) -> None:
+        from app.services.group import regenerate_invite_code
+
+        group_id = uuid.uuid4()
+        group = _make_group(id=group_id)
+
+        mock_db = AsyncMock()
+        group_result = MagicMock()
+        group_result.scalar_one_or_none.return_value = group
+        collision = MagicMock()
+        collision.scalar_one_or_none.return_value = uuid.uuid4()
+
+        mock_db.execute = AsyncMock(
+            side_effect=[group_result] + [collision] * 5
+        )
+
+        with pytest.raises(GroupError, match="código único") as exc_info:
+            await regenerate_invite_code(db=mock_db, group_id=group_id)
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_regenerate_group_not_found(self) -> None:
+        from app.services.group import regenerate_invite_code
+
+        mock_db = mock_db_returning(None)
+
+        with pytest.raises(GroupError, match="não encontrado") as exc_info:
+            await regenerate_invite_code(db=mock_db, group_id=uuid.uuid4())
+        assert exc_info.value.status_code == 404
+
+
+# ── Service: get_qr_url ─────────────────────────────────────────────────────
+
+
+class TestGetQrUrl:
+    def test_returns_deterministic_url(self) -> None:
+        from app.services.group import get_qr_url
+
+        group_id = uuid.UUID("12345678-1234-1234-1234-123456789abc")
+        with patch(
+            "app.services.group.get_public_url",
+            side_effect=lambda p: f"https://cdn.example.com/{p}",
+        ):
+            result = get_qr_url(group_id)
+        assert result == "https://cdn.example.com/qrcodes/12345678-1234-1234-1234-123456789abc.webp"
+
+
+# ── Endpoint: POST /groups/{group_id}/regenerate-code ────────────────────────
+
+
+class TestRegenerateCodeEndpoint:
+    @pytest.mark.asyncio
+    async def test_success(self) -> None:
+        from app.api.v1.endpoints.groups import regenerate_code_endpoint
+        from app.schemas.group import RegenerateCodeResponse
+
+        group_id = uuid.uuid4()
+        user = make_user()
+        admin_mock = _make_member(user_id=user.id, group_id=group_id, role=GroupRole.ADMIN)
+        mock_db = AsyncMock()
+
+        with patch(
+            "app.api.v1.endpoints.groups.regenerate_invite_code",
+            new_callable=AsyncMock,
+            return_value=("NEWCODE1", "https://cdn.example.com/qrcodes/test.webp"),
+        ):
+            result = await regenerate_code_endpoint(
+                db=mock_db, user=user, admin=admin_mock
+            )
+
+        assert isinstance(result, RegenerateCodeResponse)
+        assert result.invite_code == "NEWCODE1"
+        assert result.qr_url == "https://cdn.example.com/qrcodes/test.webp"
+
+    @pytest.mark.asyncio
+    async def test_service_error(self) -> None:
+        from app.api.v1.endpoints.groups import regenerate_code_endpoint
+
+        group_id = uuid.uuid4()
+        user = make_user()
+        admin_mock = _make_member(user_id=user.id, group_id=group_id, role=GroupRole.ADMIN)
+        mock_db = AsyncMock()
+
+        with (
+            patch(
+                "app.api.v1.endpoints.groups.regenerate_invite_code",
+                new_callable=AsyncMock,
+                side_effect=GroupError("Clube não encontrado.", status_code=404),
+            ),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await regenerate_code_endpoint(db=mock_db, user=user, admin=admin_mock)
+
+        assert exc_info.value.status_code == 404
+
+
+# ── Endpoint: GET /groups/{group_id}/qr ──────────────────────────────────────
+
+
+class TestGetQrEndpoint:
+    @pytest.mark.asyncio
+    async def test_returns_qr_url(self) -> None:
+        from app.api.v1.endpoints.groups import get_qr_endpoint
+        from app.schemas.group import QrCodeResponse
+
+        group_id = uuid.uuid4()
+        user = make_user()
+        member_mock = _make_member(user_id=user.id, group_id=group_id)
+
+        with patch(
+            "app.api.v1.endpoints.groups.get_qr_url",
+            return_value="https://cdn.example.com/qrcodes/test.webp",
+        ):
+            result = await get_qr_endpoint(user=user, member=member_mock)
+
+        assert isinstance(result, QrCodeResponse)
+        assert result.qr_url == "https://cdn.example.com/qrcodes/test.webp"

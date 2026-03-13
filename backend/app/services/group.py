@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import uuid
 from typing import TYPE_CHECKING
 
@@ -15,11 +16,14 @@ if TYPE_CHECKING:
 
     from app.db.models.user import User
 
+import qrcode
+
+from app.core.config import settings
 from app.core.exceptions import ServiceError
 from app.core.security import generate_group_code
 from app.db.models.group import Group, GroupMember, GroupRole
 from app.security.sanitizer import sanitize
-from app.storage.s3_storage import upload_file
+from app.storage.s3_storage import get_public_url, upload_file
 
 logger = structlog.get_logger(__name__)
 
@@ -109,14 +113,58 @@ async def leave_group(db: AsyncSession, user: User, group_id: uuid.UUID) -> None
     logger.info("group_left", group_id=str(group_id), user_id=str(user.id))
 
 
+# ── QR Code / Regenerate ─────────────────────────────────────────────────────
+
+def _generate_qr_bytes(url: str) -> bytes:
+    """Generate a QR code PNG image for the given URL."""
+    img = qrcode.make(url)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+async def _upload_qr_code(group_id: uuid.UUID, code: str) -> str:
+    """Generate QR code image and upload to R2."""
+    join_url = f"{settings.APP_URL.rstrip('/')}/join/{code}"
+
+    def _generate_and_upload() -> str:
+        qr_bytes = _generate_qr_bytes(join_url)
+        return upload_file(f"qrcodes/{group_id}.webp", qr_bytes, "image/png")
+
+    return await asyncio.to_thread(_generate_and_upload)
+
+
+def get_qr_url(group_id: uuid.UUID) -> str:
+    """Return deterministic QR code URL for a group."""
+    return get_public_url(f"qrcodes/{group_id}.webp")
+
+
+async def regenerate_invite_code(
+    db: AsyncSession, group_id: uuid.UUID
+) -> tuple[str, str]:
+    """Generate a new invite code and QR code for the group."""
+    result = await db.execute(
+        select(Group).where(Group.id == group_id, Group.is_active.is_(True))
+    )
+    group = result.scalar_one_or_none()
+    if group is None:
+        raise GroupError("Clube não encontrado.", status_code=404)
+
+    code = await _generate_unique_code(db, max_retries=5)
+    group.invite_code = code
+    qr_url = await _upload_qr_code(group_id, code)
+    logger.info("invite_code_regenerated", group_id=str(group_id))
+    return code, qr_url
+
+
 # ── CRUD ─────────────────────────────────────────────────────────────────────
 
 _MAX_CODE_RETRIES = 3
 
 
-async def _generate_unique_code(db: AsyncSession) -> str:
+async def _generate_unique_code(db: AsyncSession, max_retries: int = _MAX_CODE_RETRIES) -> str:
     """Generate an invite code that doesn't collide with existing ones."""
-    for _ in range(_MAX_CODE_RETRIES):
+    for _ in range(max_retries):
         code = generate_group_code()
         result = await db.execute(select(Group.id).where(Group.invite_code == code))
         if result.scalar_one_or_none() is None:
@@ -171,9 +219,6 @@ async def create_group(
     """Create a new group and add the creator as admin."""
     name = _validate_name(name)
     description = _validate_description(description)
-
-    if photo_data:
-        _validate_photo_size(photo_data)
 
     invite_code = await _generate_unique_code(db)
 

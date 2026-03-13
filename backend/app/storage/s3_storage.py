@@ -155,6 +155,11 @@ def _ensure_bucket() -> None:
     _bucket_ensured = True
 
 
+def get_public_url(bucket_path: str) -> str:
+    """Return the public URL for a given bucket path."""
+    return f"{settings.S3_PUBLIC_URL.rstrip('/')}/{bucket_path}"
+
+
 def upload_file(bucket_path: str, data: bytes, content_type: str) -> str:
     """
     Process (if image) and upload *data* to *bucket_path* in the configured bucket.
@@ -176,7 +181,7 @@ def upload_file(bucket_path: str, data: bytes, content_type: str) -> str:
         ContentType=content_type,
     )
 
-    return f"{settings.S3_PUBLIC_URL.rstrip('/')}/{bucket_path}"
+    return get_public_url(bucket_path)
 
 
 def delete_file(bucket_path: str) -> None:
