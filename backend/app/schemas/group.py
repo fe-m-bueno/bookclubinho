@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
 
+from typing import Literal
+
 from pydantic import BaseModel, field_validator
 
 
@@ -76,6 +78,7 @@ class GroupDetailResponse(BaseModel):
     max_members: int
     member_count: int
     members: list[MemberSummary]
+    current_user_id: str
     current_round: None = None
     created_at: datetime
 
@@ -91,3 +94,13 @@ class RegenerateCodeResponse(BaseModel):
 
 class QrCodeResponse(BaseModel):
     qr_url: str
+
+
+class MemberRoleUpdateRequest(BaseModel):
+    role: Literal["admin", "member"]
+
+
+class MemberRoleUpdateResponse(BaseModel):
+    user_id: str
+    role: Literal["admin", "member"]
+    message: str

@@ -7,6 +7,8 @@ to avoid path-param conflicts.
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.core.deps import (  # noqa: TC001
@@ -24,6 +26,8 @@ from app.schemas.group import (
     GroupListItem,
     GroupListResponse,
     GroupValidateResponse,
+    MemberRoleUpdateRequest,
+    MemberRoleUpdateResponse,
     MemberSummary,
     MessageResponse,
     QrCodeResponse,
@@ -38,8 +42,10 @@ from app.services.group import (
     leave_group,
     list_user_groups,
     regenerate_invite_code,
+    remove_group_member,
     soft_delete_group,
     update_group,
+    update_member_role,
     validate_group_code,
 )
 
@@ -47,9 +53,18 @@ router = APIRouter(tags=["groups"])
 
 
 async def _read_upload(photo: UploadFile | None) -> tuple[bytes | None, str | None]:
-    """Extract bytes and content type from an optional UploadFile."""
-    if photo and isinstance(photo, UploadFile) and photo.size:
-        return await photo.read(), photo.content_type
+    """Extract bytes and content type from an optional UploadFile.
+
+    Note: ``photo.size`` may be ``None`` or ``0`` for browser FormData uploads
+    where the multipart part omits ``Content-Length``.  We read the bytes first
+    and discard only if truly empty.  The ``isinstance`` check is intentionally
+    omitted because FastAPI re-exports its own ``UploadFile`` which may differ
+    from the Starlette class at runtime.
+    """
+    if photo is not None and hasattr(photo, "read"):
+        data = await photo.read()
+        if data:
+            return data, photo.content_type
     return None, None
 
 
@@ -193,6 +208,7 @@ async def get_group_endpoint(
             )
             for m in group.members
         ],
+        current_user_id=str(user.id),
         created_at=group.created_at,
     )
 
@@ -275,6 +291,60 @@ async def update_group_endpoint(
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     return MessageResponse(message="Clube atualizado com sucesso!")
+
+
+@router.patch(
+    "/{group_id}/members/{user_id}",
+    response_model=MemberRoleUpdateResponse,
+    summary="Atualizar role de membro",
+)
+async def update_member_role_endpoint(
+    user_id: uuid.UUID,
+    body: MemberRoleUpdateRequest,
+    db: DBSession,
+    user: CurrentUser,
+    admin: GroupAdminDep,
+) -> MemberRoleUpdateResponse:
+    """Atualiza o role de um membro do grupo (apenas admins)."""
+    try:
+        member = await update_member_role(
+            db=db,
+            group_id=admin.group_id,
+            target_user_id=user_id,
+            new_role=GroupRole(body.role),
+            requesting_user_id=user.id,
+        )
+    except GroupError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return MemberRoleUpdateResponse(
+        user_id=str(member.user_id),
+        role=member.role,
+        message="Role atualizado com sucesso!",
+    )
+
+
+@router.delete(
+    "/{group_id}/members/{user_id}",
+    response_model=MessageResponse,
+    summary="Remover membro do grupo",
+)
+async def remove_member_endpoint(
+    user_id: uuid.UUID,
+    db: DBSession,
+    user: CurrentUser,
+    admin: GroupAdminDep,
+) -> MessageResponse:
+    """Remove um membro do grupo (apenas admins)."""
+    try:
+        await remove_group_member(
+            db=db,
+            group_id=admin.group_id,
+            target_user_id=user_id,
+            requesting_user_id=user.id,
+        )
+    except GroupError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return MessageResponse(message="Membro removido com sucesso!")
 
 
 @router.delete(

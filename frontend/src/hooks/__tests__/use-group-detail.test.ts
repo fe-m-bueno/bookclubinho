@@ -26,6 +26,7 @@ const mockGroup = {
       joined_at: "2026-01-01T00:00:00Z",
     },
   ],
+  current_user_id: "u1",
   current_round: null,
   created_at: "2026-01-01T00:00:00Z",
 };

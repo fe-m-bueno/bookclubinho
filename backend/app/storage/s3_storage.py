@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import functools
 import io
+import json
 from typing import Final
 
 import boto3
@@ -143,15 +144,33 @@ _bucket_ensured: bool = False
 
 
 def _ensure_bucket() -> None:
-    """Create the bucket if it doesn't exist (idempotent, useful for local MinIO)."""
+    """Create the bucket if it doesn't exist and set public-read policy.
+
+    Idempotent — runs once per process.  In dev (MinIO) the bucket is created
+    with an anonymous-read policy so ``get_public_url`` URLs work in the
+    browser.  R2 buckets in prod are configured via dashboard/Terraform.
+    """
     global _bucket_ensured
     if _bucket_ensured:
         return
     client = _client()
+    bucket = settings.S3_BUCKET_NAME
     try:
-        client.head_bucket(Bucket=settings.S3_BUCKET_NAME)
+        client.head_bucket(Bucket=bucket)
     except client.exceptions.ClientError:
-        client.create_bucket(Bucket=settings.S3_BUCKET_NAME)
+        client.create_bucket(Bucket=bucket)
+
+    # Allow anonymous reads so public URLs resolve without presigning.
+    policy = json.dumps({
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": ["s3:GetObject"],
+            "Resource": [f"arn:aws:s3:::{bucket}/*"],
+        }],
+    })
+    client.put_bucket_policy(Bucket=bucket, Policy=policy)
     _bucket_ensured = True
 
 
