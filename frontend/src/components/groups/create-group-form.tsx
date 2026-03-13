@@ -12,10 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/auth/form-field";
 import { GroupPhotoUpload } from "./group-photo-upload";
-import { withCsrf } from "@/lib/csrf";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import type { GroupCreateResponse } from "@/lib/types/group";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const NO_CONTENT_TYPE = {} as const;
 
 const createGroupSchema = z.object({
   name: z
@@ -37,7 +37,6 @@ interface CreateGroupFormProps {
 
 export function CreateGroupForm({ onSuccess }: CreateGroupFormProps) {
   const [photo, setPhoto] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<CreateGroupFormData>({
     resolver: zodResolver(createGroupSchema),
@@ -48,43 +47,35 @@ export function CreateGroupForm({ onSuccess }: CreateGroupFormProps) {
   const name = form.watch("name");
   const description = form.watch("description") ?? "";
 
-  async function onSubmit(data: CreateGroupFormData) {
-    setSubmitting(true);
+  const { submit, loading: submitting } = useAuthSubmit({
+    url: "/api/v1/groups/",
+    headers: NO_CONTENT_TYPE,
+    onSuccess: async (res) => {
+      const body: GroupCreateResponse = await res.json();
+      onSuccess(body);
+    },
+    statusHandlers: [
+      {
+        status: 422,
+        handler: async (res) => {
+          const body = await res.json();
+          toast.error(body.detail || "Erro de validação");
+        },
+      },
+      {
+        status: 401,
+        handler: () => toast.error("Sessão expirada. Faça login novamente."),
+      },
+    ],
+  });
 
+  async function onSubmit(data: CreateGroupFormData) {
     const formData = new FormData();
     formData.append("name", data.name);
     if (data.description) formData.append("description", data.description);
     if (photo) formData.append("photo", photo);
 
-    try {
-      const res = await fetch(`${API_URL}/api/v1/groups/`, {
-        method: "POST",
-        headers: withCsrf(),
-        body: formData,
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const body: GroupCreateResponse = await res.json();
-        onSuccess(body);
-        return;
-      }
-
-      if (res.status === 422) {
-        const body = await res.json();
-        toast.error(body.detail || "Erro de validação");
-      } else if (res.status === 401) {
-        toast.error("Sessão expirada. Faça login novamente.");
-      } else if (res.status === 429) {
-        toast.error("Muitas tentativas. Aguarde um momento.");
-      } else {
-        toast.error("Erro ao criar clube. Tente novamente.");
-      }
-    } catch {
-      toast.error("Erro de conexão. Verifique sua internet.");
-    } finally {
-      setSubmitting(false);
-    }
+    await submit(formData);
   }
 
   return (

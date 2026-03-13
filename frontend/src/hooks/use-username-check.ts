@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export const USERNAME_REGEX = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
 const DEBOUNCE_MS = 500;
 
@@ -30,7 +29,7 @@ export function useUsernameCheck(username: string) {
 
       try {
         const res = await fetch(
-          `${API_URL}/api/v1/users/check-username/${encodeURIComponent(username)}`,
+          `/api/v1/users/check-username/${encodeURIComponent(username)}`,
           { credentials: "include", signal: controller.signal },
         );
 

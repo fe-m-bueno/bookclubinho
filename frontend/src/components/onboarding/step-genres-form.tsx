@@ -7,8 +7,6 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const MAX_GENRES = 10;
 const SKELETON_ITEMS = Array.from({ length: 12 });
 const GRID_CLASSES = "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3";
@@ -32,7 +30,7 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
   const shouldReduceMotion = useReducedMotion();
 
   const { submit, loading: submitting } = useAuthSubmit({
-    url: `${API_URL}/api/v1/onboarding/preferences`,
+    url: "/api/v1/onboarding/preferences",
     onSuccess: () => onNext(),
     statusHandlers: [
       {
@@ -57,7 +55,7 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
 
     async function fetchGenres() {
       try {
-        const res = await fetch(`${API_URL}/api/v1/config/genres`, {
+        const res = await fetch("/api/v1/config/genres", {
           credentials: "include",
           signal: controller.signal,
         });

@@ -17,14 +17,11 @@ import ReactConfetti from "react-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
-import { withCsrf } from "@/lib/csrf";
 import { formatInviteCode } from "@/lib/format-invite-code";
 import {
   useGroupCodeCheck,
   type GroupCodeStatus,
 } from "@/hooks/use-group-code-check";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 function stripDashes(formatted: string): string {
   return formatted.replace(/-/g, "");
@@ -39,7 +36,7 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
   const [codeInput, setCodeInput] = useState("");
   const [showConfetti, setShowConfetti] = useState(false);
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lockRef = useRef(false);
+  const redirectTargetRef = useRef("/");
 
   const rawCode = stripDashes(codeInput);
   const { status, group } = useGroupCodeCheck(rawCode);
@@ -58,15 +55,15 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
   }
 
   const { submit: submitComplete, loading: completing } = useAuthSubmit({
-    url: `${API_URL}/api/v1/onboarding/complete`,
-    onSuccess: () => {},
+    url: "/api/v1/onboarding/complete",
+    onSuccess: () => celebrateAndRedirect(redirectTargetRef.current),
   });
 
   const { submit: submitJoin, loading: joining } = useAuthSubmit({
-    url: `${API_URL}/api/v1/groups/join`,
+    url: "/api/v1/groups/join",
     onSuccess: async () => {
+      redirectTargetRef.current = "/";
       await submitComplete(JSON.stringify({}));
-      celebrateAndRedirect("/");
     },
     statusHandlers: [
       { status: 409, handler: () => toast.error("Você já faz parte deste clube.") },
@@ -79,37 +76,17 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
     submitJoin(JSON.stringify({ invite_code: rawCode }));
   }
 
-  async function handleCompleteAndRedirect(target: string) {
-    if (lockRef.current) return;
-    lockRef.current = true;
-    try {
-      const res = await fetch(`${API_URL}/api/v1/onboarding/complete`, {
-        method: "POST",
-        headers: withCsrf(),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        toast.error(body?.detail || "Erro ao completar onboarding.");
-        return;
-      }
-      celebrateAndRedirect(target);
-    } catch {
-      toast.error("Erro de conexão. Verifique sua internet.");
-    } finally {
-      lockRef.current = false;
-    }
-  }
-
   function handleCreate() {
-    handleCompleteAndRedirect("/groups/create");
+    redirectTargetRef.current = "/groups/create";
+    submitComplete(JSON.stringify({}));
   }
 
   function handleSkip() {
-    handleCompleteAndRedirect("/");
+    redirectTargetRef.current = "/";
+    submitComplete(JSON.stringify({}));
   }
 
-  const isLoading = joining || completing || lockRef.current;
+  const isLoading = joining || completing;
 
   return (
     <div className="space-y-6">

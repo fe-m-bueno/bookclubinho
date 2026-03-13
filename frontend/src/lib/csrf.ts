@@ -18,6 +18,26 @@ function getCsrfToken(): string | undefined {
 }
 
 /**
+ * Ensure the CSRF cookie exists by making a lightweight GET request.
+ * Uses the Next.js rewrite proxy (relative path) so the cookie lands
+ * on the same origin as the frontend.
+ *
+ * Deduplicates concurrent calls: if a seed request is already in-flight,
+ * subsequent callers await the same promise instead of firing another.
+ */
+let _inflight: Promise<void> | null = null;
+
+export async function ensureCsrf(): Promise<void> {
+  if (getCsrfToken()) return;
+  if (!_inflight) {
+    _inflight = fetch("/api/v1/auth/csrf", { credentials: "include" })
+      .then(() => {})
+      .finally(() => { _inflight = null; });
+  }
+  return _inflight;
+}
+
+/**
  * Merge CSRF header into an existing headers object.
  * Returns a new object — does not mutate the input.
  */

@@ -63,7 +63,7 @@ export default function LoginPage() {
   });
 
   const { submit: submitLogin, loading: loadingPassword } = useAuthSubmit({
-    url: `${API_URL}/api/v1/auth/login`,
+    url: "/api/v1/auth/login",
     headers: FORM_HEADERS,
     onSuccess: () => router.push("/"),
     statusHandlers: [
@@ -76,7 +76,7 @@ export default function LoginPage() {
   });
 
   const { submit: submitMagic, loading: loadingMagic } = useAuthSubmit({
-    url: `${API_URL}/api/v1/auth/magic-link`,
+    url: "/api/v1/auth/magic-link",
     onSuccess: () => toast.success("Link enviado! Verifique seu e-mail."),
     antiEnumeration: true,
   });

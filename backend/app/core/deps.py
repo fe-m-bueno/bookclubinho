@@ -25,9 +25,11 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         try:
             user_id = get_rls_user_id()
             if user_id:
+                # SET LOCAL doesn't support bind parameters in PostgreSQL.
+                # Validate as UUID to prevent SQL injection before interpolating.
+                uuid.UUID(user_id)
                 await session.execute(
-                    text("SET LOCAL app.current_user_id = :uid"),
-                    {"uid": user_id},
+                    text(f"SET LOCAL app.current_user_id = '{user_id}'"),
                 )
             yield session
             await session.commit()

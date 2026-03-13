@@ -56,6 +56,17 @@ _FormData = Annotated[OAuth2PasswordRequestForm, Depends()]  # noqa: TC002
 _OAUTH_STATE_TTL = 600  # 10 minutos
 
 
+# ── CSRF seed ────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/csrf",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Seed CSRF cookie",
+)
+async def csrf_seed() -> None:
+    """Return 204 so the CSRF middleware can set the cookie on the response."""
+
+
 # ── Register ──────────────────────────────────────────────────────────────────
 
 

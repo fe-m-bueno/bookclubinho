@@ -1,12 +1,85 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 
 from tests.conftest import make_user, mock_db_returning
+
+# ── get_session RLS tests ────────────────────────────────────────────────────
+
+
+class TestGetSessionRLS:
+    @pytest.mark.asyncio
+    async def test_sets_rls_user_id_with_literal(self) -> None:
+        """SET LOCAL must use a literal UUID, not a bind parameter."""
+        from app.core.deps import get_session
+
+        user_id = str(uuid.uuid4())
+        mock_session = AsyncMock()
+
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.core.deps.AsyncSessionLocal", return_value=mock_cm),
+            patch("app.core.deps.get_rls_user_id", return_value=user_id),
+        ):
+            gen = get_session()
+            session = await gen.__anext__()
+            assert session is mock_session
+
+            # Verify SET LOCAL was called with a literal UUID (no bind params)
+            mock_session.execute.assert_called_once()
+            call_args = mock_session.execute.call_args
+            sql_clause = call_args[0][0]
+            assert f"'{user_id}'" in sql_clause.text
+            assert ":uid" not in sql_clause.text
+
+    @pytest.mark.asyncio
+    async def test_skips_set_local_when_no_user(self) -> None:
+        """No SET LOCAL when user_id is empty (unauthenticated)."""
+        from app.core.deps import get_session
+
+        mock_session = AsyncMock()
+
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.core.deps.AsyncSessionLocal", return_value=mock_cm),
+            patch("app.core.deps.get_rls_user_id", return_value=""),
+        ):
+            gen = get_session()
+            await gen.__anext__()
+
+            mock_session.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_rejects_non_uuid_user_id(self) -> None:
+        """Non-UUID user_id must raise ValueError (prevents SQL injection)."""
+        from app.core.deps import get_session
+
+        mock_session = AsyncMock()
+
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.core.deps.AsyncSessionLocal", return_value=mock_cm),
+            patch("app.core.deps.get_rls_user_id", return_value="'; DROP TABLE users; --"),
+        ):
+            gen = get_session()
+            with pytest.raises(ValueError):
+                await gen.__anext__()
+
+
+# ── get_current_user tests ───────────────────────────────────────────────────
 
 
 class TestGetCurrentUser:
