@@ -62,6 +62,53 @@ async def join_group(db: AsyncSession, user: User, invite_code: str) -> Group:
     return group
 
 
+async def leave_group(db: AsyncSession, user: User, group_id: uuid.UUID) -> None:
+    """Remove usuario do grupo com promoção de admin e desativação se necessário."""
+    result = await db.execute(
+        select(Group)
+        .where(Group.id == group_id, Group.is_active.is_(True))
+        .options(selectinload(Group.members))
+    )
+    group = result.scalar_one_or_none()
+    if group is None:
+        raise GroupError("Clube não encontrado.", status_code=404)
+
+    member = next((m for m in group.members if m.user_id == user.id), None)
+    if member is None:
+        raise GroupError("Clube não encontrado.", status_code=404)
+
+    active_members = group.members
+
+    if len(active_members) == 1:
+        # Último membro — desativar grupo
+        group.is_active = False
+        await db.delete(member)
+        logger.info("group_deactivated_last_member", group_id=str(group_id), user_id=str(user.id))
+        return
+
+    if member.role == GroupRole.ADMIN:
+        other_admins = [
+            m for m in active_members
+            if m.user_id != user.id and m.role == GroupRole.ADMIN
+        ]
+        if not other_admins:
+            # Promover membro mais antigo
+            other_members = [
+                m for m in active_members
+                if m.user_id != user.id
+            ]
+            oldest = min(other_members, key=lambda m: m.joined_at)
+            oldest.role = GroupRole.ADMIN
+            logger.info(
+                "group_admin_promoted",
+                group_id=str(group_id),
+                promoted_user_id=str(oldest.user_id),
+            )
+
+    await db.delete(member)
+    logger.info("group_left", group_id=str(group_id), user_id=str(user.id))
+
+
 # ── CRUD ─────────────────────────────────────────────────────────────────────
 
 _MAX_CODE_RETRIES = 3

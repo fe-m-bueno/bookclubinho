@@ -32,6 +32,7 @@ from app.services.group import (
     create_group,
     get_group_detail,
     join_group,
+    leave_group,
     list_user_groups,
     soft_delete_group,
     update_group,
@@ -56,13 +57,14 @@ async def _read_upload(photo: UploadFile | None) -> tuple[bytes | None, str | No
     response_model=GroupValidateResponse,
     summary="Validar codigo de convite",
 )
-async def validate_code(code: str, db: DBSession, user: CurrentUser) -> GroupValidateResponse:
+async def validate_code(code: str, db: DBSession) -> GroupValidateResponse:
     """Verifica se um codigo de convite e valido e retorna dados do grupo."""
     try:
         group = await validate_group_code(db=db, code=code)
-    except GroupError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    except GroupError:
+        return GroupValidateResponse(valid=False)
     return GroupValidateResponse(
+        valid=True,
         name=group.name,
         photo_url=group.photo_url,
         member_count=len(group.members),
@@ -189,6 +191,24 @@ async def get_group_endpoint(
         ],
         created_at=group.created_at,
     )
+
+
+@router.post(
+    "/{group_id}/leave",
+    response_model=MessageResponse,
+    summary="Sair do grupo",
+)
+async def leave_group_endpoint(
+    db: DBSession,
+    user: CurrentUser,
+    member: GroupMemberDep,
+) -> MessageResponse:
+    """Remove o usuario autenticado do grupo."""
+    try:
+        await leave_group(db=db, user=user, group_id=member.group_id)
+    except GroupError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return MessageResponse(message="Você saiu do clube.")
 
 
 @router.patch(

@@ -8,9 +8,10 @@ from pydantic import BaseModel, field_validator
 
 
 class GroupValidateResponse(BaseModel):
-    name: str
-    photo_url: str | None
-    member_count: int
+    valid: bool
+    name: str | None = None
+    photo_url: str | None = None
+    member_count: int = 0
 
     model_config = {"from_attributes": True}
 
