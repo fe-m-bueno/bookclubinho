@@ -7,8 +7,16 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from starlette.requests import Request
 
-from app.schemas.auth import LoginResponse, LogoutResponse, RefreshResponse, RegisterRequest, RegisterResponse, VerifyEmailResponse
+from app.schemas.auth import (
+    LoginResponse,
+    LogoutResponse,
+    RefreshResponse,
+    RegisterRequest,
+    RegisterResponse,
+    VerifyEmailResponse,
+)
 from app.services.auth import AuthError
 
 # ── helpers ────────────────────────────────────────────────────────────────────
@@ -111,7 +119,7 @@ class TestRegisterUser:
 
         with (
             patch("app.services.auth.hash_password", return_value="hashed") as mock_hash,
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
         ):
             mock_redis = AsyncMock()
@@ -140,7 +148,7 @@ class TestRegisterUser:
         existing_user = MagicMock()
         mock_db = _mock_db_returning(existing_user)
 
-        with patch("app.services.auth._redis") as mock_redis_factory:
+        with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
             mock_redis_factory.return_value = mock_redis
 
@@ -172,7 +180,7 @@ class TestResendVerificationEmail:
         mock_db = _mock_db_returning(mock_user)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
         ):
             mock_redis = AsyncMock()
@@ -195,7 +203,7 @@ class TestResendVerificationEmail:
         mock_db = _mock_db_returning(None)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
         ):
             mock_redis = AsyncMock()
@@ -215,7 +223,7 @@ class TestResendVerificationEmail:
         mock_db = _mock_db_returning(mock_user)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
         ):
             mock_redis = AsyncMock()
@@ -233,7 +241,7 @@ class TestResendVerificationEmail:
         mock_db = _mock_db_returning(None)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
         ):
             mock_redis = AsyncMock()
@@ -256,7 +264,7 @@ class TestResendVerificationEmail:
         mock_db = _mock_db_returning(mock_user)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
         ):
             mock_redis = AsyncMock()
@@ -283,7 +291,7 @@ class TestVerifyEmailToken:
         mock_user.email_verified = False
         mock_db = _mock_db_returning(mock_user)
 
-        with patch("app.services.auth._redis") as mock_redis_factory:
+        with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
             mock_redis.get.return_value = str(user_id)
             mock_redis_factory.return_value = mock_redis
@@ -292,7 +300,15 @@ class TestVerifyEmailToken:
 
         assert result is True
         assert mock_user.email_verified is True
-        mock_redis.delete.assert_called_once_with("verify:validtoken123")
+        # Token is HMAC-hashed before Redis storage
+        import hmac as _hmac
+
+        from app.core.config import settings
+        expected = _hmac.new(
+            settings.JWT_SECRET.encode(), b"validtoken123", "sha256",
+        ).hexdigest()
+        expected_key = f"verify:{expected}"
+        mock_redis.delete.assert_called_once_with(expected_key)
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
@@ -301,7 +317,7 @@ class TestVerifyEmailToken:
 
         mock_db = AsyncMock()
 
-        with patch("app.services.auth._redis") as mock_redis_factory:
+        with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
             mock_redis.get.return_value = None
             mock_redis_factory.return_value = mock_redis
@@ -317,7 +333,7 @@ class TestVerifyEmailToken:
 
         mock_db = AsyncMock()
 
-        with patch("app.services.auth._redis") as mock_redis_factory:
+        with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
             mock_redis.get.return_value = "not-a-uuid"
             mock_redis_factory.return_value = mock_redis
@@ -345,7 +361,10 @@ class TestAuthenticateUser:
 
         with (
             patch("app.services.auth.verify_password", return_value=True),
-            patch("app.services.auth.create_token_pair", return_value=("access.tok", "refresh.tok")) as mtp,
+            patch(
+                "app.services.auth.create_token_pair",
+                return_value=("access.tok", "refresh.tok"),
+            ) as mtp,
         ):
             access, refresh = await authenticate_user(
                 db=mock_db, email="user@example.com", password="pass"
@@ -438,7 +457,7 @@ class TestSendMagicLink:
         user_id = uuid.uuid4()
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
             patch("app.services.auth.uuid.uuid4", return_value=user_id),
         ):
@@ -468,7 +487,7 @@ class TestSendMagicLink:
         mock_db = _mock_db_returning(existing_user)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
         ):
             mock_redis = AsyncMock()
@@ -486,7 +505,7 @@ class TestSendMagicLink:
 
         mock_db = _mock_db_returning(None)
 
-        with patch("app.services.auth._redis") as mock_redis_factory:
+        with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
             mock_redis.incr.return_value = 6  # acima do limite de 5
             mock_redis_factory.return_value = mock_redis
@@ -507,7 +526,7 @@ class TestSendMagicLink:
         mock_db = _mock_db_returning(existing_user)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
         ):
             mock_redis = AsyncMock()
@@ -526,7 +545,7 @@ class TestSendMagicLink:
         user_id = uuid.uuid4()
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.asyncio.to_thread", new_callable=AsyncMock),
             patch("app.services.auth.uuid.uuid4", return_value=user_id),
         ):
@@ -556,7 +575,7 @@ class TestConsumeMagicToken:
         mock_db = _mock_db_returning(mock_user)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.create_token_pair", return_value=("acc.tok", "ref.tok")),
         ):
             mock_redis = AsyncMock()
@@ -579,7 +598,7 @@ class TestConsumeMagicToken:
         mock_db = AsyncMock()
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             pytest.raises(AuthError) as exc_info,
         ):
             mock_redis = AsyncMock()
@@ -597,7 +616,7 @@ class TestConsumeMagicToken:
         mock_db = AsyncMock()
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             pytest.raises(AuthError) as exc_info,
         ):
             mock_redis = AsyncMock()
@@ -618,7 +637,7 @@ class TestConsumeMagicToken:
         mock_db = _mock_db_returning(mock_user)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             pytest.raises(AuthError) as exc_info,
         ):
             mock_redis = AsyncMock()
@@ -652,7 +671,7 @@ class TestConsumeMagicToken:
         mock_db.execute = fake_execute
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.create_token_pair", return_value=("a", "r")),
         ):
             mock_redis = AsyncMock()
@@ -679,7 +698,7 @@ class TestConsumeMagicToken:
         mock_db = _mock_db_returning(mock_user)
 
         with (
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             patch("app.services.auth.create_token_pair", return_value=("a", "r")),
         ):
             mock_redis = AsyncMock()
@@ -704,7 +723,7 @@ class TestBlacklistRefreshToken:
 
         with (
             patch("app.services.auth.decode_token", return_value=payload),
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
         ):
             mock_redis = AsyncMock()
             mock_redis_factory.return_value = mock_redis
@@ -725,7 +744,7 @@ class TestBlacklistRefreshToken:
 
         with (
             patch("app.services.auth.decode_token", side_effect=JWTError("bad token")),
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
         ):
             mock_redis = AsyncMock()
             mock_redis_factory.return_value = mock_redis
@@ -743,7 +762,7 @@ class TestBlacklistRefreshToken:
 
         with (
             patch("app.services.auth.decode_token", return_value=payload),
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
         ):
             mock_redis = AsyncMock()
             mock_redis_factory.return_value = mock_redis
@@ -761,7 +780,7 @@ class TestBlacklistRefreshToken:
 
         with (
             patch("app.services.auth.decode_token", return_value=payload),
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
         ):
             mock_redis = AsyncMock()
             mock_redis_factory.return_value = mock_redis
@@ -780,12 +799,18 @@ class TestRotateRefreshToken:
         from app.services.auth import rotate_refresh_token
 
         future_exp = int(datetime.now(UTC).timestamp()) + 3600
-        payload = {"sub": "user-42", "exp": future_exp, "type": "refresh", "jti": "valid-jti", "onb": True}
+        payload = {
+            "sub": "user-42", "exp": future_exp, "type": "refresh",
+            "jti": "valid-jti", "onb": True,
+        }
 
         with (
             patch("app.services.auth.decode_token", return_value=payload),
-            patch("app.services.auth._redis") as mock_redis_factory,
-            patch("app.services.auth.create_token_pair", return_value=("new.access", "new.refresh")) as mtp,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
+            patch(
+                "app.services.auth.create_token_pair",
+                return_value=("new.access", "new.refresh"),
+            ) as mtp,
         ):
             mock_redis = AsyncMock()
             mock_redis.get.return_value = None  # não blacklistado
@@ -806,7 +831,7 @@ class TestRotateRefreshToken:
 
         with (
             patch("app.services.auth.decode_token", return_value=payload),
-            patch("app.services.auth._redis") as mock_redis_factory,
+            patch("app.services.auth.get_redis") as mock_redis_factory,
             pytest.raises(AuthError) as exc_info,
         ):
             mock_redis = AsyncMock()
@@ -903,13 +928,16 @@ class TestRefreshEndpoint:
         from app.api.v1.endpoints.auth import refresh
 
         mock_response = MagicMock(spec=Response)
+        mock_request = MagicMock(spec=Request)
 
         with patch(
             "app.api.v1.endpoints.auth.rotate_refresh_token",
             new_callable=AsyncMock,
             return_value=("new.access", "new.refresh"),
         ):
-            result = await refresh(response=mock_response, refresh_token="valid.refresh.token")
+            result = await refresh(
+                request=mock_request, response=mock_response, refresh_token="valid.refresh.token"
+            )
 
         assert isinstance(result, RefreshResponse)
         assert "renovados" in result.message
@@ -922,9 +950,10 @@ class TestRefreshEndpoint:
         from app.api.v1.endpoints.auth import refresh
 
         mock_response = MagicMock(spec=Response)
+        mock_request = MagicMock(spec=Request)
 
         with pytest.raises(HTTPException) as exc_info:
-            await refresh(response=mock_response, refresh_token=None)
+            await refresh(request=mock_request, response=mock_response, refresh_token=None)
 
         assert exc_info.value.status_code == 401
 
@@ -935,6 +964,7 @@ class TestRefreshEndpoint:
         from app.api.v1.endpoints.auth import refresh
 
         mock_response = MagicMock(spec=Response)
+        mock_request = MagicMock(spec=Request)
 
         with (
             patch(
@@ -944,7 +974,9 @@ class TestRefreshEndpoint:
             ),
             pytest.raises(HTTPException) as exc_info,
         ):
-            await refresh(response=mock_response, refresh_token="invalid.token")
+            await refresh(
+                request=mock_request, response=mock_response, refresh_token="invalid.token"
+            )
 
         assert exc_info.value.status_code == 401
 
@@ -1125,7 +1157,7 @@ class TestGoogleOAuthEndpoints:
 
         mock_redis = AsyncMock()
 
-        with patch("app.api.v1.endpoints.auth._redis_client", return_value=mock_redis):
+        with patch("app.api.v1.endpoints.auth.get_redis", return_value=mock_redis):
             response = await google_login()
 
         assert response.status_code == 302
@@ -1147,7 +1179,7 @@ class TestGoogleOAuthEndpoints:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None  # state não encontrado
 
-        with patch("app.api.v1.endpoints.auth._redis_client", return_value=mock_redis):
+        with patch("app.api.v1.endpoints.auth.get_redis", return_value=mock_redis):
             response = await google_callback(
                 db=mock_db, code="somecode", state="invalidstate", error=None
             )
@@ -1164,7 +1196,7 @@ class TestGoogleOAuthEndpoints:
         mock_redis.get.return_value = "1"  # state válido
 
         with (
-            patch("app.api.v1.endpoints.auth._redis_client", return_value=mock_redis),
+            patch("app.api.v1.endpoints.auth.get_redis", return_value=mock_redis),
             patch(
                 "app.api.v1.endpoints.auth.google_oauth_callback",
                 new_callable=AsyncMock,
@@ -1203,7 +1235,7 @@ class TestGoogleOAuthEndpoints:
         mock_redis.get.return_value = "1"
 
         with (
-            patch("app.api.v1.endpoints.auth._redis_client", return_value=mock_redis),
+            patch("app.api.v1.endpoints.auth.get_redis", return_value=mock_redis),
             patch(
                 "app.api.v1.endpoints.auth.google_oauth_callback",
                 new_callable=AsyncMock,

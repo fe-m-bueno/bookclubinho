@@ -6,7 +6,7 @@ import asyncio
 
 import structlog
 
-from app.db.engine import AsyncSessionLocal, engine, Base
+from app.db.engine import AsyncSessionLocal, Base, engine
 
 logger = structlog.get_logger(__name__)
 

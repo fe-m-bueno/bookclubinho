@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { withCsrf } from "@/lib/csrf";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -86,7 +87,7 @@ function VerifyEmailContent() {
       try {
         const res = await fetch(
           `${API_URL}/api/v1/auth/verify-email?token=${encodeURIComponent(token!)}`,
-          { method: "POST", credentials: "include" }
+          { method: "POST", headers: withCsrf(), credentials: "include" }
         );
 
         if (res.ok) {

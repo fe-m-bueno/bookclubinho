@@ -14,6 +14,7 @@ import { FormField } from "@/components/auth/form-field";
 import { AvatarUpload } from "./avatar-upload";
 import { UsernameField } from "./username-field";
 import { USERNAME_REGEX, type UsernameStatus } from "@/hooks/use-username-check";
+import { withCsrf } from "@/lib/csrf";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -76,6 +77,7 @@ export function StepProfileForm({ onNext }: StepProfileFormProps) {
     try {
       const res = await fetch(`${API_URL}/api/v1/onboarding/profile`, {
         method: "POST",
+        headers: withCsrf(),
         body: formData,
         credentials: "include",
       });

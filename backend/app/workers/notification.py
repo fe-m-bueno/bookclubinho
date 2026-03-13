@@ -6,6 +6,7 @@ Run standalone:
     python -m app.workers.notification
 """
 import asyncio
+import contextlib
 import signal
 
 import redis.asyncio as aioredis
@@ -30,10 +31,8 @@ async def run() -> None:
     redis = aioredis.from_url(settings.UPSTASH_REDIS_URL, decode_responses=True)
 
     # Ensure consumer group exists
-    try:
+    with contextlib.suppress(Exception):
         await redis.xgroup_create(STREAM_KEY, CONSUMER_GROUP, id="0", mkstream=True)
-    except Exception:
-        pass  # group already exists
 
     logger.info("notification_worker_started", stream=STREAM_KEY)
     stop = False

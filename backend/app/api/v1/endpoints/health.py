@@ -61,7 +61,6 @@ async def _check_s3() -> tuple[CheckStatus, str | None]:
     try:
         import boto3
         from botocore.config import Config
-        from botocore.exceptions import BotoCoreError, ClientError
 
         def _head() -> None:
             client = boto3.client(

@@ -17,6 +17,7 @@ import ReactConfetti from "react-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
+import { withCsrf } from "@/lib/csrf";
 import {
   INVITE_CODE_CHARS,
   useGroupCodeCheck,
@@ -91,6 +92,7 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
     try {
       const res = await fetch(`${API_URL}/api/v1/onboarding/complete`, {
         method: "POST",
+        headers: withCsrf(),
         credentials: "include",
       });
       if (!res.ok) {

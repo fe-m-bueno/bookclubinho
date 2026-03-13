@@ -14,7 +14,6 @@ import secrets
 from typing import Annotated
 from urllib.parse import urlencode
 
-import redis.asyncio as aioredis
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -22,6 +21,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.core.config import settings
 from app.core.cookies import clear_auth_cookies, set_auth_cookies
 from app.core.deps import DBSession  # noqa: TC001
+from app.core.redis import get_redis
 from app.schemas.auth import (
     LoginResponse,
     LogoutResponse,
@@ -54,10 +54,6 @@ router = APIRouter(tags=["auth"])
 _FormData = Annotated[OAuth2PasswordRequestForm, Depends()]  # noqa: TC002
 
 _OAUTH_STATE_TTL = 600  # 10 minutos
-
-
-def _redis_client() -> aioredis.Redis:
-    return aioredis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 # ── Register ──────────────────────────────────────────────────────────────────
@@ -216,7 +212,9 @@ async def logout(
 
 
 @router.post("/refresh", response_model=RefreshResponse)
+@limiter.limit("20/minute")
 async def refresh(
+    request: Request,
     response: Response,
     refresh_token: Annotated[str | None, Cookie(alias="refresh_token")] = None,
 ) -> RefreshResponse:
@@ -239,11 +237,8 @@ async def google_login() -> RedirectResponse:
     """Redireciona para a tela de consentimento do Google."""
     state = secrets.token_urlsafe(32)
 
-    redis = _redis_client()
-    try:
-        await redis.set(f"oauth_state:{state}", "1", ex=_OAUTH_STATE_TTL)
-    finally:
-        await redis.aclose()
+    redis = get_redis()
+    await redis.set(f"oauth_state:{state}", "1", ex=_OAUTH_STATE_TTL)
 
     params = urlencode(
         {
@@ -278,14 +273,11 @@ async def google_callback(
     if error or not code or not state:
         return error_redirect
 
-    redis = _redis_client()
-    try:
-        stored = await redis.get(f"oauth_state:{state}")
-        if not stored:
-            return error_redirect
-        await redis.delete(f"oauth_state:{state}")
-    finally:
-        await redis.aclose()
+    redis = get_redis()
+    stored = await redis.get(f"oauth_state:{state}")
+    if not stored:
+        return error_redirect
+    await redis.delete(f"oauth_state:{state}")
 
     try:
         access_token, refresh_token, onboarding_completed = await google_oauth_callback(

@@ -1,6 +1,6 @@
 """Testes unitários para os schemas de User."""
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -83,8 +83,8 @@ class TestUserRead:
             "timezone": "America/Sao_Paulo",
             "is_active": True,
             "last_login_at": None,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
         }
         base.update(overrides)
         return base
@@ -122,7 +122,7 @@ class TestUserPublic:
             "total_reading_time_minutes": 60,
             "timezone": "America/Sao_Paulo",
             "is_active": True,
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
         }
         base.update(overrides)
         return base
@@ -134,7 +134,7 @@ class TestUserPublic:
         assert user.streak_current == 3
 
     def test_excludes_sensitive_fields(self) -> None:
-        user = UserPublic(**self._make_public_data())
+        UserPublic(**self._make_public_data())
         fields = set(UserPublic.model_fields.keys())
         assert "email" not in fields
         assert "hashed_password" not in fields

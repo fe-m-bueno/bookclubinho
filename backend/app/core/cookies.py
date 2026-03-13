@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import Response
+from typing import TYPE_CHECKING
 
 from app.core.config import settings
+
+if TYPE_CHECKING:
+    from fastapi import Response
 
 COOKIE_KWARGS = {
     "httponly": True,
@@ -14,7 +17,9 @@ COOKIE_KWARGS = {
 }
 
 
-_COOKIE_NAMES = ("access_token", "refresh_token")
+ACCESS_TOKEN_COOKIE = "access_token"
+REFRESH_TOKEN_COOKIE = "refresh_token"
+_COOKIE_NAMES = (ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE)
 
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:

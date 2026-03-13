@@ -3,22 +3,22 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import secrets
 import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from jose import JWTError
-
 import httpx
-import redis.asyncio as aioredis
 import structlog
+from jose import JWTError
 from sqlalchemy import select
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.redis import get_redis
 from app.core.security import (
     create_token_pair,
     decode_token,
@@ -48,8 +48,21 @@ _RESEND_VERIFY_RATE_TTL = 3600  # 1 hora
 _TOKEN_BLACKLIST_PREFIX = "token_blacklist:"
 
 
-def _redis() -> aioredis.Redis:
-    return aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+async def _is_rate_limited(
+    key_prefix: str, identifier: str, limit: int, ttl: int,
+) -> bool:
+    """Shared Redis INCR-based rate limiter. Returns True if over limit."""
+    redis_client = get_redis()
+    key = f"{key_prefix}{identifier}"
+    count = await redis_client.incr(key)
+    if count == 1:
+        await redis_client.expire(key, ttl)
+    return count > limit
+
+
+def _hash_token(token: str) -> str:
+    """HMAC-SHA256 of a token keyed with JWT_SECRET — stored in Redis instead of plaintext."""
+    return hmac.new(settings.JWT_SECRET.encode(), token.encode(), "sha256").hexdigest()
 
 
 class AuthError(Exception):
@@ -101,17 +114,16 @@ async def register_user(
         f"{settings.APP_URL.rstrip('/')}/auth/verify-email?token={token}"
     )
 
-    redis_client = _redis()
-    try:
-        await redis_client.set(
-            f"{_VERIFY_KEY_PREFIX}{token}",
-            str(user.id),
-            ex=_VERIFY_TOKEN_TTL,
-        )
-    finally:
-        await redis_client.aclose()
+    redis_client = get_redis()
+    await redis_client.set(
+        f"{_VERIFY_KEY_PREFIX}{_hash_token(token)}",
+        str(user.id),
+        ex=_VERIFY_TOKEN_TTL,
+    )
 
-    # Send email in background thread (Resend SDK is sync)
+    await db.commit()
+
+    # Send email after commit so the user row exists if delivery triggers a callback
     await asyncio.to_thread(
         send_verification_email,
         to_email=email_lower,
@@ -119,7 +131,6 @@ async def register_user(
         verify_url=verify_url,
     )
 
-    await db.commit()
     logger.info("user_registered", user_id=str(user.id))
 
 
@@ -133,17 +144,12 @@ async def resend_verification_email(db: AsyncSession, email: str) -> None:
     """
     email_lower = email.lower().strip()
 
-    redis_client = _redis()
-    try:
-        rate_key = f"{_RESEND_VERIFY_RATE_KEY_PREFIX}{email_lower}"
-        count = await redis_client.incr(rate_key)
-        if count == 1:
-            await redis_client.expire(rate_key, _RESEND_VERIFY_RATE_TTL)
-        if count > _RESEND_VERIFY_RATE_LIMIT:
-            logger.info("resend_verification_rate_limited", email=email_lower)
-            return
-    finally:
-        await redis_client.aclose()
+    if await _is_rate_limited(
+        _RESEND_VERIFY_RATE_KEY_PREFIX, email_lower,
+        _RESEND_VERIFY_RATE_LIMIT, _RESEND_VERIFY_RATE_TTL,
+    ):
+        logger.info("resend_verification_rate_limited", email=email_lower)
+        return
 
     result = await db.execute(select(User).where(User.email == email_lower))
     user = result.scalar_one_or_none()
@@ -155,15 +161,12 @@ async def resend_verification_email(db: AsyncSession, email: str) -> None:
     token = secrets.token_urlsafe(32)
     verify_url = f"{settings.APP_URL.rstrip('/')}/auth/verify-email?token={token}"
 
-    redis_client = _redis()
-    try:
-        await redis_client.set(
-            f"{_VERIFY_KEY_PREFIX}{token}",
-            str(user.id),
-            ex=_VERIFY_TOKEN_TTL,
-        )
-    finally:
-        await redis_client.aclose()
+    redis = get_redis()
+    await redis.set(
+        f"{_VERIFY_KEY_PREFIX}{_hash_token(token)}",
+        str(user.id),
+        ex=_VERIFY_TOKEN_TTL,
+    )
 
     await asyncio.to_thread(
         send_verification_email,
@@ -183,17 +186,14 @@ async def verify_email_token(db: AsyncSession, token: str) -> bool:
 
     Returns True on success, False if token is invalid/expired.
     """
-    redis_client = _redis()
-    try:
-        key = f"{_VERIFY_KEY_PREFIX}{token}"
-        user_id_str = await redis_client.get(key)
-        if not user_id_str:
-            return False
+    redis_client = get_redis()
+    key = f"{_VERIFY_KEY_PREFIX}{_hash_token(token)}"
+    user_id_str = await redis_client.get(key)
+    if not user_id_str:
+        return False
 
-        # Consume token immediately (idempotency)
-        await redis_client.delete(key)
-    finally:
-        await redis_client.aclose()
+    # Consume token immediately (idempotency)
+    await redis_client.delete(key)
 
     try:
         user_id = uuid.UUID(user_id_str)
@@ -224,17 +224,12 @@ async def send_magic_link(db: AsyncSession, email: str) -> None:
     """
     email_lower = email.lower().strip()
 
-    redis_client = _redis()
-    try:
-        rate_key = f"{_MAGIC_RATE_KEY_PREFIX}{email_lower}"
-        count = await redis_client.incr(rate_key)
-        if count == 1:
-            await redis_client.expire(rate_key, _MAGIC_RATE_TTL)
-        if count > _MAGIC_RATE_LIMIT:
-            logger.info("magic_link_rate_limited", email=email_lower)
-            return
-    finally:
-        await redis_client.aclose()
+    if await _is_rate_limited(
+        _MAGIC_RATE_KEY_PREFIX, email_lower,
+        _MAGIC_RATE_LIMIT, _MAGIC_RATE_TTL,
+    ):
+        logger.info("magic_link_rate_limited", email=email_lower)
+        return
 
     result = await db.execute(select(User).where(User.email == email_lower))
     user = result.scalar_one_or_none()
@@ -255,16 +250,16 @@ async def send_magic_link(db: AsyncSession, email: str) -> None:
     token = generate_magic_token()
     magic_url = f"{settings.APP_URL.rstrip('/')}/api/v1/auth/magic/callback?token={token}"
 
-    redis_client = _redis()
-    try:
-        await redis_client.set(
-            f"{_MAGIC_KEY_PREFIX}{token}",
-            str(user.id),
-            ex=_MAGIC_TOKEN_TTL,
-        )
-    finally:
-        await redis_client.aclose()
+    redis = get_redis()
+    await redis.set(
+        f"{_MAGIC_KEY_PREFIX}{_hash_token(token)}",
+        str(user.id),
+        ex=_MAGIC_TOKEN_TTL,
+    )
 
+    await db.commit()
+
+    # Send email after commit so the user row is persisted
     await asyncio.to_thread(
         send_magic_link_email,
         to_email=email_lower,
@@ -272,7 +267,6 @@ async def send_magic_link(db: AsyncSession, email: str) -> None:
         magic_url=magic_url,
     )
 
-    await db.commit()
     logger.info("magic_link_sent", user_id=str(user.id))
 
 
@@ -283,17 +277,14 @@ async def consume_magic_token(
 
     Raises AuthError(400) para token inválido/expirado, UUID corrompido ou usuário inativo.
     """
-    redis_client = _redis()
-    try:
-        key = f"{_MAGIC_KEY_PREFIX}{token}"
-        user_id_str = await redis_client.get(key)
-        if not user_id_str:
-            raise AuthError("Token inválido ou expirado.", status_code=400)
+    redis_client = get_redis()
+    key = f"{_MAGIC_KEY_PREFIX}{_hash_token(token)}"
+    user_id_str = await redis_client.get(key)
+    if not user_id_str:
+        raise AuthError("Token inválido ou expirado.", status_code=400)
 
-        # Deleta ANTES do DB lookup para garantir one-time use
-        await redis_client.delete(key)
-    finally:
-        await redis_client.aclose()
+    # Deleta ANTES do DB lookup para garantir one-time use
+    await redis_client.delete(key)
 
     try:
         user_id = uuid.UUID(user_id_str)
@@ -345,13 +336,12 @@ async def google_oauth_callback(
             },
         )
 
-    if token_resp.status_code != 200:
-        logger.warning("google_token_exchange_failed", status=token_resp.status_code)
-        raise AuthError("Falha na autenticação via Google.", status_code=400)
+        if token_resp.status_code != 200:
+            logger.warning("google_token_exchange_failed", status=token_resp.status_code)
+            raise AuthError("Falha na autenticação via Google.", status_code=400)
 
-    google_access_token = token_resp.json().get("access_token")
+        google_access_token = token_resp.json().get("access_token")
 
-    async with httpx.AsyncClient() as client:
         userinfo_resp = await client.get(
             _GOOGLE_USERINFO_URL,
             headers={"Authorization": f"Bearer {google_access_token}"},
@@ -471,11 +461,8 @@ async def blacklist_refresh_token(token: str) -> None:
     if remaining_ttl <= 0:
         return
 
-    redis_client = _redis()
-    try:
-        await redis_client.set(f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl)
-    finally:
-        await redis_client.aclose()
+    redis_client = get_redis()
+    await redis_client.set(f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl)
 
 
 async def rotate_refresh_token(token: str) -> tuple[str, str]:
@@ -498,22 +485,19 @@ async def rotate_refresh_token(token: str) -> tuple[str, str]:
     if not jti or not user_id:
         raise AuthError("Token inválido ou expirado.", status_code=401)
 
-    redis_client = _redis()
-    try:
-        is_blacklisted = await redis_client.get(f"{_TOKEN_BLACKLIST_PREFIX}{jti}")
-        if is_blacklisted:
-            raise AuthError("Token revogado.", status_code=401)
+    redis_client = get_redis()
+    is_blacklisted = await redis_client.get(f"{_TOKEN_BLACKLIST_PREFIX}{jti}")
+    if is_blacklisted:
+        raise AuthError("Token revogado.", status_code=401)
 
-        # Blacklista o token atual antes de emitir o novo par
-        exp: int | None = payload.get("exp")
-        if exp is not None:
-            remaining_ttl = max(0, int(exp - datetime.now(UTC).timestamp()))
-            if remaining_ttl > 0:
-                await redis_client.set(
-                    f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl
-                )
-    finally:
-        await redis_client.aclose()
+    # Blacklista o token atual antes de emitir o novo par
+    exp: int | None = payload.get("exp")
+    if exp is not None:
+        remaining_ttl = max(0, int(exp - datetime.now(UTC).timestamp()))
+        if remaining_ttl > 0:
+            await redis_client.set(
+                f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl
+            )
 
     return create_token_pair(
         user_id, onboarding_completed=payload.get("onb", False),

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from fastapi.responses import Response
+from fastapi.responses import Response  # noqa: TC002
 
 from app.core.genres_config import GENRES
 
