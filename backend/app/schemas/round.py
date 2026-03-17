@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import uuid  # noqa: TC003
 from datetime import date, datetime  # noqa: TC003
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.db.models.round import RoundStatus  # noqa: TC001
 from app.schemas.group import MessageResponse  # noqa: F401  (re-exported for convenience)
@@ -19,6 +20,24 @@ class RoundUpdateRequest(BaseModel):
     status: RoundStatus | None = None
 
 
+class NominationCreateRequest(BaseModel):
+    book_id: str
+    book_title: str
+    book_author: str | None = None
+    book_cover_url: str | None = None
+    book_hardcover_slug: str | None = None
+    book_page_count: int | None = None
+    pitch: str | None = Field(default=None, max_length=280)
+
+
+class VoteCastRequest(BaseModel):
+    nomination_id: uuid.UUID
+
+
+class FinalizeRequest(BaseModel):
+    deadline: date | None = None
+
+
 # ── Response schemas ──────────────────────────────────────────────────────────
 
 
@@ -28,6 +47,7 @@ class NominationSummary(BaseModel):
     book_title: str
     book_author: str | None
     book_cover_url: str | None
+    book_hardcover_slug: str | None = None
     book_page_count: int | None
     pitch: str | None
     user_id: str
