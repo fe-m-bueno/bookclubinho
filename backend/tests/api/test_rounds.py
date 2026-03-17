@@ -1,0 +1,442 @@
+"""Testes unitários para os endpoints de rodadas."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, date, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.api.v1.endpoints.rounds import group_rounds_router, rounds_router
+from app.core.deps import (
+    get_current_active_user,
+    get_group_admin_membership,
+    get_group_membership,
+    get_session,
+)
+from app.db.models.group import GroupRole
+from app.db.models.round import RoundStatus
+from app.services.round import RoundError
+from tests.conftest import make_user
+
+
+# ── Factories ──────────────────────────────────────────────────────────────────
+
+
+def _make_round(**overrides: object) -> MagicMock:
+    r = MagicMock()
+    r.id = overrides.get("id", uuid.uuid4())
+    r.group_id = overrides.get("group_id", uuid.uuid4())
+    r.round_number = overrides.get("round_number", 1)
+    r.status = overrides.get("status", RoundStatus.NOMINATING)
+    r.deadline = overrides.get("deadline", None)
+    r.book_id = overrides.get("book_id", None)
+    r.book_title = overrides.get("book_title", None)
+    r.book_author = overrides.get("book_author", None)
+    r.book_cover_url = overrides.get("book_cover_url", None)
+    r.book_page_count = overrides.get("book_page_count", None)
+    r.started_at = overrides.get("started_at", None)
+    r.finished_at = overrides.get("finished_at", None)
+    r.created_at = overrides.get("created_at", datetime(2026, 1, 1, tzinfo=UTC))
+    r.nominations = overrides.get("nominations", [])
+    return r
+
+
+def _make_nomination(**overrides: object) -> MagicMock:
+    n = MagicMock()
+    n.id = overrides.get("id", uuid.uuid4())
+    n.book_id = overrides.get("book_id", "b-1")
+    n.book_title = overrides.get("book_title", "Dom Casmurro")
+    n.book_author = overrides.get("book_author", "Machado de Assis")
+    n.book_cover_url = overrides.get("book_cover_url", None)
+    n.book_page_count = overrides.get("book_page_count", None)
+    n.pitch = overrides.get("pitch", None)
+    n.user_id = overrides.get("user_id", uuid.uuid4())
+    n.nominated_at = overrides.get("nominated_at", datetime(2026, 1, 2, tzinfo=UTC))
+    n.votes = overrides.get("votes", [])
+    return n
+
+
+def _make_member(**overrides: object) -> MagicMock:
+    m = MagicMock()
+    m.user_id = overrides.get("user_id", uuid.uuid4())
+    m.group_id = overrides.get("group_id", uuid.uuid4())
+    m.role = overrides.get("role", GroupRole.ADMIN)
+    return m
+
+
+FAKE_USER = make_user()
+FAKE_ADMIN_MEMBER = _make_member(user_id=FAKE_USER.id, role=GroupRole.ADMIN)
+FAKE_MEMBER = _make_member(user_id=FAKE_USER.id, role=GroupRole.MEMBER)
+FAKE_DB = AsyncMock()
+
+
+def _make_group_app(*, admin: bool = True) -> FastAPI:
+    """Create app with group_rounds_router and overridden deps."""
+    app = FastAPI()
+    app.include_router(
+        group_rounds_router,
+        prefix="/api/v1/groups/{group_id}/rounds",
+    )
+    app.dependency_overrides[get_current_active_user] = lambda: FAKE_USER
+    app.dependency_overrides[get_session] = lambda: FAKE_DB
+    app.dependency_overrides[get_group_membership] = lambda: FAKE_ADMIN_MEMBER if admin else FAKE_MEMBER
+    app.dependency_overrides[get_group_admin_membership] = lambda: FAKE_ADMIN_MEMBER
+    return app
+
+
+def _make_rounds_app() -> FastAPI:
+    """Create app with rounds_router and overridden deps."""
+    app = FastAPI()
+    app.include_router(rounds_router, prefix="/api/v1/rounds")
+    app.dependency_overrides[get_current_active_user] = lambda: FAKE_USER
+    app.dependency_overrides[get_session] = lambda: FAKE_DB
+    return app
+
+
+GROUP_ID = uuid.uuid4()
+
+
+# ── POST /groups/{group_id}/rounds ─────────────────────────────────────────────
+
+
+class TestCreateRound:
+    def test_create_round_success(self) -> None:
+        round_ = _make_round(round_number=1)
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.create_round",
+            new=AsyncMock(return_value=round_),
+        ):
+            response = client.post(
+                f"/api/v1/groups/{GROUP_ID}/rounds",
+                json={},
+            )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["round_number"] == 1
+        assert data["status"] == "nominating"
+
+    def test_create_round_with_deadline(self) -> None:
+        round_ = _make_round(deadline=date(2030, 12, 31))
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.create_round",
+            new=AsyncMock(return_value=round_),
+        ):
+            response = client.post(
+                f"/api/v1/groups/{GROUP_ID}/rounds",
+                json={"deadline": "2030-12-31"},
+            )
+
+        assert response.status_code == 201
+
+    def test_create_round_active_exists_returns_409(self) -> None:
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.create_round",
+            new=AsyncMock(side_effect=RoundError("Já existe uma rodada ativa neste clube.", status_code=409)),
+        ):
+            response = client.post(
+                f"/api/v1/groups/{GROUP_ID}/rounds",
+                json={},
+            )
+
+        assert response.status_code == 409
+        assert "rodada ativa" in response.json()["detail"]
+
+    def test_create_round_deadline_past_returns_422(self) -> None:
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.create_round",
+            new=AsyncMock(side_effect=RoundError("O prazo deve ser uma data futura.", status_code=422)),
+        ):
+            response = client.post(
+                f"/api/v1/groups/{GROUP_ID}/rounds",
+                json={"deadline": "2000-01-01"},
+            )
+
+        assert response.status_code == 422
+
+
+# ── GET /groups/{group_id}/rounds ──────────────────────────────────────────────
+
+
+class TestListRounds:
+    def test_list_rounds_empty(self) -> None:
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.list_rounds",
+            new=AsyncMock(return_value=([], None)),
+        ):
+            response = client.get(f"/api/v1/groups/{GROUP_ID}/rounds")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["rounds"] == []
+        assert data["next_cursor"] is None
+
+    def test_list_rounds_with_items(self) -> None:
+        rounds = [_make_round(round_number=2), _make_round(round_number=1)]
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.list_rounds",
+            new=AsyncMock(return_value=(rounds, None)),
+        ):
+            response = client.get(f"/api/v1/groups/{GROUP_ID}/rounds")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["rounds"]) == 2
+
+    def test_list_rounds_with_next_cursor(self) -> None:
+        rounds = [_make_round(round_number=1)]
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.list_rounds",
+            new=AsyncMock(return_value=(rounds, 1)),
+        ):
+            response = client.get(f"/api/v1/groups/{GROUP_ID}/rounds")
+
+        data = response.json()
+        assert data["next_cursor"] == 1
+
+
+# ── GET /groups/{group_id}/rounds/current ──────────────────────────────────────
+
+
+class TestGetCurrentRound:
+    def test_current_round_found(self) -> None:
+        nom = _make_nomination(votes=[MagicMock(), MagicMock()])
+        round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom])
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.get_current_round",
+            new=AsyncMock(return_value=round_),
+        ):
+            response = client.get(f"/api/v1/groups/{GROUP_ID}/rounds/current")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "voting"
+        assert len(data["nominations"]) == 1
+        assert data["nominations"][0]["vote_count"] == 2
+
+    def test_current_round_not_found(self) -> None:
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.get_current_round",
+            new=AsyncMock(return_value=None),
+        ):
+            response = client.get(f"/api/v1/groups/{GROUP_ID}/rounds/current")
+
+        assert response.status_code == 404
+        assert "rodada ativa" in response.json()["detail"].lower()
+
+
+# ── PATCH /rounds/{round_id} ───────────────────────────────────────────────────
+
+
+class TestUpdateRound:
+    def test_update_status_success(self) -> None:
+        round_ = _make_round(status=RoundStatus.VOTING)
+        round_id = uuid.uuid4()
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.rounds.verify_round_admin",
+                new=AsyncMock(return_value=round_),
+            ),
+            patch(
+                "app.api.v1.endpoints.rounds.update_round",
+                new=AsyncMock(return_value=round_),
+            ),
+        ):
+            response = client.patch(
+                f"/api/v1/rounds/{round_id}",
+                json={"status": "voting"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "voting"
+
+    def test_update_no_fields_returns_422(self) -> None:
+        round_ = _make_round()
+        round_id = uuid.uuid4()
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.rounds.verify_round_admin",
+                new=AsyncMock(return_value=round_),
+            ),
+            patch(
+                "app.api.v1.endpoints.rounds.update_round",
+                new=AsyncMock(
+                    side_effect=RoundError("Informe ao menos um campo para atualizar.", status_code=422)
+                ),
+            ),
+        ):
+            response = client.patch(
+                f"/api/v1/rounds/{round_id}",
+                json={},
+            )
+
+        assert response.status_code == 422
+
+    def test_update_invalid_transition_returns_422(self) -> None:
+        round_ = _make_round(status=RoundStatus.NOMINATING)
+        round_id = uuid.uuid4()
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.rounds.verify_round_admin",
+                new=AsyncMock(return_value=round_),
+            ),
+            patch(
+                "app.api.v1.endpoints.rounds.update_round",
+                new=AsyncMock(
+                    side_effect=RoundError(
+                        "Transição de 'nominating' para 'finished' não é permitida.",
+                        status_code=422,
+                    )
+                ),
+            ),
+        ):
+            response = client.patch(
+                f"/api/v1/rounds/{round_id}",
+                json={"status": "finished"},
+            )
+
+        assert response.status_code == 422
+
+    def test_update_not_admin_returns_403(self) -> None:
+        round_id = uuid.uuid4()
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.verify_round_admin",
+            new=AsyncMock(
+                side_effect=RoundError(
+                    "Apenas administradores podem realizar esta ação.", status_code=403
+                )
+            ),
+        ):
+            response = client.patch(
+                f"/api/v1/rounds/{round_id}",
+                json={"status": "voting"},
+            )
+
+        assert response.status_code == 403
+
+    def test_update_not_found_returns_404(self) -> None:
+        round_id = uuid.uuid4()
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.verify_round_admin",
+            new=AsyncMock(
+                side_effect=RoundError("Rodada não encontrada.", status_code=404)
+            ),
+        ):
+            response = client.patch(
+                f"/api/v1/rounds/{round_id}",
+                json={"status": "voting"},
+            )
+
+        assert response.status_code == 404
+
+
+# ── DELETE /rounds/{round_id} ─────────────────────────────────────────────────
+
+
+class TestDeleteRound:
+    def test_delete_round_success(self) -> None:
+        round_ = _make_round(status=RoundStatus.NOMINATING)
+        round_id = uuid.uuid4()
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.rounds.verify_round_admin",
+                new=AsyncMock(return_value=round_),
+            ),
+            patch(
+                "app.api.v1.endpoints.rounds.delete_round",
+                new=AsyncMock(return_value=None),
+            ),
+        ):
+            response = client.delete(f"/api/v1/rounds/{round_id}")
+
+        assert response.status_code == 200
+        assert "removida" in response.json()["message"]
+
+    def test_delete_not_nominating_returns_409(self) -> None:
+        round_ = _make_round(status=RoundStatus.VOTING)
+        round_id = uuid.uuid4()
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.rounds.verify_round_admin",
+                new=AsyncMock(return_value=round_),
+            ),
+            patch(
+                "app.api.v1.endpoints.rounds.delete_round",
+                new=AsyncMock(
+                    side_effect=RoundError(
+                        "Apenas rodadas em fase de indicação podem ser removidas.",
+                        status_code=409,
+                    )
+                ),
+            ),
+        ):
+            response = client.delete(f"/api/v1/rounds/{round_id}")
+
+        assert response.status_code == 409
+
+    def test_delete_not_found_returns_404(self) -> None:
+        round_id = uuid.uuid4()
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.verify_round_admin",
+            new=AsyncMock(
+                side_effect=RoundError("Rodada não encontrada.", status_code=404)
+            ),
+        ):
+            response = client.delete(f"/api/v1/rounds/{round_id}")
+
+        assert response.status_code == 404
