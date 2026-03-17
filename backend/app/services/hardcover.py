@@ -55,6 +55,10 @@ class HardcoverClient:
         self._api_token = api_token or settings.HARDCOVER_API_TOKEN
         self._http_client = httpx.AsyncClient()
 
+    async def aclose(self) -> None:
+        """Fecha o httpx.AsyncClient — chamar no shutdown da aplicação."""
+        await self._http_client.aclose()
+
     # ── Public API ─────────────────────────────────────────────────────────────
 
     async def search_books(self, query: str, *, limit: int = 10) -> list[BookResult]:
@@ -218,6 +222,27 @@ class HardcoverClient:
         except Exception as exc:
             logger.warning("hardcover_parse_book_detail_error", exc=str(exc))
             return None
+
+
+# ── Singleton gerenciado (mesmo padrão de app/core/redis.py) ───────────────────
+
+_hardcover_client: HardcoverClient | None = None
+
+
+def get_hardcover_client() -> HardcoverClient:
+    """Retorna (ou cria) o singleton global de HardcoverClient."""
+    global _hardcover_client
+    if _hardcover_client is None:
+        _hardcover_client = HardcoverClient()
+    return _hardcover_client
+
+
+async def close_hardcover_client() -> None:
+    """Fecha o AsyncClient no shutdown da aplicação."""
+    global _hardcover_client
+    if _hardcover_client is not None:
+        await _hardcover_client.aclose()
+        _hardcover_client = None
 
 
 if __name__ == "__main__":

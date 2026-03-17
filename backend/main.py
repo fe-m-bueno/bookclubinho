@@ -19,6 +19,7 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.redis import close_redis_pool
+from app.services.hardcover import close_hardcover_client
 from app.core.rls import RLSMiddleware
 from app.db.engine import engine
 from app.security.csrf import CSRFMiddleware
@@ -58,6 +59,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
+    await close_hardcover_client()
     await close_redis_pool()
     await engine.dispose()
     logger.info("shutdown")
