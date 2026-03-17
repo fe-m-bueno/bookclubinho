@@ -119,6 +119,7 @@ class RoundNomination(Base):
     book_author: Mapped[str | None] = mapped_column(Text, nullable=True)
     book_cover_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     book_page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    book_hardcover_slug: Mapped[str | None] = mapped_column(Text, nullable=True)
     pitch: Mapped[str | None] = mapped_column(Text, nullable=True)
     nominated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

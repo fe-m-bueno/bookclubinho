@@ -6,7 +6,6 @@ import uuid
 from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -22,7 +21,6 @@ from app.db.models.round import RoundStatus
 from app.services.round import RoundError
 from tests.conftest import make_user
 
-
 # ── Factories ──────────────────────────────────────────────────────────────────
 
 
@@ -32,14 +30,14 @@ def _make_round(**overrides: object) -> MagicMock:
     r.group_id = overrides.get("group_id", uuid.uuid4())
     r.round_number = overrides.get("round_number", 1)
     r.status = overrides.get("status", RoundStatus.NOMINATING)
-    r.deadline = overrides.get("deadline", None)
-    r.book_id = overrides.get("book_id", None)
-    r.book_title = overrides.get("book_title", None)
-    r.book_author = overrides.get("book_author", None)
-    r.book_cover_url = overrides.get("book_cover_url", None)
-    r.book_page_count = overrides.get("book_page_count", None)
-    r.started_at = overrides.get("started_at", None)
-    r.finished_at = overrides.get("finished_at", None)
+    r.deadline = overrides.get("deadline")
+    r.book_id = overrides.get("book_id")
+    r.book_title = overrides.get("book_title")
+    r.book_author = overrides.get("book_author")
+    r.book_cover_url = overrides.get("book_cover_url")
+    r.book_page_count = overrides.get("book_page_count")
+    r.started_at = overrides.get("started_at")
+    r.finished_at = overrides.get("finished_at")
     r.created_at = overrides.get("created_at", datetime(2026, 1, 1, tzinfo=UTC))
     r.nominations = overrides.get("nominations", [])
     return r
@@ -51,9 +49,10 @@ def _make_nomination(**overrides: object) -> MagicMock:
     n.book_id = overrides.get("book_id", "b-1")
     n.book_title = overrides.get("book_title", "Dom Casmurro")
     n.book_author = overrides.get("book_author", "Machado de Assis")
-    n.book_cover_url = overrides.get("book_cover_url", None)
-    n.book_page_count = overrides.get("book_page_count", None)
-    n.pitch = overrides.get("pitch", None)
+    n.book_cover_url = overrides.get("book_cover_url")
+    n.book_hardcover_slug = overrides.get("book_hardcover_slug")
+    n.book_page_count = overrides.get("book_page_count")
+    n.pitch = overrides.get("pitch")
     n.user_id = overrides.get("user_id", uuid.uuid4())
     n.nominated_at = overrides.get("nominated_at", datetime(2026, 1, 2, tzinfo=UTC))
     n.votes = overrides.get("votes", [])
@@ -83,7 +82,8 @@ def _make_group_app(*, admin: bool = True) -> FastAPI:
     )
     app.dependency_overrides[get_current_active_user] = lambda: FAKE_USER
     app.dependency_overrides[get_session] = lambda: FAKE_DB
-    app.dependency_overrides[get_group_membership] = lambda: FAKE_ADMIN_MEMBER if admin else FAKE_MEMBER
+    member = FAKE_ADMIN_MEMBER if admin else FAKE_MEMBER
+    app.dependency_overrides[get_group_membership] = lambda: member
     app.dependency_overrides[get_group_admin_membership] = lambda: FAKE_ADMIN_MEMBER
     return app
 
@@ -145,7 +145,9 @@ class TestCreateRound:
 
         with patch(
             "app.api.v1.endpoints.rounds.create_round",
-            new=AsyncMock(side_effect=RoundError("Já existe uma rodada ativa neste clube.", status_code=409)),
+            new=AsyncMock(
+                side_effect=RoundError("Já existe uma rodada ativa neste clube.", status_code=409)
+            ),
         ):
             response = client.post(
                 f"/api/v1/groups/{GROUP_ID}/rounds",
@@ -161,7 +163,9 @@ class TestCreateRound:
 
         with patch(
             "app.api.v1.endpoints.rounds.create_round",
-            new=AsyncMock(side_effect=RoundError("O prazo deve ser uma data futura.", status_code=422)),
+            new=AsyncMock(
+                side_effect=RoundError("O prazo deve ser uma data futura.", status_code=422)
+            ),
         ):
             response = client.post(
                 f"/api/v1/groups/{GROUP_ID}/rounds",
@@ -298,7 +302,9 @@ class TestUpdateRound:
             patch(
                 "app.api.v1.endpoints.rounds.update_round",
                 new=AsyncMock(
-                    side_effect=RoundError("Informe ao menos um campo para atualizar.", status_code=422)
+                    side_effect=RoundError(
+                        "Informe ao menos um campo para atualizar.", status_code=422
+                    )
                 ),
             ),
         ):

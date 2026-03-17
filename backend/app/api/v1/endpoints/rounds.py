@@ -7,8 +7,15 @@ group_rounds_router — montado em /groups/{group_id}/rounds
   GET /current     — membro busca rodada ativa
 
 rounds_router — montado em /rounds
-  PATCH /{round_id}  — admin atualiza rodada
-  DELETE /{round_id} — admin deleta rodada
+  PATCH /{round_id}                          — admin atualiza rodada
+  DELETE /{round_id}                         — admin deleta rodada
+  POST /{round_id}/nominate                  — membro indica livro
+  DELETE /{round_id}/nominations/{nom_id}    — membro remove própria indicação
+  POST /{round_id}/start-voting              — admin inicia votação
+  POST /{round_id}/vote                      — membro vota
+  POST /{round_id}/finalize                  — admin finaliza votação
+  POST /{round_id}/start-review             — admin inicia fase de reviews
+  POST /{round_id}/finish                    — admin encerra rodada
 """
 
 from __future__ import annotations
@@ -26,6 +33,8 @@ from app.core.deps import (  # noqa: TC001
 from app.db.models.round import Round, RoundNomination  # noqa: TC001
 from app.schemas.group import MessageResponse
 from app.schemas.round import (
+    FinalizeRequest,
+    NominationCreateRequest,
     NominationSummary,
     RoundCreateRequest,
     RoundCreateResponse,
@@ -33,14 +42,22 @@ from app.schemas.round import (
     RoundListItem,
     RoundListResponse,
     RoundUpdateRequest,
+    VoteCastRequest,
 )
 from app.security.rate_limit import limiter
 from app.services.round import (
     RoundError,
+    add_nomination,
+    cast_vote,
     create_round,
     delete_round,
+    finalize_round,
+    finish_round,
     get_current_round,
     list_rounds,
+    remove_nomination,
+    start_review,
+    start_voting,
     update_round,
     verify_round_admin,
 )
@@ -56,6 +73,7 @@ def _nomination_to_schema(nomination: RoundNomination) -> NominationSummary:
         book_title=nomination.book_title,
         book_author=nomination.book_author,
         book_cover_url=nomination.book_cover_url,
+        book_hardcover_slug=nomination.book_hardcover_slug,
         book_page_count=nomination.book_page_count,
         pitch=nomination.pitch,
         user_id=str(nomination.user_id),
@@ -228,3 +246,170 @@ async def delete_round_endpoint(
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     return MessageResponse(message="Rodada removida com sucesso.")
+
+
+@rounds_router.post(
+    "/{round_id}/nominate",
+    response_model=RoundDetailResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Indicar livro",
+)
+@limiter.limit("20/minute")
+async def nominate_book(
+    request: Request,
+    round_id: uuid.UUID,
+    body: NominationCreateRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> RoundDetailResponse:
+    """Indica um livro na rodada. Máximo 3 indicações por usuário. Status deve ser 'nominating'."""
+    try:
+        _, round_ = await add_nomination(db, round_id=round_id, user_id=current_user.id, data=body)
+    except RoundError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return _round_to_detail(round_)
+
+
+@rounds_router.delete(
+    "/{round_id}/nominations/{nomination_id}",
+    response_model=MessageResponse,
+    summary="Remover indicação",
+)
+@limiter.limit("20/minute")
+async def remove_nomination_endpoint(
+    request: Request,
+    round_id: uuid.UUID,
+    nomination_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> MessageResponse:
+    """Remove uma indicação própria. Status deve ser 'nominating'."""
+    try:
+        await remove_nomination(
+            db,
+            round_id=round_id,
+            nomination_id=nomination_id,
+            user_id=current_user.id,
+        )
+    except RoundError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return MessageResponse(message="Indicação removida com sucesso.")
+
+
+@rounds_router.post(
+    "/{round_id}/start-voting",
+    response_model=RoundDetailResponse,
+    summary="Iniciar votação",
+)
+@limiter.limit("10/minute")
+async def start_voting_endpoint(
+    request: Request,
+    round_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> RoundDetailResponse:
+    """Inicia a fase de votação. Requer pelo menos 2 indicações. Apenas admins."""
+    try:
+        round_ = await start_voting(db, round_id=round_id, user_id=current_user.id)
+    except RoundError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return _round_to_detail(round_)
+
+
+@rounds_router.post(
+    "/{round_id}/vote",
+    response_model=RoundDetailResponse,
+    summary="Votar em indicação",
+)
+@limiter.limit("20/minute")
+async def cast_vote_endpoint(
+    request: Request,
+    round_id: uuid.UUID,
+    body: VoteCastRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> RoundDetailResponse:
+    """Vota em uma indicação. Chamar novamente troca o voto. Status deve ser 'voting'."""
+    try:
+        _, round_ = await cast_vote(
+            db,
+            round_id=round_id,
+            user_id=current_user.id,
+            nomination_id=body.nomination_id,
+        )
+    except RoundError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return _round_to_detail(round_)
+
+
+@rounds_router.post(
+    "/{round_id}/finalize",
+    response_model=RoundDetailResponse,
+    summary="Finalizar votação",
+)
+@limiter.limit("10/minute")
+async def finalize_round_endpoint(
+    request: Request,
+    round_id: uuid.UUID,
+    body: FinalizeRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> RoundDetailResponse:
+    """Conta votos, resolve empates e transiciona para 'reading'. Apenas admins."""
+    try:
+        round_ = await finalize_round(
+            db,
+            round_id=round_id,
+            user_id=current_user.id,
+            deadline=body.deadline,
+        )
+    except RoundError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return _round_to_detail(round_)
+
+
+@rounds_router.post(
+    "/{round_id}/start-review",
+    response_model=RoundDetailResponse,
+    summary="Iniciar fase de reviews",
+)
+@limiter.limit("10/minute")
+async def start_review_endpoint(
+    request: Request,
+    round_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> RoundDetailResponse:
+    """Transiciona rodada de 'reading' para 'reviewing'. Apenas admins."""
+    try:
+        round_ = await start_review(db, round_id=round_id, user_id=current_user.id)
+    except RoundError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return _round_to_detail(round_)
+
+
+@rounds_router.post(
+    "/{round_id}/finish",
+    response_model=RoundDetailResponse,
+    summary="Encerrar rodada",
+)
+@limiter.limit("10/minute")
+async def finish_round_endpoint(
+    request: Request,
+    round_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> RoundDetailResponse:
+    """Encerra a rodada. Requer pelo menos 1 review submetida. Apenas admins."""
+    try:
+        round_ = await finish_round(db, round_id=round_id, user_id=current_user.id)
+    except RoundError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return _round_to_detail(round_)
