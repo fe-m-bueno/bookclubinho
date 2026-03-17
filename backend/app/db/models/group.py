@@ -48,6 +48,7 @@ class Group(TimestampMixin, SoftDeleteMixin, Base):
     members: Mapped[list["GroupMember"]] = relationship(
         back_populates="group", lazy="raise"
     )
+    rounds: Mapped[list["Round"]] = relationship(back_populates="group", lazy="raise")  # noqa: F821
     creator: Mapped["User"] = relationship(  # noqa: F821
         lazy="raise", foreign_keys=[created_by]
     )
