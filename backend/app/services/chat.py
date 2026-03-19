@@ -56,6 +56,24 @@ async def _emit_chat_event(group_id: uuid.UUID, event_data: dict[str, str]) -> N
         logger.warning("chat_event_emit_failed", group_id=str(group_id))
 
 
+async def emit_typing_event(
+    group_id: uuid.UUID,
+    user_id: uuid.UUID,
+    display_name: str,
+    avatar_url: str,
+) -> None:
+    """Emit a typing indicator event to the group chat stream."""
+    await _emit_chat_event(
+        group_id,
+        {
+            "type": "user_typing",
+            "user_id": str(user_id),
+            "display_name": display_name,
+            "avatar_url": avatar_url,
+        },
+    )
+
+
 def _sanitize_tiptap_json(data: Any) -> Any:
     """Walk Tiptap JSON recursively and sanitize text node content."""
     if isinstance(data, dict):

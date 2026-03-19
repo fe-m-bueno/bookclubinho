@@ -1,7 +1,12 @@
+import { ChatContainer } from "@/components/chat/chat-container";
+
 export const metadata = { title: "Chat" };
 
-export default function ChatPage() {
-  return (
-    <div className="p-4 text-center text-muted-foreground">Chat em breve</div>
-  );
+interface ChatPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function ChatPage({ params }: ChatPageProps) {
+  const { id } = await params;
+  return <ChatContainer groupId={id} />;
 }
