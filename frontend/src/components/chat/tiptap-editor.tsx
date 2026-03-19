@@ -44,6 +44,7 @@ export function TiptapEditor({
   const editorRef = useRef<Editor | null>(null);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: false,
