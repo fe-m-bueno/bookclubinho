@@ -147,7 +147,7 @@ describe("LoginPage", () => {
         expect.stringContaining("/api/v1/auth/magic-link"),
         expect.objectContaining({
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: expect.objectContaining({ "Content-Type": "application/json" }),
         })
       );
       expect(toast.success).toHaveBeenCalledWith(

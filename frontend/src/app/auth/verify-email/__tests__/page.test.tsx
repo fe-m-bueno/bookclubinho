@@ -64,6 +64,12 @@ describe("VerifyEmailPage", () => {
 
     render(<VerifyEmailPage />);
 
+    // Flush pending microtasks so verify() runs its awaits and calls fetch,
+    // assigning resolveFetch before we attempt to call it below.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     expect(screen.getByText("Verificando seu email...")).toBeInTheDocument();
 
     await act(async () => {
