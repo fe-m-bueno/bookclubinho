@@ -33,7 +33,9 @@ from app.core.deps import (  # noqa: TC001
 from app.db.models.round import Round, RoundNomination  # noqa: TC001
 from app.schemas.group import MessageResponse
 from app.schemas.round import (
+    BookSummary,
     FinalizeRequest,
+    FinalizeResponse,
     NominationCreateRequest,
     NominationSummary,
     RoundCreateRequest,
@@ -348,7 +350,7 @@ async def cast_vote_endpoint(
 
 @rounds_router.post(
     "/{round_id}/finalize",
-    response_model=RoundDetailResponse,
+    response_model=FinalizeResponse,
     summary="Finalizar votação",
 )
 @limiter.limit("10/minute")
@@ -358,7 +360,7 @@ async def finalize_round_endpoint(
     body: FinalizeRequest,
     current_user: CurrentUser,
     db: DBSession,
-) -> RoundDetailResponse:
+) -> FinalizeResponse:
     """Conta votos, resolve empates e transiciona para 'reading'. Apenas admins."""
     try:
         round_ = await finalize_round(
@@ -370,7 +372,17 @@ async def finalize_round_endpoint(
     except RoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
-    return _round_to_detail(round_)
+    tiebreak_info = round_.tiebreak_info or {}
+    return FinalizeResponse(
+        book=BookSummary(
+            book_id=round_.book_id,
+            title=round_.book_title,
+            author=round_.book_author,
+            cover_url=round_.book_cover_url,
+            page_count=round_.book_page_count,
+        ),
+        was_tiebreak=tiebreak_info.get("was_tiebreak", False),
+    )
 
 
 @rounds_router.post(

@@ -38,6 +38,19 @@ class FinalizeRequest(BaseModel):
     deadline: date | None = None
 
 
+class BookSummary(BaseModel):
+    book_id: str
+    title: str
+    author: str | None
+    cover_url: str | None
+    page_count: int | None
+
+
+class FinalizeResponse(BaseModel):
+    book: BookSummary
+    was_tiebreak: bool
+
+
 # ── Response schemas ──────────────────────────────────────────────────────────
 
 

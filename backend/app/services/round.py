@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 import structlog
+from redis.exceptions import RedisError
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
     from app.schemas.round import NominationCreateRequest
 
 from app.core.exceptions import ServiceError
+from app.core.redis import get_redis
 from app.db.models.book_review import BookReview
 from app.db.models.group import Group, GroupMember, GroupRole
 from app.db.models.round import Round, RoundNomination, RoundStatus, RoundVote
@@ -458,24 +460,31 @@ async def finalize_round(
     if deadline is not None and deadline <= date.today():
         raise RoundError("O prazo deve ser uma data futura.", status_code=422)
 
-    vote_counts = {n.id: len(n.votes) for n in round_.nominations}
-    max_votes = max(vote_counts.values())
+    vote_result = await db.execute(
+        select(RoundVote.nomination_id, func.count())
+        .where(RoundVote.round_id == round_id)
+        .group_by(RoundVote.nomination_id)
+    )
+    vote_counts: dict[uuid.UUID, int] = dict(vote_result.all())
 
-    if max_votes == 0:
+    if not vote_counts:
         raise RoundError("Nenhum voto registrado.", status_code=422)
 
-    tied = [n for n in round_.nominations if vote_counts[n.id] == max_votes]
+    max_votes = max(vote_counts.values())
+    tied = [n for n in round_.nominations if vote_counts.get(n.id, 0) == max_votes]
 
-    if len(tied) > 1:
-        winner = secrets.choice(tied)
-        round_.tiebreak_info = {
-            "tied_nomination_ids": [str(n.id) for n in tied],
-            "tied_vote_count": max_votes,
-            "winner_nomination_id": str(winner.id),
-            "method": "random",
-        }
-    else:
-        winner = tied[0]
+    was_tiebreak = len(tied) > 1
+    winner = secrets.choice(tied) if was_tiebreak else tied[0]
+
+    round_.tiebreak_info = {
+        "was_tiebreak": was_tiebreak,
+        "tied_nominations": [
+            {"id": str(n.id), "title": n.book_title, "votes": vote_counts.get(n.id, 0)}
+            for n in tied
+        ],
+        "winner_id": str(winner.id),
+        **({"method": "random"} if was_tiebreak else {}),
+    }
 
     round_.book_id = winner.book_id
     round_.book_title = winner.book_title
@@ -491,8 +500,23 @@ async def finalize_round(
         "round_finalized",
         round_id=str(round_id),
         winner_book=winner.book_title,
-        had_tiebreak=len(tied) > 1,
+        had_tiebreak=was_tiebreak,
     )
+
+    try:
+        redis = get_redis()
+        await redis.xadd(
+            f"bookclub:group:{round_.group_id}:events",
+            {
+                "type": "round_finalized",
+                "round_id": str(round_.id),
+                "book_title": winner.book_title or "",
+                "was_tiebreak": str(was_tiebreak).lower(),
+            },
+        )
+    except RedisError:
+        logger.warning("redis_event_emission_failed", round_id=str(round_id))
+
     return round_
 
 
