@@ -58,6 +58,7 @@ from app.schemas.round import (
 )
 from app.security.rate_limit import limiter
 from app.services import reading_progress as reading_progress_service
+from app.services.reading_progress import ReadingProgressError
 from app.services.round import (
     RoundError,
     add_nomination,
@@ -102,6 +103,9 @@ def _progress_to_response(progress: "ReadingProgress") -> ProgressResponse:
         current_page=progress.current_page,
         percentage=progress.percentage,
         is_finished=progress.percentage >= 100.0,
+        progress_type=progress.progress_type,
+        total_pages=progress.total_pages,
+        note=progress.note,
         created_at=progress.created_at,
     )
 
@@ -468,13 +472,19 @@ async def log_reading_progress(
     db: DBSession,
 ) -> ProgressResponse:
     """Registra um snapshot de progresso de leitura. Rodada deve estar em 'reading'."""
-    progress = await reading_progress_service.log_progress(
-        db=db,
-        round_id=round_id,
-        user_id=current_user.id,
-        current_page=body.current_page,
-        percentage=body.percentage,
-    )
+    try:
+        progress = await reading_progress_service.log_progress(
+            db=db,
+            round_id=round_id,
+            user_id=current_user.id,
+            current_page=body.current_page,
+            percentage=body.percentage,
+            progress_type=body.progress_type,
+            total_pages=body.total_pages,
+            note=body.note,
+        )
+    except ReadingProgressError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return _progress_to_response(progress)
 
 

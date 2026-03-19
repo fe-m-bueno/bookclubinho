@@ -1,6 +1,7 @@
 """Pydantic schemas for reading progress endpoints."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -8,6 +9,9 @@ from pydantic import BaseModel, Field, model_validator
 class ProgressUpdateRequest(BaseModel):
     current_page: int | None = Field(default=None, ge=0)
     percentage: float | None = Field(default=None, ge=0.0, le=100.0)
+    progress_type: Literal["page", "chapter", "percentage", "finished"] | None = None
+    total_pages: int | None = Field(default=None, ge=1)
+    note: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> "ProgressUpdateRequest":
@@ -22,6 +26,9 @@ class ProgressResponse(BaseModel):
     current_page: int | None
     percentage: float
     is_finished: bool  # derived: percentage >= 100.0
+    progress_type: str
+    total_pages: int | None
+    note: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

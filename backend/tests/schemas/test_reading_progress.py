@@ -69,6 +69,36 @@ def test_progress_update_request_page_zero_is_valid() -> None:
     assert req.current_page == 0
 
 
+def test_progress_update_request_with_progress_type() -> None:
+    req = ProgressUpdateRequest(percentage=50.0, progress_type="chapter")
+    assert req.progress_type == "chapter"
+
+
+def test_progress_update_request_invalid_progress_type_raises() -> None:
+    with pytest.raises(ValidationError):
+        ProgressUpdateRequest(percentage=50.0, progress_type="unknown")  # type: ignore[arg-type]
+
+
+def test_progress_update_request_with_note() -> None:
+    req = ProgressUpdateRequest(percentage=50.0, note="Capítulo emocionante!")
+    assert req.note == "Capítulo emocionante!"
+
+
+def test_progress_update_request_note_too_long_raises() -> None:
+    with pytest.raises(ValidationError):
+        ProgressUpdateRequest(percentage=50.0, note="x" * 501)
+
+
+def test_progress_update_request_with_total_pages() -> None:
+    req = ProgressUpdateRequest(current_page=50, total_pages=300)
+    assert req.total_pages == 300
+
+
+def test_progress_update_request_total_pages_zero_raises() -> None:
+    with pytest.raises(ValidationError):
+        ProgressUpdateRequest(current_page=50, total_pages=0)
+
+
 # ── ProgressResponse ──────────────────────────────────────────────────────────
 
 
@@ -79,6 +109,9 @@ def test_progress_response_is_finished_false() -> None:
         current_page=50,
         percentage=50.0,
         is_finished=False,
+        progress_type="page",
+        total_pages=None,
+        note=None,
         created_at=datetime.now(UTC),
     )
     assert resp.is_finished is False
@@ -91,9 +124,30 @@ def test_progress_response_is_finished_true() -> None:
         current_page=300,
         percentage=100.0,
         is_finished=True,
+        progress_type="finished",
+        total_pages=300,
+        note=None,
         created_at=datetime.now(UTC),
     )
     assert resp.is_finished is True
+    assert resp.progress_type == "finished"
+    assert resp.total_pages == 300
+
+
+def test_progress_response_with_note() -> None:
+    resp = ProgressResponse(
+        id="abc",
+        user_id="user-1",
+        current_page=100,
+        percentage=50.0,
+        is_finished=False,
+        progress_type="page",
+        total_pages=200,
+        note="Ótimo capítulo",
+        created_at=datetime.now(UTC),
+    )
+    assert resp.note == "Ótimo capítulo"
+    assert resp.total_pages == 200
 
 
 # ── MemberProgressSummary ────────────────────────────────────────────────────
