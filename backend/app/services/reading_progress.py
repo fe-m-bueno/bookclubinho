@@ -308,6 +308,8 @@ async def _emit_progress_events(
                 "user_id": str(user_id),
                 "percentage": str(percentage),
             },
+            maxlen=10000,
+            approximate=True,
         )
         if percentage >= 80.0:
             await redis.xadd(
@@ -318,6 +320,8 @@ async def _emit_progress_events(
                     "user_id": str(user_id),
                     "percentage": str(percentage),
                 },
+                maxlen=10000,
+                approximate=True,
             )
     except RedisError:
         logger.warning("redis_event_emission_failed", round_id=str(round_.id))
@@ -347,6 +351,8 @@ async def _emit_streak_events(
                     "streak_current": str(user.streak_current),
                     "streak_longest": str(user.streak_longest),
                 },
+                maxlen=10000,
+                approximate=True,
             )
             if user.streak_current in _STREAK_MILESTONES:
                 await redis.xadd(
@@ -356,6 +362,8 @@ async def _emit_streak_events(
                         "user_id": str(user.id),
                         "milestone": str(user.streak_current),
                     },
+                    maxlen=10000,
+                    approximate=True,
                 )
     except RedisError:
         logger.warning("redis_streak_event_failed", user_id=str(user.id))

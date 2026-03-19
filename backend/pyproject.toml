@@ -42,6 +42,9 @@ dependencies = [
     # Email
     "resend>=2.4.0",
 
+    # Realtime SSE
+    "sse-starlette>=2.0.0",
+
     # Rate limiting
     "slowapi>=0.1.9",
 
