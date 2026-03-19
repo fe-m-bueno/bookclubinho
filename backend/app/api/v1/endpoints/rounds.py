@@ -99,6 +99,7 @@ def _round_to_detail(round_: Round) -> RoundDetailResponse:
         finished_at=round_.finished_at,
         created_at=round_.created_at,
         nominations=[_nomination_to_schema(n) for n in round_.nominations],
+        tiebreak_info=round_.tiebreak_info,
     )
 
 

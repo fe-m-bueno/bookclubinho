@@ -1,7 +1,7 @@
-import { RoundNominatingClient } from "@/components/rounds/round-nominating-client";
+import { RoundClient } from "@/components/rounds/round-client";
 
 export const metadata = { title: "Rodada" };
 
 export default function RoundPage() {
-  return <RoundNominatingClient />;
+  return <RoundClient />;
 }

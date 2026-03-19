@@ -109,3 +109,4 @@ class RoundDetailResponse(BaseModel):
     finished_at: datetime | None
     created_at: datetime
     nominations: list[NominationSummary]
+    tiebreak_info: dict | None = None
