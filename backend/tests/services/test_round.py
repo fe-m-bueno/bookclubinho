@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from redis.exceptions import RedisError
 
 from app.db.models.round import RoundStatus
 from app.schemas.round import NominationCreateRequest
@@ -578,6 +579,23 @@ def _db_for_admin_action(round_: MagicMock, member: MagicMock) -> AsyncMock:
     return db
 
 
+def _db_for_finalize(
+    round_: MagicMock,
+    member: MagicMock,
+    vote_counts: list[tuple],
+) -> AsyncMock:
+    """Mock db para finalize_round: round fetch, member fetch e vote GROUP BY."""
+    db = AsyncMock()
+    res_round = MagicMock()
+    res_round.scalar_one_or_none.return_value = round_
+    res_member = MagicMock()
+    res_member.scalar_one_or_none.return_value = member
+    res_votes = MagicMock()
+    res_votes.all.return_value = vote_counts
+    db.execute = AsyncMock(side_effect=[res_round, res_member, res_votes])
+    return db
+
+
 @pytest.mark.asyncio
 async def test_start_voting_success() -> None:
     user_id = uuid.uuid4()
@@ -747,7 +765,7 @@ async def test_finalize_round_no_votes() -> None:
     nom = _make_nomination(votes=[])
     round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom])
     member = _make_member(user_id=user_id, role="admin")
-    db = _db_for_admin_action(round_, member)
+    db = _db_for_finalize(round_, member, vote_counts=[])
 
     with pytest.raises(RoundError) as exc_info:
         await finalize_round(db, round_id=round_.id, user_id=user_id)
@@ -763,31 +781,40 @@ async def test_finalize_round_success_clear_winner() -> None:
     loser_nom = _make_nomination(book_id="loser", book_title="O Perdedor", votes=[_make_vote()])
     round_ = _make_round(status=RoundStatus.VOTING, nominations=[winner_nom, loser_nom])
     member = _make_member(user_id=user_id, role="admin")
-    db = _db_for_admin_action(round_, member)
+    db = _db_for_finalize(round_, member, vote_counts=[(winner_nom.id, 2), (loser_nom.id, 1)])
 
-    result = await finalize_round(db, round_id=round_.id, user_id=user_id)
+    with patch("app.services.round.get_redis", return_value=AsyncMock()):
+        result = await finalize_round(db, round_id=round_.id, user_id=user_id)
+
     assert result.status == RoundStatus.READING
     assert result.book_id == "winner"
     assert result.book_title == "O Vencedor"
-    assert result.tiebreak_info is None
+    assert result.tiebreak_info is not None
+    assert result.tiebreak_info["was_tiebreak"] is False
+    assert result.tiebreak_info["winner_id"] == str(winner_nom.id)
+    assert "method" not in result.tiebreak_info
 
 
 @pytest.mark.asyncio
 async def test_finalize_round_tiebreak() -> None:
     user_id = uuid.uuid4()
-    nom_a = _make_nomination(book_id="a", votes=[_make_vote()])
-    nom_b = _make_nomination(book_id="b", votes=[_make_vote()])
+    nom_a = _make_nomination(book_id="a", book_title="Livro A", votes=[_make_vote()])
+    nom_b = _make_nomination(book_id="b", book_title="Livro B", votes=[_make_vote()])
     round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom_a, nom_b])
     member = _make_member(user_id=user_id, role="admin")
-    db = _db_for_admin_action(round_, member)
+    db = _db_for_finalize(round_, member, vote_counts=[(nom_a.id, 1), (nom_b.id, 1)])
 
-    with patch("app.services.round.secrets.choice", return_value=nom_a):
+    with patch("app.services.round.secrets.choice", return_value=nom_a), patch(
+        "app.services.round.get_redis", return_value=AsyncMock()
+    ):
         result = await finalize_round(db, round_id=round_.id, user_id=user_id)
 
     assert result.book_id == "a"
     assert result.tiebreak_info is not None
+    assert result.tiebreak_info["was_tiebreak"] is True
     assert result.tiebreak_info["method"] == "random"
-    assert len(result.tiebreak_info["tied_nomination_ids"]) == 2
+    assert result.tiebreak_info["winner_id"] == str(nom_a.id)
+    assert len(result.tiebreak_info["tied_nominations"]) == 2
 
 
 @pytest.mark.asyncio
@@ -803,9 +830,11 @@ async def test_finalize_round_copies_book_fields() -> None:
     )
     round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom])
     member = _make_member(user_id=user_id, role="admin")
-    db = _db_for_admin_action(round_, member)
+    db = _db_for_finalize(round_, member, vote_counts=[(nom.id, 1)])
 
-    result = await finalize_round(db, round_id=round_.id, user_id=user_id)
+    with patch("app.services.round.get_redis", return_value=AsyncMock()):
+        result = await finalize_round(db, round_id=round_.id, user_id=user_id)
+
     assert result.book_id == "bk-1"
     assert result.book_title == "Livro Teste"
     assert result.book_author == "Autor"
@@ -819,10 +848,13 @@ async def test_finalize_round_sets_deadline() -> None:
     nom = _make_nomination(votes=[_make_vote()])
     round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom])
     member = _make_member(user_id=user_id, role="admin")
-    db = _db_for_admin_action(round_, member)
+    db = _db_for_finalize(round_, member, vote_counts=[(nom.id, 1)])
     future_date = date(2099, 12, 31)
 
-    result = await finalize_round(db, round_id=round_.id, user_id=user_id, deadline=future_date)
+    with patch("app.services.round.get_redis", return_value=AsyncMock()):
+        result = await finalize_round(
+            db, round_id=round_.id, user_id=user_id, deadline=future_date
+        )
     assert result.deadline == future_date
 
 
@@ -837,6 +869,61 @@ async def test_finalize_round_deadline_in_past_raises() -> None:
     with pytest.raises(RoundError) as exc_info:
         await finalize_round(db, round_id=round_.id, user_id=user_id, deadline=date(2000, 1, 1))
     assert exc_info.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_finalize_round_tiebreak_info_always_set() -> None:
+    user_id = uuid.uuid4()
+    winner = _make_nomination(book_id="w", book_title="Vencedor", votes=[_make_vote(), _make_vote()])
+    loser = _make_nomination(book_id="l", book_title="Perdedor", votes=[_make_vote()])
+    round_ = _make_round(status=RoundStatus.VOTING, nominations=[winner, loser])
+    member = _make_member(user_id=user_id, role="admin")
+    db = _db_for_finalize(round_, member, vote_counts=[(winner.id, 2), (loser.id, 1)])
+
+    with patch("app.services.round.get_redis", return_value=AsyncMock()):
+        result = await finalize_round(db, round_id=round_.id, user_id=user_id)
+
+    assert result.tiebreak_info is not None
+    assert result.tiebreak_info["was_tiebreak"] is False
+    assert "method" not in result.tiebreak_info
+    assert result.tiebreak_info["winner_id"] == str(winner.id)
+    assert len(result.tiebreak_info["tied_nominations"]) == 1
+    assert result.tiebreak_info["tied_nominations"][0]["votes"] == 2
+
+
+@pytest.mark.asyncio
+async def test_finalize_round_emits_redis_event() -> None:
+    user_id = uuid.uuid4()
+    nom = _make_nomination(book_id="bk-1", book_title="Livro", votes=[_make_vote()])
+    round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom])
+    member = _make_member(user_id=user_id, role="admin")
+    db = _db_for_finalize(round_, member, vote_counts=[(nom.id, 1)])
+
+    mock_redis = AsyncMock()
+    with patch("app.services.round.get_redis", return_value=mock_redis):
+        await finalize_round(db, round_id=round_.id, user_id=user_id)
+
+    mock_redis.xadd.assert_called_once()
+    stream_key, payload = mock_redis.xadd.call_args[0]
+    assert stream_key == f"bookclub:group:{round_.group_id}:events"
+    assert payload["type"] == "round_finalized"
+    assert payload["was_tiebreak"] == "false"
+
+
+@pytest.mark.asyncio
+async def test_finalize_round_redis_failure_non_fatal() -> None:
+    user_id = uuid.uuid4()
+    nom = _make_nomination(book_id="bk-1", votes=[_make_vote()])
+    round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom])
+    member = _make_member(user_id=user_id, role="admin")
+    db = _db_for_finalize(round_, member, vote_counts=[(nom.id, 1)])
+
+    mock_redis = AsyncMock()
+    mock_redis.xadd = AsyncMock(side_effect=RedisError("Redis indisponível"))
+    with patch("app.services.round.get_redis", return_value=mock_redis):
+        result = await finalize_round(db, round_id=round_.id, user_id=user_id)
+
+    assert result.status == RoundStatus.READING
 
 
 # ── start_review ──────────────────────────────────────────────────────────────

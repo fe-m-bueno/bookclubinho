@@ -9,6 +9,8 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.round import (
+    BookSummary,
+    FinalizeResponse,
     NominationSummary,
     RoundCreateRequest,
     RoundCreateResponse,
@@ -185,3 +187,41 @@ def test_round_detail_response_empty_nominations() -> None:
     )
     assert resp.nominations == []
     assert resp.book_id is None
+
+
+# ── BookSummary / FinalizeResponse ────────────────────────────────────────────
+
+
+def test_book_summary_minimal() -> None:
+    bs = BookSummary(book_id="b1", title="Titulo", author=None, cover_url=None, page_count=None)
+    assert bs.book_id == "b1"
+    assert bs.page_count is None
+
+
+def test_book_summary_full() -> None:
+    bs = BookSummary(
+        book_id="b2",
+        title="1984",
+        author="George Orwell",
+        cover_url="https://example.com/cover.jpg",
+        page_count=328,
+    )
+    assert bs.author == "George Orwell"
+    assert bs.page_count == 328
+
+
+def test_finalize_response_no_tiebreak() -> None:
+    resp = FinalizeResponse(
+        book=BookSummary(book_id="b1", title="Livro", author=None, cover_url=None, page_count=200),
+        was_tiebreak=False,
+    )
+    assert resp.was_tiebreak is False
+    assert resp.book.title == "Livro"
+
+
+def test_finalize_response_with_tiebreak() -> None:
+    resp = FinalizeResponse(
+        book=BookSummary(book_id="b2", title="Empate", author="Autor", cover_url=None, page_count=None),
+        was_tiebreak=True,
+    )
+    assert resp.was_tiebreak is True
