@@ -226,6 +226,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       return () => observer.disconnect();
     }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+    const items = useMemo(() => groupMessages(messages), [messages]);
+
     if (isLoading) {
       return (
         <div className="flex-1 overflow-y-auto">
@@ -233,8 +235,6 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         </div>
       );
     }
-
-    const items = useMemo(() => groupMessages(messages), [messages]);
 
     return (
       <div
