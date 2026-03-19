@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -40,6 +40,7 @@ from app.services.chat import (
     create_message,
     delete_message,
     edit_message,
+    emit_typing_event,
     list_messages,
     list_reactions,
     remove_reaction,
@@ -160,6 +161,28 @@ async def list_group_messages(
         ],
         next_cursor=next_cursor,
     )
+
+
+@group_messages_router.post(
+    "/typing",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Indicador de digitação",
+)
+@limiter.limit("20/minute")
+async def send_typing_indicator(
+    request: Request,
+    group_id: uuid.UUID,
+    _member: GroupMemberDep,
+    current_user: CurrentUser,
+) -> Response:
+    """Emite evento de typing para o grupo via Redis Stream."""
+    await emit_typing_event(
+        group_id=group_id,
+        user_id=current_user.id,
+        display_name=current_user.display_name or current_user.username or "",
+        avatar_url=current_user.avatar_url or "",
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @group_messages_router.post(
