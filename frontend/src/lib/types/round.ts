@@ -19,6 +19,26 @@ export interface NominationSummary {
   vote_count: number;
 }
 
+export interface BookSummary {
+  book_id: string;
+  title: string;
+  author: string | null;
+  cover_url: string | null;
+  page_count: number | null;
+}
+
+export interface FinalizeResponse {
+  book: BookSummary;
+  was_tiebreak: boolean;
+}
+
+export interface TiebreakInfo {
+  was_tiebreak: boolean;
+  tied_nominations: { id: string; title: string; votes: number }[];
+  winner_id: string;
+  method?: "random";
+}
+
 export interface RoundDetailResponse {
   id: string;
   round_number: number;
@@ -33,6 +53,7 @@ export interface RoundDetailResponse {
   finished_at: string | null;
   created_at: string;
   nominations: NominationSummary[];
+  tiebreak_info: TiebreakInfo | null;
 }
 
 export interface NominationCreatePayload {

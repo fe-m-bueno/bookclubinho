@@ -40,6 +40,7 @@ def _make_round(**overrides: object) -> MagicMock:
     r.finished_at = overrides.get("finished_at")
     r.created_at = overrides.get("created_at", datetime(2026, 1, 1, tzinfo=UTC))
     r.nominations = overrides.get("nominations", [])
+    r.tiebreak_info = overrides.get("tiebreak_info", None)
     return r
 
 
@@ -258,6 +259,41 @@ class TestGetCurrentRound:
 
         assert response.status_code == 404
         assert "rodada ativa" in response.json()["detail"].lower()
+
+    def test_current_round_tiebreak_info_null_by_default(self) -> None:
+        round_ = _make_round(status=RoundStatus.NOMINATING)
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.get_current_round",
+            new=AsyncMock(return_value=round_),
+        ):
+            response = client.get(f"/api/v1/groups/{GROUP_ID}/rounds/current")
+
+        assert response.status_code == 200
+        assert response.json()["tiebreak_info"] is None
+
+    def test_current_round_tiebreak_info_populated(self) -> None:
+        tiebreak = {
+            "was_tiebreak": True,
+            "tied_nominations": [],
+            "winner_id": "nom-uuid",
+            "method": "random",
+        }
+        round_ = _make_round(status=RoundStatus.READING, tiebreak_info=tiebreak)
+        app = _make_group_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.rounds.get_current_round",
+            new=AsyncMock(return_value=round_),
+        ):
+            response = client.get(f"/api/v1/groups/{GROUP_ID}/rounds/current")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["tiebreak_info"] == tiebreak
 
 
 # ── PATCH /rounds/{round_id} ───────────────────────────────────────────────────
