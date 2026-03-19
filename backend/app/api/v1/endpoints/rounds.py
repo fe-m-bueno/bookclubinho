@@ -16,6 +16,9 @@ rounds_router — montado em /rounds
   POST /{round_id}/finalize                  — admin finaliza votação
   POST /{round_id}/start-review             — admin inicia fase de reviews
   POST /{round_id}/finish                    — admin encerra rodada
+  POST /{round_id}/progress                  — membro registra progresso de leitura
+  GET  /{round_id}/progress                  — membro consulta progresso do grupo
+  GET  /{round_id}/progress/me               — membro consulta próprio progresso
 """
 
 from __future__ import annotations
@@ -30,8 +33,15 @@ from app.core.deps import (  # noqa: TC001
     GroupAdminDep,
     GroupMemberDep,
 )
+from app.db.models.reading_progress import ReadingProgress  # noqa: TC001
 from app.db.models.round import Round, RoundNomination  # noqa: TC001
 from app.schemas.group import MessageResponse
+from app.schemas.reading_progress import (
+    GroupProgressResponse,
+    MemberProgressSummary,
+    ProgressResponse,
+    ProgressUpdateRequest,
+)
 from app.schemas.round import (
     BookSummary,
     FinalizeRequest,
@@ -47,6 +57,7 @@ from app.schemas.round import (
     VoteCastRequest,
 )
 from app.security.rate_limit import limiter
+from app.services import reading_progress as reading_progress_service
 from app.services.round import (
     RoundError,
     add_nomination,
@@ -81,6 +92,17 @@ def _nomination_to_schema(nomination: RoundNomination) -> NominationSummary:
         user_id=str(nomination.user_id),
         nominated_at=nomination.nominated_at,
         vote_count=len(nomination.votes),
+    )
+
+
+def _progress_to_response(progress: "ReadingProgress") -> ProgressResponse:
+    return ProgressResponse(
+        id=str(progress.id),
+        user_id=str(progress.user_id),
+        current_page=progress.current_page,
+        percentage=progress.percentage,
+        is_finished=progress.percentage >= 100.0,
+        created_at=progress.created_at,
     )
 
 
@@ -426,3 +448,77 @@ async def finish_round_endpoint(
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     return _round_to_detail(round_)
+
+
+# ── Reading progress ──────────────────────────────────────────────────────────
+
+
+@rounds_router.post(
+    "/{round_id}/progress",
+    response_model=ProgressResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar progresso de leitura",
+)
+@limiter.limit("30/minute")
+async def log_reading_progress(
+    request: Request,
+    round_id: uuid.UUID,
+    body: ProgressUpdateRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> ProgressResponse:
+    """Registra um snapshot de progresso de leitura. Rodada deve estar em 'reading'."""
+    progress = await reading_progress_service.log_progress(
+        db=db,
+        round_id=round_id,
+        user_id=current_user.id,
+        current_page=body.current_page,
+        percentage=body.percentage,
+    )
+    return _progress_to_response(progress)
+
+
+@rounds_router.get(
+    "/{round_id}/progress/me",
+    response_model=ProgressResponse | None,
+    summary="Meu progresso de leitura",
+)
+@limiter.limit("30/minute")
+async def get_my_reading_progress(
+    request: Request,
+    round_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> ProgressResponse | None:
+    """Retorna o snapshot mais recente do próprio progresso nesta rodada."""
+    progress = await reading_progress_service.get_my_progress(
+        db=db,
+        round_id=round_id,
+        user_id=current_user.id,
+    )
+    if progress is None:
+        return None
+    return _progress_to_response(progress)
+
+
+@rounds_router.get(
+    "/{round_id}/progress",
+    response_model=GroupProgressResponse,
+    summary="Progresso de leitura do grupo",
+)
+@limiter.limit("30/minute")
+async def get_group_reading_progress(
+    request: Request,
+    round_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> GroupProgressResponse:
+    """Retorna o progresso mais recente de cada membro do grupo nesta rodada."""
+    progress_list = await reading_progress_service.get_group_progress(
+        db=db,
+        round_id=round_id,
+        user_id=current_user.id,
+    )
+    return GroupProgressResponse(
+        progress=[MemberProgressSummary(**p) for p in progress_list]
+    )
