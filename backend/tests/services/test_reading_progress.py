@@ -543,6 +543,26 @@ async def test_get_my_progress_not_member_raises() -> None:
 # ── get_group_progress ────────────────────────────────────────────────────────
 
 
+def _make_group_row(user_id: uuid.UUID, **overrides: object) -> MagicMock:
+    """Create a mock mapping row for get_group_progress query results."""
+    defaults: dict[str, object] = {
+        "user_id": user_id,
+        "username": "user1",
+        "display_name": "User One",
+        "avatar_url": None,
+        "streak_current": 0,
+        "current_page": None,
+        "total_pages": None,
+        "note": None,
+        "percentage": 0.0,
+        "updated_at": None,
+    }
+    data = {**defaults, **overrides}
+    row = MagicMock()
+    row.__getitem__ = lambda self, key: data[key]
+    return row
+
+
 @pytest.mark.asyncio
 async def test_get_group_progress_returns_all_members() -> None:
     """All group members are returned, including those with no progress."""
@@ -557,36 +577,33 @@ async def test_get_group_progress_returns_all_members() -> None:
     res_member = MagicMock()
     res_member.scalar_one_or_none.return_value = member
 
-    row_with_progress = MagicMock()
-    row_with_progress.__getitem__ = lambda self, key: {
-        "user_id": user_id,
-        "current_page": 100,
-        "percentage": 50.0,
-        "updated_at": datetime(2026, 1, 1, tzinfo=UTC),
-    }[key]
-
-    row_no_progress = MagicMock()
-    row_no_progress.__getitem__ = lambda self, key: {
-        "user_id": other_user_id,
-        "current_page": None,
-        "percentage": 0.0,
-        "updated_at": None,
-    }[key]
+    row_with_progress = _make_group_row(
+        user_id,
+        current_page=100,
+        percentage=50.0,
+        updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        streak_current=3,
+        note="Bom até aqui",
+    )
+    row_no_progress = _make_group_row(other_user_id)
 
     res_group = MagicMock()
     res_group.mappings.return_value.all.return_value = [row_with_progress, row_no_progress]
 
     db.execute = AsyncMock(side_effect=[res_round, res_member, res_group])
 
-    result = await get_group_progress(db, round_id=round_.id, user_id=user_id)
+    result, started_at = await get_group_progress(db, round_id=round_.id, user_id=user_id)
 
     assert len(result) == 2
     assert result[0]["user_id"] == str(user_id)
     assert result[0]["percentage"] == 50.0
     assert result[0]["is_finished"] is False
+    assert result[0]["streak_current"] == 3
+    assert result[0]["note"] == "Bom até aqui"
     assert result[1]["user_id"] == str(other_user_id)
     assert result[1]["percentage"] == 0.0
     assert result[1]["updated_at"] is None
+    assert started_at == round_.started_at
 
 
 @pytest.mark.asyncio
@@ -601,20 +618,19 @@ async def test_get_group_progress_finished_member() -> None:
     res_member = MagicMock()
     res_member.scalar_one_or_none.return_value = member
 
-    row_finished = MagicMock()
-    row_finished.__getitem__ = lambda self, key: {
-        "user_id": user_id,
-        "current_page": 300,
-        "percentage": 100.0,
-        "updated_at": datetime(2026, 1, 10, tzinfo=UTC),
-    }[key]
+    row_finished = _make_group_row(
+        user_id,
+        current_page=300,
+        percentage=100.0,
+        updated_at=datetime(2026, 1, 10, tzinfo=UTC),
+    )
 
     res_group = MagicMock()
     res_group.mappings.return_value.all.return_value = [row_finished]
 
     db.execute = AsyncMock(side_effect=[res_round, res_member, res_group])
 
-    result = await get_group_progress(db, round_id=round_.id, user_id=user_id)
+    result, _ = await get_group_progress(db, round_id=round_.id, user_id=user_id)
 
     assert len(result) == 1
     assert result[0]["is_finished"] is True
@@ -633,6 +649,47 @@ async def test_get_group_progress_not_member_raises() -> None:
     with pytest.raises(RoundError) as exc_info:
         await get_group_progress(db, round_id=uuid.uuid4(), user_id=uuid.uuid4())
     assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_group_progress_includes_user_display_fields() -> None:
+    """MemberProgressSummary enrichment: username, display_name, avatar_url, streak_current."""
+    user_id = uuid.uuid4()
+    round_ = _make_round()
+    member = _make_member(user_id=user_id)
+
+    db = AsyncMock()
+    res_round = MagicMock()
+    res_round.scalar_one_or_none.return_value = round_
+    res_member = MagicMock()
+    res_member.scalar_one_or_none.return_value = member
+
+    row = _make_group_row(
+        user_id,
+        username="alice",
+        display_name="Alice Silva",
+        avatar_url="https://example.com/avatar.jpg",
+        streak_current=7,
+        percentage=60.0,
+        total_pages=300,
+        note="Amando o livro",
+        updated_at=datetime(2026, 3, 15, tzinfo=UTC),
+    )
+
+    res_group = MagicMock()
+    res_group.mappings.return_value.all.return_value = [row]
+    db.execute = AsyncMock(side_effect=[res_round, res_member, res_group])
+
+    result, _ = await get_group_progress(db, round_id=round_.id, user_id=user_id)
+
+    assert len(result) == 1
+    r = result[0]
+    assert r["username"] == "alice"
+    assert r["display_name"] == "Alice Silva"
+    assert r["avatar_url"] == "https://example.com/avatar.jpg"
+    assert r["streak_current"] == 7
+    assert r["total_pages"] == 300
+    assert r["note"] == "Amando o livro"
 
 
 # ── cleanup_expired_streaks ───────────────────────────────────────────────────

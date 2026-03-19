@@ -9,6 +9,7 @@ import type {
 
 interface UseGroupProgressReturn {
   progress: MemberProgressSummary[] | null;
+  roundStartedAt: string | null;
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -18,6 +19,7 @@ export function useGroupProgress(roundId: string): UseGroupProgressReturn {
   const [progress, setProgress] = useState<MemberProgressSummary[] | null>(
     null,
   );
+  const [roundStartedAt, setRoundStartedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -42,6 +44,7 @@ export function useGroupProgress(roundId: string): UseGroupProgressReturn {
       if (res.ok) {
         const data: GroupProgressResponse = await res.json();
         setProgress(data.progress);
+        setRoundStartedAt(data.round_started_at ?? null);
         return;
       }
 
@@ -84,5 +87,5 @@ export function useGroupProgress(roundId: string): UseGroupProgressReturn {
     };
   }, [fetchProgress]);
 
-  return { progress, loading, error, refetch: fetchProgress };
+  return { progress, roundStartedAt, loading, error, refetch: fetchProgress };
 }

@@ -2,7 +2,9 @@
 
 import { GroupProvider } from "@/lib/contexts/group-context";
 import { useGroupDetail } from "@/hooks/use-group-detail";
+import { useTimerStore } from "@/stores/use-timer-store";
 import { Button } from "@/components/ui/button";
+import { FloatingTimerButton } from "@/components/rounds/floating-timer-button";
 import { GroupHeader } from "./group-header";
 import { GroupTabBar } from "./group-tab-bar";
 import { GroupLayoutSkeleton } from "./group-layout-skeleton";
@@ -14,6 +16,7 @@ interface GroupLayoutShellProps {
 
 export function GroupLayoutShell({ groupId, children }: GroupLayoutShellProps) {
   const { group, loading, error, refetch } = useGroupDetail(groupId);
+  const showTimer = useTimerStore((s) => s.status !== "idle" || s.roundContext !== null);
 
   if (loading) {
     return <GroupLayoutSkeleton />;
@@ -43,6 +46,7 @@ export function GroupLayoutShell({ groupId, children }: GroupLayoutShellProps) {
           {children}
         </main>
         <GroupTabBar groupId={groupId} variant="mobile" />
+        {showTimer && <FloatingTimerButton />}
       </div>
     </GroupProvider>
   );

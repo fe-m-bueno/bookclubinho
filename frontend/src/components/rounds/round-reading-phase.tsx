@@ -1,32 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { BookOpen, MessageCircle, BookOpenCheck, PartyPopper } from "lucide-react";
-import { toast } from "sonner";
+import { BookOpen, MessageCircle, BookOpenCheck } from "lucide-react";
 import ReactConfetti from "react-confetti";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { RoundStatusBadge } from "./round-status-badge";
 import { DeadlineCard } from "./deadline-card";
 import { GroupProgress } from "./group-progress";
-import { UpdateProgressDrawer } from "./update-progress-drawer";
+import { ProgressUpdateModal } from "./progress-update-modal";
 import { StartReviewButton } from "./start-review-button";
-import { FloatingTimerButton } from "./floating-timer-button";
-import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
 import { useGroupProgress } from "@/hooks/use-group-progress";
 import { useWindowSize } from "@/hooks/use-window-size";
+import { useTimerStore } from "@/stores/use-timer-store";
 import type { RoundDetailResponse } from "@/lib/types/round";
 import type { GroupDetailResponse } from "@/lib/types/group";
 
@@ -48,22 +35,30 @@ export function RoundReadingPhase({
   const [progressOpen, setProgressOpen] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const { progress, loading: progressLoading, refetch: refetchGroupProgress } =
+  const { progress, roundStartedAt, loading: progressLoading, refetch: refetchGroupProgress } =
     useGroupProgress(round.id);
 
   // Current user's progress derived from group progress — single source of truth
   const myProgress = progress?.find((p) => p.user_id === group.current_user_id) ?? null;
 
-  const { submit: submitFinish, loading: finishLoading } = useAuthSubmit({
-    url: `/api/v1/rounds/${round.id}/progress`,
-    headers: JSON_HEADERS,
-    onSuccess: async () => {
-      setShowConfetti(true);
-      toast.success("Parabéns! Você terminou o livro!");
-      refetchGroupProgress();
-      setTimeout(() => setShowConfetti(false), 5000);
-    },
-  });
+  // Sync round context to timer store — updates on prop change and clears on unmount
+  const setRoundContext = useTimerStore((s) => s.setRoundContext);
+  useEffect(() => {
+    setRoundContext({
+      roundId: round.id,
+      groupId: group.id,
+      bookTitle: round.book_title,
+      bookCoverUrl: round.book_cover_url,
+    });
+    return () => {
+      useTimerStore.getState().setRoundContext(null);
+    };
+  }, [round.id, group.id, round.book_title, round.book_cover_url, setRoundContext]);
+
+  const handleFinished = () => {
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 5000);
+  };
 
   return (
     <div className="space-y-6 pb-24">
@@ -115,10 +110,12 @@ export function RoundReadingPhase({
       {/* Deadline card */}
       {round.deadline && <DeadlineCard deadline={round.deadline} />}
 
-      {/* Group progress — data owned here, passed down */}
+      {/* Group progress */}
       <GroupProgress
-        members={group.members}
         progress={progress}
+        currentUserId={group.current_user_id}
+        roundStartedAt={roundStartedAt}
+        bookPageCount={round.book_page_count}
         loading={progressLoading}
       />
 
@@ -142,63 +139,23 @@ export function RoundReadingPhase({
         </Button>
       </div>
 
-      {/* Terminei o livro */}
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="default"
-            className="w-full min-h-[44px]"
-            disabled={(myProgress?.is_finished ?? false) || finishLoading}
-          >
-            <PartyPopper className="h-4 w-4" />
-            {myProgress?.is_finished
-              ? "Você já terminou!"
-              : "Terminei o livro!"}
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Terminou o livro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Seu progresso será marcado como 100%. Parabéns!
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                submitFinish(
-                  JSON.stringify(
-                    round.book_page_count
-                      ? { current_page: round.book_page_count }
-                      : { percentage: 100 },
-                  ),
-                )
-              }
-            >
-              Confirmar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Admin: Abrir Reviews */}
       {isAdmin && (
         <StartReviewButton roundId={round.id} onStarted={refetch} />
       )}
 
-      {/* Update progress drawer */}
-      <UpdateProgressDrawer
+      {/* Progress update modal — key forces remount on open to sync latest progress */}
+      <ProgressUpdateModal
+        key={progressOpen ? "open" : "closed"}
         roundId={round.id}
         bookPageCount={round.book_page_count}
         currentPage={myProgress?.current_page ?? null}
+        currentPercentage={myProgress?.percentage ?? 0}
         onUpdated={refetchGroupProgress}
+        onFinished={handleFinished}
         open={progressOpen}
         onOpenChange={setProgressOpen}
       />
-
-      {/* Floating timer button */}
-      <FloatingTimerButton />
     </div>
   );
 }
