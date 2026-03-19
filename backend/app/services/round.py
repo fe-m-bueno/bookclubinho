@@ -513,6 +513,8 @@ async def finalize_round(
                 "book_title": winner.book_title or "",
                 "was_tiebreak": str(was_tiebreak).lower(),
             },
+            maxlen=10000,
+            approximate=True,
         )
     except RedisError:
         logger.warning("redis_event_emission_failed", round_id=str(round_id))

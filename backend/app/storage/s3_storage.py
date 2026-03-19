@@ -34,6 +34,9 @@ from app.core.config import settings
 
 WEBP_QUALITY: Final = 85          # good balance of quality vs. file size
 WEBP_CONTENT_TYPE: Final = "image/webp"
+GIF_CONTENT_TYPE: Final = "image/gif"
+
+_THUMBNAIL_MAX_PX: Final = 300
 
 # (max_longest_side, square_crop)
 _RESIZE_RULES: Final[dict[str, tuple[int, bool]]] = {
@@ -136,6 +139,113 @@ def _process_image(data: bytes, bucket_path: str) -> bytes:
         buf = io.BytesIO()
         img.save(buf, format="WEBP", quality=WEBP_QUALITY, method=6)
         return buf.getvalue()
+
+
+# ── Thumbnail helpers ─────────────────────────────────────────────────────────
+
+
+def _is_gif(data: bytes) -> bool:
+    """Return True if the data starts with a GIF magic header."""
+    return data[:6] in (b"GIF87a", b"GIF89a")
+
+
+def _thumbnail_to_webp(img: Image.Image, max_px: int) -> tuple[bytes, int, int]:
+    """Encode an already-opened PIL Image as a WebP thumbnail.
+
+    Applies EXIF transpose, converts to RGB if needed, resizes to max_px
+    (longest side, never upscales), and saves as WebP.
+
+    Returns (webp_bytes, original_width, original_height) — the source image
+    dimensions *before* the thumbnail resize, so callers can report the full
+    media size to clients.
+    """
+    img = ImageOps.exif_transpose(img)
+    if img.mode not in ("RGB", "RGBA"):
+        img = img.convert("RGB")
+    orig_w, orig_h = img.size
+    img.thumbnail((max_px, max_px), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="WEBP", quality=WEBP_QUALITY, method=6)
+    return buf.getvalue(), orig_w, orig_h
+
+
+def _generate_thumbnail(data: bytes, max_px: int = _THUMBNAIL_MAX_PX) -> tuple[bytes, int, int]:
+    """Generate a WebP thumbnail from image bytes (JPEG/PNG/WebP).
+
+    Returns (webp_bytes, original_width, original_height).
+    """
+    with Image.open(io.BytesIO(data)) as img:
+        return _thumbnail_to_webp(img, max_px)
+
+
+def _generate_gif_thumbnail(data: bytes, max_px: int = _THUMBNAIL_MAX_PX) -> tuple[bytes, int, int]:
+    """Generate a static WebP thumbnail from the first frame of a GIF.
+
+    Returns (webp_bytes, original_width, original_height).
+    """
+    with Image.open(io.BytesIO(data)) as img:
+        img.seek(0)  # first frame
+        frame = img.copy()
+    return _thumbnail_to_webp(frame, max_px)
+
+
+def process_media_upload(data: bytes, group_id: str, file_uuid: str) -> dict:
+    """Validate, process, and upload a media file to the chat media bucket.
+
+    This is a **synchronous** function — call via ``asyncio.to_thread()``.
+    Size validation is the caller's responsibility (see upload_chat_media).
+
+    Returns a dict with keys: media_url, thumbnail_url, width, height.
+    Raises ValueError for invalid magic bytes.
+    """
+    _validate_magic_bytes(data)
+    _ensure_bucket()
+
+    if _is_gif(data):
+        bucket_path = f"media/{group_id}/{file_uuid}.gif"
+        thumb_path = f"media/{group_id}/{file_uuid}_thumb.webp"
+
+        # _generate_gif_thumbnail opens the image once and returns original dims
+        thumb_bytes, width, height = _generate_gif_thumbnail(data)
+
+        # Upload original GIF (preserves animation)
+        _client().put_object(
+            Bucket=settings.S3_BUCKET_NAME,
+            Key=bucket_path,
+            Body=data,
+            ContentType=GIF_CONTENT_TYPE,
+        )
+    else:
+        bucket_path = f"media/{group_id}/{file_uuid}.webp"
+        thumb_path = f"media/{group_id}/{file_uuid}_thumb.webp"
+
+        processed = _process_image(data, bucket_path)
+
+        # _generate_thumbnail opens processed once and returns its original dims
+        thumb_bytes, width, height = _generate_thumbnail(processed)
+
+        # Upload processed WebP
+        _client().put_object(
+            Bucket=settings.S3_BUCKET_NAME,
+            Key=bucket_path,
+            Body=processed,
+            ContentType=WEBP_CONTENT_TYPE,
+        )
+
+    # Upload thumbnail (shared by both branches)
+    _client().put_object(
+        Bucket=settings.S3_BUCKET_NAME,
+        Key=thumb_path,
+        Body=thumb_bytes,
+        ContentType=WEBP_CONTENT_TYPE,
+    )
+
+    return {
+        "media_url": get_public_url(bucket_path),
+        "thumbnail_url": get_public_url(thumb_path),
+        "width": width,
+        "height": height,
+    }
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

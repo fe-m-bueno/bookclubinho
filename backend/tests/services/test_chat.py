@@ -10,6 +10,7 @@ import pytest
 
 from app.services.chat import (
     ChatError,
+    _emit_chat_event,
     create_message,
     delete_message,
     edit_message,
@@ -526,3 +527,24 @@ async def test_list_reactions_returns_with_user_details() -> None:
     assert len(result) == 1
     assert result[0].emoji == "❤️"
     assert result[0].user.username == "testuser"
+
+
+# ── _emit_chat_event maxlen ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_emit_chat_event_uses_maxlen() -> None:
+    group_id = uuid.uuid4()
+    event_data = {"type": "message_created", "message_id": str(uuid.uuid4())}
+
+    mock_redis = AsyncMock()
+    mock_redis.xadd = AsyncMock()
+
+    with patch("app.services.chat.get_redis", return_value=mock_redis):
+        await _emit_chat_event(group_id, event_data)
+
+    mock_redis.xadd.assert_called_once()
+    call_kwargs = mock_redis.xadd.call_args
+    assert call_kwargs.kwargs.get("maxlen") == 10000 or (
+        len(call_kwargs.args) > 2 and call_kwargs.args[2] == 10000
+    )

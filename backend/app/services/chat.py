@@ -51,7 +51,7 @@ async def _emit_chat_event(group_id: uuid.UUID, event_data: dict[str, str]) -> N
     try:
         redis = get_redis()
         stream_key = f"bookclub:group:{group_id}:chat"
-        await redis.xadd(stream_key, event_data)
+        await redis.xadd(stream_key, event_data, maxlen=10000, approximate=True)
     except RedisError:
         logger.warning("chat_event_emit_failed", group_id=str(group_id))
 
