@@ -44,8 +44,10 @@ function makeOptimisticMessage(
   };
 }
 
+type InfiniteData = { pages: MessageListResponse[]; pageParams: unknown[] };
+
 interface SendMessageContext {
-  previousData: { pages: MessageListResponse[]; pageParams: unknown[] } | undefined;
+  snapshots: [unknown, InfiniteData | undefined][];
 }
 
 export function useSendMessage(
@@ -53,6 +55,7 @@ export function useSendMessage(
   currentUser: { id: string; name: string; avatar: string | null },
 ) {
   const queryClient = useQueryClient();
+  const queryFilter = { queryKey: ["chat-messages", groupId] } as const;
 
   return useMutation<ChatMessage, Error, MessageCreatePayload, SendMessageContext>({
     mutationFn: async (payload) => {
@@ -70,39 +73,43 @@ export function useSendMessage(
       return res.json();
     },
     onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: ["chat-messages", groupId] });
-      const previousData = queryClient.getQueryData<{
-        pages: MessageListResponse[];
-        pageParams: unknown[];
-      }>(["chat-messages", groupId]);
+      // Cancel any in-flight refetches for all chat-messages variants
+      await queryClient.cancelQueries(queryFilter);
 
-      // Optimistic update: prepend to first page (newest)
-      if (previousData && previousData.pages.length > 0) {
-        const optimistic = makeOptimisticMessage(
-          payload,
-          currentUser.id,
-          currentUser.name,
-          currentUser.avatar,
-        );
-        const firstPage = previousData.pages[0];
-        queryClient.setQueryData(
-          ["chat-messages", groupId],
-          {
-            ...previousData,
-            pages: [
-              { ...firstPage, messages: [optimistic, ...firstPage.messages] },
-              ...previousData.pages.slice(1),
-            ],
-          },
-        );
-      }
+      // Snapshot ALL matching queries (any chapterFilter/roundId variant)
+      const snapshots = queryClient.getQueriesData<InfiniteData>(queryFilter);
 
-      return { previousData };
+      const optimistic = makeOptimisticMessage(
+        payload,
+        currentUser.id,
+        currentUser.name,
+        currentUser.avatar,
+      );
+
+      // Apply optimistic update to every matching query
+      queryClient.setQueriesData<InfiniteData>(queryFilter, (old) => {
+        if (!old || old.pages.length === 0) return old;
+        const firstPage = old.pages[0];
+        return {
+          ...old,
+          pages: [
+            { ...firstPage, messages: [optimistic, ...firstPage.messages] },
+            ...old.pages.slice(1),
+          ],
+        };
+      });
+
+      return { snapshots };
     },
     onError: (_err, _payload, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(["chat-messages", groupId], context.previousData);
+      // Roll back all affected queries
+      for (const [key, data] of context?.snapshots ?? []) {
+        queryClient.setQueryData(key as string[], data);
       }
+    },
+    onSettled: () => {
+      // Ensure cache is eventually consistent (fallback if SSE is delayed/dropped)
+      queryClient.invalidateQueries(queryFilter);
     },
   });
 }
