@@ -68,14 +68,37 @@ export interface NominationCreatePayload {
 
 export interface MemberProgressSummary {
   user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  streak_current: number;
   current_page: number | null;
+  total_pages: number | null;
   percentage: number;
   is_finished: boolean;
+  note: string | null;
   updated_at: string | null;
 }
 
 export interface GroupProgressResponse {
   progress: MemberProgressSummary[];
+  round_started_at: string | null;
+}
+
+export interface ReadingSessionResponse {
+  id: string;
+  user_id: string;
+  round_id: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_minutes: number | null;
+  created_at: string;
+}
+
+export interface SessionListResponse {
+  sessions: ReadingSessionResponse[];
+  total_duration_minutes: number;
+  next_cursor: string | null;
 }
 
 export interface ProgressResponse {

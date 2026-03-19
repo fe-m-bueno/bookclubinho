@@ -524,11 +524,12 @@ async def get_group_reading_progress(
     db: DBSession,
 ) -> GroupProgressResponse:
     """Retorna o progresso mais recente de cada membro do grupo nesta rodada."""
-    progress_list = await reading_progress_service.get_group_progress(
+    progress_list, round_started_at = await reading_progress_service.get_group_progress(
         db=db,
         round_id=round_id,
         user_id=current_user.id,
     )
     return GroupProgressResponse(
-        progress=[MemberProgressSummary(**p) for p in progress_list]
+        progress=[MemberProgressSummary(**p) for p in progress_list],
+        round_started_at=round_started_at,
     )

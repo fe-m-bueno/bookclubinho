@@ -36,11 +36,18 @@ class ProgressResponse(BaseModel):
 
 class MemberProgressSummary(BaseModel):
     user_id: str
+    username: str | None = None
+    display_name: str | None = None
+    avatar_url: str | None = None
+    streak_current: int = 0
     current_page: int | None
+    total_pages: int | None = None
     percentage: float
     is_finished: bool
+    note: str | None = None
     updated_at: datetime | None  # null if no progress logged yet
 
 
 class GroupProgressResponse(BaseModel):
     progress: list[MemberProgressSummary]
+    round_started_at: datetime | None = None

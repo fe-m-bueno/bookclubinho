@@ -55,6 +55,9 @@ async def start_session(
     )
     active = active_result.scalar_one_or_none()
     if active is not None:
+        if active.round_id == round_id:
+            # Same round — idempotent: return the existing session (handles crash recovery)
+            return active
         raise ReadingSessionError(
             "Já existe uma sessão de leitura ativa. Encerre-a primeiro.",
             status_code=409,

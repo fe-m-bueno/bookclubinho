@@ -129,32 +129,46 @@ async def get_group_progress(
     db: AsyncSession,
     round_id: uuid.UUID,
     user_id: uuid.UUID,
-) -> list[dict]:
+) -> tuple[list[dict], "datetime | None"]:
     """Return the latest progress snapshot for every member of the group.
 
     Members with no progress yet are included with percentage=0 and updated_at=None.
-    Returns a list of dicts compatible with MemberProgressSummary.
+    Returns (list of dicts compatible with MemberProgressSummary, round.started_at).
     """
     round_ = await verify_round_member(db, round_id, user_id)
 
     # Subquery: DISTINCT ON (user_id) — latest snapshot per user for this round.
     # SQLAlchemy renders DISTINCT ON when distinct() receives column arguments.
     latest_subq = (
-        select(ReadingProgress)
+        select(
+            ReadingProgress.user_id,
+            ReadingProgress.current_page,
+            ReadingProgress.total_pages,
+            ReadingProgress.note,
+            ReadingProgress.percentage,
+            ReadingProgress.created_at,
+        )
         .where(ReadingProgress.round_id == round_id)
         .order_by(ReadingProgress.user_id, ReadingProgress.created_at.desc())
         .distinct(ReadingProgress.user_id)
     ).subquery("latest_progress")
 
-    # Outer query: LEFT JOIN group_members with the latest snapshot subquery.
+    # Outer query: JOIN users for display info, LEFT JOIN latest snapshot.
     stmt = (
         select(
             GroupMember.user_id,
+            User.username,
+            User.display_name,
+            User.avatar_url,
+            User.streak_current,
             latest_subq.c.current_page,
+            latest_subq.c.total_pages,
+            latest_subq.c.note,
             func.coalesce(latest_subq.c.percentage, 0.0).label("percentage"),
             latest_subq.c.created_at.label("updated_at"),
         )
         .select_from(GroupMember)
+        .join(User, User.id == GroupMember.user_id)
         .outerjoin(latest_subq, latest_subq.c.user_id == GroupMember.user_id)
         .where(GroupMember.group_id == round_.group_id)
         .order_by(func.coalesce(latest_subq.c.percentage, 0.0).desc())
@@ -163,16 +177,25 @@ async def get_group_progress(
     result = await db.execute(stmt)
     rows = result.mappings().all()
 
-    return [
-        {
-            "user_id": str(row["user_id"]),
-            "current_page": row["current_page"],
-            "percentage": float(row["percentage"]),
-            "is_finished": float(row["percentage"]) >= 100.0,
-            "updated_at": row["updated_at"],
-        }
-        for row in rows
-    ]
+    progress = []
+    for row in rows:
+        pct = float(row["percentage"])
+        progress.append(
+            {
+                "user_id": str(row["user_id"]),
+                "username": row["username"],
+                "display_name": row["display_name"],
+                "avatar_url": row["avatar_url"],
+                "streak_current": row["streak_current"],
+                "current_page": row["current_page"],
+                "total_pages": row["total_pages"],
+                "note": row["note"],
+                "percentage": pct,
+                "is_finished": pct >= 100.0,
+                "updated_at": row["updated_at"],
+            }
+        )
+    return progress, round_.started_at
 
 
 async def cleanup_expired_streaks(db: AsyncSession) -> int:
