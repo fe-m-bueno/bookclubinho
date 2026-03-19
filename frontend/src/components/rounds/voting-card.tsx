@@ -33,7 +33,7 @@ export function VotingCard({
     <motion.button
       layout
       initial={{ opacity: 0, y: 10 }}
-      animate={{ y: 0 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
       whileTap={disabled ? undefined : { scale: 0.98 }}
       onClick={() => !disabled && onVote(nomination.id)}

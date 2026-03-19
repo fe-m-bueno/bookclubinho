@@ -12,7 +12,6 @@ import type { GroupDetailResponse } from "@/lib/types/group";
 interface RoundVotingPhaseProps {
   round: RoundDetailResponse;
   isAdmin: boolean;
-  refetch: () => void;
   group: GroupDetailResponse;
   onFinalized: (result: FinalizeResponse) => void;
 }
@@ -20,7 +19,6 @@ interface RoundVotingPhaseProps {
 export function RoundVotingPhase({
   round,
   isAdmin,
-  refetch,
   group,
   onFinalized,
 }: RoundVotingPhaseProps) {
@@ -33,7 +31,6 @@ export function RoundVotingPhase({
     headers: JSON_HEADERS,
     onSuccess: async () => {
       toast.success("Voto registrado!");
-      refetch();
     },
     statusHandlers: [
       {

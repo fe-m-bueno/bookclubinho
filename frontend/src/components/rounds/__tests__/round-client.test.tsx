@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { GroupDetailResponse } from "@/lib/types/group";
 import type { RoundDetailResponse } from "@/lib/types/round";
@@ -74,6 +74,10 @@ vi.mock("@/hooks/use-book-search", () => ({
   useBookSearch: vi.fn(() => ({ results: [], loading: false })),
 }));
 
+vi.mock("@/hooks/use-group-progress", () => ({
+  useGroupProgress: vi.fn(() => ({ progress: [], loading: false, error: null, refetch: vi.fn() })),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
@@ -89,6 +93,14 @@ describe("RoundClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedUseGroup.mockReturnValue({ group: adminGroup, refetch: mockRefetch });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 404,
+    } as Response);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("shows skeleton while loading", () => {
@@ -183,9 +195,15 @@ describe("RoundClient", () => {
     expect(screen.getByText("Escolha seu livro")).toBeInTheDocument();
   });
 
-  it("shows reading status fallback when no tiebreak_info", () => {
+  it("delegates to reading phase when status is reading and no tiebreak_info", () => {
     mockedUseCurrentRound.mockReturnValue({
-      round: { ...nominatingRound, status: "reading", tiebreak_info: null },
+      round: {
+        ...nominatingRound,
+        status: "reading",
+        tiebreak_info: null,
+        book_title: "Dom Casmurro",
+        book_author: "Machado de Assis",
+      },
       loading: false,
       error: null,
       refetch: mockRefetch,
@@ -193,7 +211,8 @@ describe("RoundClient", () => {
 
     renderWithProviders(<RoundClient />);
 
-    expect(screen.getByText("Leitura em andamento.")).toBeInTheDocument();
+    expect(screen.getByText("Leitura em andamento")).toBeInTheDocument();
+    expect(screen.getByText("Dom Casmurro")).toBeInTheDocument();
   });
 
   it("shows reveal when status is reading with tiebreak_info (no page refresh needed)", () => {

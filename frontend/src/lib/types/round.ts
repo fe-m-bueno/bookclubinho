@@ -65,3 +65,24 @@ export interface NominationCreatePayload {
   book_page_count: number | null;
   pitch?: string;
 }
+
+export interface MemberProgressSummary {
+  user_id: string;
+  current_page: number | null;
+  percentage: number;
+  is_finished: boolean;
+  updated_at: string | null;
+}
+
+export interface GroupProgressResponse {
+  progress: MemberProgressSummary[];
+}
+
+export interface ProgressResponse {
+  id: string;
+  user_id: string;
+  current_page: number | null;
+  percentage: number;
+  is_finished: boolean;
+  created_at: string;
+}
