@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import CheckConstraint, Float, ForeignKey, Integer, text
+from sqlalchemy import CheckConstraint, Float, ForeignKey, Integer, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,6 +19,10 @@ class ReadingProgress(CreatedAtMixin, Base):
         CheckConstraint(
             "percentage >= 0 AND percentage <= 100",
             name="ck_reading_progress_percentage_range",
+        ),
+        CheckConstraint(
+            "progress_type IN ('page', 'chapter', 'percentage', 'finished')",
+            name="ck_reading_progress_progress_type",
         ),
     )
 
@@ -46,6 +50,14 @@ class ReadingProgress(CreatedAtMixin, Base):
         server_default=text("0.0"),
         default=0.0,
     )
+    progress_type: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        server_default="page",
+        default="page",
+    )
+    total_pages: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # No updated_at — this model is immutable by design (append-only snapshots)
 
