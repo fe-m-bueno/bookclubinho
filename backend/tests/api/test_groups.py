@@ -621,12 +621,22 @@ class TestCreateGroupEndpoint:
         mock_db = AsyncMock()
         mock_user = make_user()
 
-        with patch(
-            "app.api.v1.endpoints.groups.create_group",
-            new_callable=AsyncMock,
-            return_value=group,
+        with (
+            patch(
+                "app.api.v1.endpoints.groups.create_group",
+                new_callable=AsyncMock,
+                return_value=group,
+            ),
+            patch("app.api.v1.endpoints.groups.check_and_award_badges", new_callable=AsyncMock),
         ):
-            result = await create_group_endpoint(db=mock_db, user=mock_user, name="Novo Clube")
+            from fastapi import BackgroundTasks
+
+            result = await create_group_endpoint(
+                db=mock_db,
+                user=mock_user,
+                name="Novo Clube",
+                background_tasks=BackgroundTasks(),
+            )
 
         assert isinstance(result, GroupCreateResponse)
         assert result.name == "Novo Clube"
@@ -645,9 +655,14 @@ class TestCreateGroupEndpoint:
                 new_callable=AsyncMock,
                 side_effect=GroupError("Nome deve ter entre 2 e 60 caracteres.", status_code=422),
             ),
+            patch("app.api.v1.endpoints.groups.check_and_award_badges", new_callable=AsyncMock),
             pytest.raises(HTTPException) as exc_info,
         ):
-            await create_group_endpoint(db=mock_db, user=mock_user, name="A")
+            from fastapi import BackgroundTasks
+
+            await create_group_endpoint(
+                db=mock_db, user=mock_user, name="A", background_tasks=BackgroundTasks()
+            )
 
         assert exc_info.value.status_code == 422
 

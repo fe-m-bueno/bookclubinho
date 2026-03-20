@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003 — required at runtime for FastAPI path-param resolution
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 
-from app.core.deps import CurrentUser, DBSession
+from app.core.deps import CurrentUser, DBSession  # noqa: TC001
 from app.db.models.reading_session import ReadingSession  # noqa: TC001
 from app.schemas.reading_session import (
     SessionListResponse,
@@ -21,7 +21,13 @@ from app.schemas.reading_session import (
     SessionStopRequest,
 )
 from app.security.rate_limit import limiter
-from app.services.reading_session import ReadingSessionError, list_my_sessions, start_session, stop_session
+from app.services.badge_checker import check_and_award_badges
+from app.services.reading_session import (
+    ReadingSessionError,
+    list_my_sessions,
+    start_session,
+    stop_session,
+)
 
 router = APIRouter(tags=["reading-sessions"])
 
@@ -80,6 +86,7 @@ async def stop_reading_session(
     body: SessionStopRequest,
     current_user: CurrentUser,
     db: DBSession,
+    background_tasks: BackgroundTasks,
 ) -> SessionResponse:
     """Encerra uma sessão ativa e registra a duração."""
     try:
@@ -91,6 +98,17 @@ async def stop_reading_session(
         )
     except ReadingSessionError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    background_tasks.add_task(
+        check_and_award_badges,
+        str(current_user.id),
+        "session_stopped",
+        {
+            "round_id": str(session.round_id),
+            "duration_minutes": str(session.duration_minutes or 0),
+            "started_at": session.started_at.isoformat(),
+        },
+    )
 
     return _session_to_response(session)
 
@@ -105,9 +123,9 @@ async def list_reading_sessions(
     request: Request,
     current_user: CurrentUser,
     db: DBSession,
-    round_id: uuid.UUID | None = Query(default=None, description="Filtrar por rodada"),
-    cursor: str | None = Query(default=None, description="Cursor ISO8601 para paginação"),
-    limit: int = Query(default=20, ge=1, le=50),
+    round_id: uuid.UUID | None = Query(default=None, description="Filtrar por rodada"),  # noqa: B008
+    cursor: str | None = Query(default=None, description="Cursor ISO8601 para paginação"),  # noqa: B008
+    limit: int = Query(default=20, ge=1, le=50),  # noqa: B008
 ) -> SessionListResponse:
     """Lista as sessões de leitura do usuário autenticado."""
     sessions, total_duration, next_cursor = await list_my_sessions(

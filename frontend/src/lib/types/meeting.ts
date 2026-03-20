@@ -73,7 +73,7 @@ export interface UpcomingMeetingItem {
   group_id: string;
   group_name: string;
   group_photo_url: string | null;
-  my_rsvp_status: string | null;
+  my_rsvp_status: RsvpStatus | null;
 }
 
 export interface UpcomingMeetingsResponse {

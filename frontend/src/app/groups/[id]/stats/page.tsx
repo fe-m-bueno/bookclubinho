@@ -1,7 +1,12 @@
+import { StatsClient } from "@/components/stats/stats-client";
+
 export const metadata = { title: "Stats" };
 
-export default function StatsPage() {
-  return (
-    <div className="p-4 text-center text-muted-foreground">Stats em breve</div>
-  );
+export default async function StatsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return <StatsClient groupId={id} />;
 }

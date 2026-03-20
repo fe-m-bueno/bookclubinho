@@ -19,9 +19,8 @@ logger = structlog.get_logger(__name__)
 async def main() -> None:
     """Execute streak cleanup and log results."""
     logger.info("streak_cleanup_started")
-    async with AsyncSessionLocal() as db:
-        async with db.begin():
-            count = await cleanup_expired_streaks(db)
+    async with AsyncSessionLocal() as db, db.begin():
+        count = await cleanup_expired_streaks(db)
     logger.info("streak_cleanup_finished", users_reset=count)
 
 

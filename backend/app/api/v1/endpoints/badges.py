@@ -17,11 +17,9 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.core.deps import CurrentUser, DBSession, GroupMemberDep  # noqa: TC001
-from fastapi import Query
-
 from app.schemas.badge import (
     BadgeCatalogResponse,
     BadgeProgressResponse,
