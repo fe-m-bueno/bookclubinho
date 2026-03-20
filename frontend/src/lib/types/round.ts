@@ -109,3 +109,38 @@ export interface ProgressResponse {
   is_finished: boolean;
   created_at: string;
 }
+
+export interface ReviewUserSummary {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface ReviewResponse {
+  id: string;
+  round_id: string;
+  user_id: string;
+  star_rating: number;
+  cried: boolean;
+  loved_it: boolean;
+  felt_aroused: boolean;
+  found_heavy: boolean;
+  wants_more_from_author: boolean;
+  sincere_review: string;
+  funny_oneliner: string | null;
+  extra_thoughts: string | null;
+  completed_at: string;
+  created_at: string;
+  user: ReviewUserSummary;
+}
+
+export interface ReviewStatsResponse {
+  total_reviews: number;
+  avg_star_rating: number;
+  cried_count: number;
+  loved_it_count: number;
+  felt_aroused_count: number;
+  found_heavy_count: number;
+  wants_more_count: number;
+}

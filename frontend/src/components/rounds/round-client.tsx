@@ -13,6 +13,7 @@ import { RoundNominatingPhase } from "./round-nominating-phase";
 import { RoundVotingPhase } from "./round-voting-phase";
 import { VotingReveal } from "./voting-reveal";
 import { RoundReadingPhase } from "./round-reading-phase";
+import { RoundReviewingPhase } from "./round-reviewing-phase";
 import type { FinalizeResponse } from "@/lib/types/round";
 
 export function RoundClient() {
@@ -130,11 +131,20 @@ export function RoundClient() {
     );
   }
 
+  if (round.status === "reviewing") {
+    return (
+      <RoundReviewingPhase
+        round={round}
+        isAdmin={isAdmin}
+        refetch={refetch}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
       <RoundStatusBadge round={round} />
       <p className="text-sm text-muted-foreground">
-        {round.status === "reviewing" && "Fase de reviews em andamento."}
         {round.status === "finished" && "Esta rodada foi encerrada."}
       </p>
     </div>

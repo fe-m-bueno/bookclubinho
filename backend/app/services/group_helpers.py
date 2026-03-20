@@ -50,12 +50,19 @@ async def validate_round_in_group(
 
 
 async def emit_group_event(
-    group_id: uuid.UUID, event_data: dict[str, str]
+    group_id: uuid.UUID,
+    event_data: dict[str, str],
+    *,
+    stream: str = "chat",
 ) -> None:
-    """Fire-and-forget Redis stream event for a group chat channel."""
+    """Fire-and-forget Redis stream event for a group channel.
+
+    Args:
+        stream: Stream suffix — ``"chat"`` (default) or ``"events"``.
+    """
     try:
         redis = get_redis()
-        stream_key = f"bookclub:group:{group_id}:chat"
+        stream_key = f"bookclub:group:{group_id}:{stream}"
         await redis.xadd(stream_key, event_data, maxlen=10000, approximate=True)
     except RedisError:
         logger.warning("group_event_emit_failed", group_id=str(group_id))
