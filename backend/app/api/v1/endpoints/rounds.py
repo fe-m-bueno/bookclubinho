@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003 — required at runtime for FastAPI path-param resolution
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 
 from app.core.deps import (  # noqa: TC001
     CurrentUser,
@@ -58,6 +58,7 @@ from app.schemas.round import (
 )
 from app.security.rate_limit import limiter
 from app.services import reading_progress as reading_progress_service
+from app.services.badge_checker import check_and_award_badges
 from app.services.reading_progress import ReadingProgressError
 from app.services.round import (
     RoundError,
@@ -75,6 +76,8 @@ from app.services.round import (
     update_round,
     verify_round_admin,
 )
+from app.services.shelf import populate_shelf_cache
+from app.services.stats import invalidate_group_stats
 
 group_rounds_router = APIRouter(tags=["rounds"])
 rounds_router = APIRouter(tags=["rounds"])
@@ -96,7 +99,7 @@ def _nomination_to_schema(nomination: RoundNomination) -> NominationSummary:
     )
 
 
-def _progress_to_response(progress: "ReadingProgress") -> ProgressResponse:
+def _progress_to_response(progress: ReadingProgress) -> ProgressResponse:
     return ProgressResponse(
         id=str(progress.id),
         user_id=str(progress.user_id),
@@ -444,12 +447,27 @@ async def finish_round_endpoint(
     round_id: uuid.UUID,
     current_user: CurrentUser,
     db: DBSession,
+    background_tasks: BackgroundTasks,
 ) -> RoundDetailResponse:
     """Encerra a rodada. Requer pelo menos 1 review submetida. Apenas admins."""
     try:
         round_ = await finish_round(db, round_id=round_id, user_id=current_user.id)
     except RoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    group_id = round_.group_id
+
+    # Invalidate stats cache and refresh shelf cache
+    await invalidate_group_stats(group_id)
+    background_tasks.add_task(populate_shelf_cache, db, group_id)
+
+    # Award book_finished badges for members who completed the book
+    background_tasks.add_task(
+        check_and_award_badges,
+        str(current_user.id),
+        "book_finished",
+        {"group_id": str(group_id), "round_id": str(round_id)},
+    )
 
     return _round_to_detail(round_)
 

@@ -129,7 +129,7 @@ async def get_group_progress(
     db: AsyncSession,
     round_id: uuid.UUID,
     user_id: uuid.UUID,
-) -> tuple[list[dict], "datetime | None"]:
+) -> tuple[list[dict], datetime | None]:
     """Return the latest progress snapshot for every member of the group.
 
     Members with no progress yet are included with percentage=0 and updated_at=None.
@@ -223,7 +223,7 @@ async def cleanup_expired_streaks(db: AsyncSession) -> int:
 
 async def _update_streak(
     db: AsyncSession,
-    user_id: "uuid.UUID",
+    user_id: uuid.UUID,
     round_: Round,
 ) -> None:
     """Update the user's reading streak after logging progress.
@@ -293,7 +293,7 @@ async def _update_streak(
 
 async def _emit_progress_events(
     round_: Round,
-    user_id: "uuid.UUID",
+    user_id: uuid.UUID,
     percentage: float,
 ) -> None:
     """Emit progress_updated (and approaching_end if >= 80%) to the group stream."""

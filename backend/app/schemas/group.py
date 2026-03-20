@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
-
 from typing import Literal
 
 from pydantic import BaseModel, field_validator
