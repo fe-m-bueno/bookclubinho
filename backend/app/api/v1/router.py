@@ -7,6 +7,12 @@ from app.api.v1.endpoints.config import router as config_router
 from app.api.v1.endpoints.groups import router as groups_router
 from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.media import router as media_router
+from app.api.v1.endpoints.meetings import (
+    group_meetings_router as group_meetings_router,
+)
+from app.api.v1.endpoints.meetings import (
+    meetings_router as meetings_standalone_router,
+)
 from app.api.v1.endpoints.messages import group_messages_router, messages_router
 from app.api.v1.endpoints.onboarding import router as onboarding_router
 from app.api.v1.endpoints.reading_sessions import router as reading_sessions_router
@@ -28,6 +34,14 @@ api_router.include_router(
     group_messages_router, prefix="/groups/{group_id}/messages", tags=["chat"]
 )
 api_router.include_router(messages_router, prefix="/messages", tags=["chat"])
+api_router.include_router(
+    group_meetings_router,
+    prefix="/groups/{group_id}/meetings",
+    tags=["meetings"],
+)
+api_router.include_router(
+    meetings_standalone_router, prefix="/meetings", tags=["meetings"]
+)
 api_router.include_router(
     reading_sessions_router,
     prefix="/reading-sessions",

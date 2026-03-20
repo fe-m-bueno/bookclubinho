@@ -540,7 +540,7 @@ async def test_emit_chat_event_uses_maxlen() -> None:
     mock_redis = AsyncMock()
     mock_redis.xadd = AsyncMock()
 
-    with patch("app.services.chat.get_redis", return_value=mock_redis):
+    with patch("app.services.group_helpers.get_redis", return_value=mock_redis):
         await _emit_chat_event(group_id, event_data)
 
     mock_redis.xadd.assert_called_once()

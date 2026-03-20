@@ -78,10 +78,9 @@ describe("LoginPage", () => {
 
   it("calls login API on valid submit", async () => {
     const mockPush = vi.fn();
-    vi.mocked(await import("next/navigation")).useRouter = () =>
-      ({ push: mockPush }) as ReturnType<
-        typeof import("next/navigation").useRouter
-      >;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (vi.mocked(await import("next/navigation")) as any).useRouter = () =>
+      ({ push: mockPush });
 
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(null, { status: 200 })

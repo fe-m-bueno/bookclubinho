@@ -105,7 +105,7 @@ describe("RoundVotingPhase", () => {
       <RoundVotingPhase
         round={votingRound}
         isAdmin={false}
-        refetch={vi.fn()}
+
         group={memberGroup}
         onFinalized={vi.fn()}
       />,
@@ -119,7 +119,7 @@ describe("RoundVotingPhase", () => {
       <RoundVotingPhase
         round={votingRound}
         isAdmin={false}
-        refetch={vi.fn()}
+
         group={memberGroup}
         onFinalized={vi.fn()}
       />,
@@ -132,7 +132,7 @@ describe("RoundVotingPhase", () => {
       <RoundVotingPhase
         round={votingRound}
         isAdmin={false}
-        refetch={vi.fn()}
+
         group={memberGroup}
         onFinalized={vi.fn()}
       />,
@@ -145,7 +145,7 @@ describe("RoundVotingPhase", () => {
       <RoundVotingPhase
         round={votingRound}
         isAdmin
-        refetch={vi.fn()}
+
         group={adminGroup}
         onFinalized={vi.fn()}
       />,
@@ -160,7 +160,7 @@ describe("RoundVotingPhase", () => {
       <RoundVotingPhase
         round={votingRound}
         isAdmin={false}
-        refetch={vi.fn()}
+
         group={memberGroup}
         onFinalized={vi.fn()}
       />,
@@ -175,7 +175,7 @@ describe("RoundVotingPhase", () => {
       <RoundVotingPhase
         round={votingRound}
         isAdmin={false}
-        refetch={vi.fn()}
+
         group={memberGroup}
         onFinalized={vi.fn()}
       />,
@@ -192,7 +192,7 @@ describe("RoundVotingPhase", () => {
       <RoundVotingPhase
         round={votingRound}
         isAdmin={false}
-        refetch={vi.fn()}
+
         group={memberGroup}
         onFinalized={vi.fn()}
       />,
