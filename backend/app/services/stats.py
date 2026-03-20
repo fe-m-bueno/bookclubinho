@@ -44,6 +44,11 @@ def _tally_genres(genre_lists: list[list[str] | None]) -> list[dict]:
     ]
 
 
+def _bool_sum(col: object) -> object:
+    """SQLAlchemy expression: SUM(CASE WHEN col IS TRUE THEN 1 ELSE 0 END)."""
+    return func.sum(case((col.is_(True), 1), else_=0))  # type: ignore[attr-defined]
+
+
 async def invalidate_group_stats(group_id: uuid.UUID) -> None:
     """Remove the group stats cache entry (call on round finish)."""
     try:
@@ -191,9 +196,6 @@ async def _compute_group_stats(
     ]
 
     # ── Emotional stats ───────────────────────────────────────────────────────
-    def _bool_sum(col: object) -> object:
-        return func.sum(case((col.is_(True), 1), else_=0))  # type: ignore[attr-defined]
-
     emotional_result = await db.execute(
         select(
             func.count(BookReview.id).label("total_reviews"),
