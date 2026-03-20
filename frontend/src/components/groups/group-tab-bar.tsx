@@ -23,9 +23,10 @@ const tabs = [
 interface GroupTabBarProps {
   groupId: string;
   variant: "desktop" | "mobile";
+  hasMeetingSoon?: boolean;
 }
 
-export function GroupTabBar({ groupId, variant }: GroupTabBarProps) {
+export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarProps) {
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
   const noMotion = shouldReduceMotion ?? false;
@@ -65,7 +66,12 @@ export function GroupTabBar({ groupId, variant }: GroupTabBarProps) {
                   }
                 />
               )}
-              <Icon className="relative z-10 h-4 w-4" />
+              <span className="relative z-10">
+                <Icon className="h-4 w-4" />
+                {segment === "meetings" && hasMeetingSoon && (
+                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-brand-500" />
+                )}
+              </span>
               <span className="relative z-10">{label}</span>
             </Link>
           );
@@ -107,7 +113,12 @@ export function GroupTabBar({ groupId, variant }: GroupTabBarProps) {
                   }
                 />
               )}
-              <Icon className="relative z-10 h-5 w-5 mb-0.5" />
+              <span className="relative z-10">
+                <Icon className="h-5 w-5 mb-0.5" />
+                {segment === "meetings" && hasMeetingSoon && (
+                  <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-brand-500" />
+                )}
+              </span>
               <span className="relative z-10">{label}</span>
             </Link>
           );

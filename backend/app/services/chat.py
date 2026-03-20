@@ -7,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import structlog
-from redis.exceptions import RedisError
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
@@ -17,10 +16,10 @@ if TYPE_CHECKING:
     from app.schemas.message import MessageCreateRequest, MessageEditRequest
 
 from app.core.exceptions import ServiceError
-from app.core.redis import get_redis
 from app.db.models.group import GroupMember
 from app.db.models.message import GroupMessage, MessageReaction
 from app.security.sanitizer import sanitize, sanitize_rich
+from app.services.group_helpers import emit_group_event
 
 logger = structlog.get_logger(__name__)
 
@@ -47,13 +46,8 @@ async def _check_membership(db: AsyncSession, group_id: uuid.UUID, user_id: uuid
 
 
 async def _emit_chat_event(group_id: uuid.UUID, event_data: dict[str, str]) -> None:
-    """Fire-and-forget Redis stream event for the group chat channel."""
-    try:
-        redis = get_redis()
-        stream_key = f"bookclub:group:{group_id}:chat"
-        await redis.xadd(stream_key, event_data, maxlen=10000, approximate=True)
-    except RedisError:
-        logger.warning("chat_event_emit_failed", group_id=str(group_id))
+    """Delegate to shared emit_group_event."""
+    await emit_group_event(group_id, event_data)
 
 
 async def emit_typing_event(

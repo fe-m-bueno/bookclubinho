@@ -1,6 +1,7 @@
 from app.db.models.base import TimestampMixin
 from app.db.models.book_review import BookReview
 from app.db.models.group import Group, GroupMember
+from app.db.models.meeting import Meeting, MeetingRsvp, MeetingType, RsvpStatus
 from app.db.models.message import ContentType, GroupMessage, MessageReaction, ReferenceType
 from app.db.models.reading_progress import ReadingProgress
 from app.db.models.reading_session import ReadingSession
@@ -13,6 +14,9 @@ __all__ = [
     "Group",
     "GroupMember",
     "GroupMessage",
+    "Meeting",
+    "MeetingRsvp",
+    "MeetingType",
     "MessageReaction",
     "ReadingProgress",
     "ReadingSession",
@@ -21,6 +25,7 @@ __all__ = [
     "RoundNomination",
     "RoundStatus",
     "RoundVote",
+    "RsvpStatus",
     "TimestampMixin",
     "User",
 ]
