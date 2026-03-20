@@ -23,6 +23,20 @@ class MemberLeaderboardEntry(BaseModel):
     badges_count: int
 
 
+class RatingDistribution(BaseModel):
+    stars: int
+    count: int
+
+
+class EmotionalStats(BaseModel):
+    total_reviews: int
+    cried_count: int
+    loved_it_count: int
+    felt_aroused_count: int
+    found_heavy_count: int
+    wants_more_count: int
+
+
 class GroupStatsResponse(BaseModel):
     total_books_read: int
     total_pages_read: int
@@ -30,6 +44,8 @@ class GroupStatsResponse(BaseModel):
     total_reading_time_minutes: int
     books_per_genre: list[GenreBreakdown]
     member_leaderboard: list[MemberLeaderboardEntry]
+    rating_distribution: list[RatingDistribution]
+    emotional_stats: EmotionalStats
 
 
 class RoundStatsResponse(BaseModel):

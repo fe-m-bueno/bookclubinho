@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import orjson
 import structlog
 from redis.exceptions import RedisError
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 if TYPE_CHECKING:
     import uuid
@@ -175,6 +175,45 @@ async def _compute_group_stats(
 
     leaderboard.sort(key=lambda x: x["books_finished"], reverse=True)
 
+    # ── Rating distribution ───────────────────────────────────────────────────
+    ratings_result = await db.execute(
+        select(BookReview.star_rating, func.count(BookReview.id).label("cnt"))
+        .where(BookReview.group_id == group_id)
+        .group_by(BookReview.star_rating)
+    )
+    star_counts: dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for row in ratings_result.all():
+        if row.star_rating in star_counts:
+            star_counts[row.star_rating] = int(row.cnt)
+    rating_distribution = [
+        {"stars": star, "count": count}
+        for star, count in sorted(star_counts.items())
+    ]
+
+    # ── Emotional stats ───────────────────────────────────────────────────────
+    def _bool_sum(col: object) -> object:
+        return func.sum(case((col.is_(True), 1), else_=0))  # type: ignore[attr-defined]
+
+    emotional_result = await db.execute(
+        select(
+            func.count(BookReview.id).label("total_reviews"),
+            _bool_sum(BookReview.cried).label("cried_count"),
+            _bool_sum(BookReview.loved_it).label("loved_it_count"),
+            _bool_sum(BookReview.felt_aroused).label("felt_aroused_count"),
+            _bool_sum(BookReview.found_heavy).label("found_heavy_count"),
+            _bool_sum(BookReview.wants_more_from_author).label("wants_more_count"),
+        ).where(BookReview.group_id == group_id)
+    )
+    emotional_row = emotional_result.one()
+    emotional_stats = {
+        "total_reviews": int(emotional_row.total_reviews or 0),
+        "cried_count": int(emotional_row.cried_count or 0),
+        "loved_it_count": int(emotional_row.loved_it_count or 0),
+        "felt_aroused_count": int(emotional_row.felt_aroused_count or 0),
+        "found_heavy_count": int(emotional_row.found_heavy_count or 0),
+        "wants_more_count": int(emotional_row.wants_more_count or 0),
+    }
+
     return {
         "total_books_read": total_books_read,
         "total_pages_read": total_pages_read,
@@ -182,6 +221,8 @@ async def _compute_group_stats(
         "total_reading_time_minutes": total_reading_time,
         "books_per_genre": books_per_genre,
         "member_leaderboard": leaderboard,
+        "rating_distribution": rating_distribution,
+        "emotional_stats": emotional_stats,
     }
 
 
