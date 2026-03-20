@@ -27,6 +27,7 @@ from app.api.v1.endpoints.rounds import group_rounds_router, rounds_router
 from app.api.v1.endpoints.shelf import shelf_group_router, shelf_public_router
 from app.api.v1.endpoints.stats import stats_group_router, stats_user_router
 from app.api.v1.endpoints.users import router as users_router
+from app.api.v1.endpoints.wrapped import wrapped_group_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -82,3 +83,6 @@ api_router.include_router(
 api_router.include_router(badges_catalog_router, prefix="/badges", tags=["badges"])
 api_router.include_router(quotes_router, prefix="/quotes", tags=["quotes"])
 api_router.include_router(shelf_public_router, prefix="/shelf", tags=["shelf"])
+api_router.include_router(
+    wrapped_group_router, prefix="/groups/{group_id}/wrapped", tags=["wrapped"]
+)
