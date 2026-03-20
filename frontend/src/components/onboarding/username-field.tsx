@@ -13,7 +13,11 @@ interface UsernameFieldProps {
   registration: UseFormRegisterReturn<"username">;
   error?: FieldError;
   username: string;
+  /** If the typed username equals currentUsername, skip availability check. */
+  currentUsername?: string;
   onStatusChange?: (status: UsernameStatus) => void;
+  /** HTML id for the input (defaults to "onboarding-username" for backward compat). */
+  id?: string;
 }
 
 const iconVariants = {
@@ -24,8 +28,19 @@ const iconVariants = {
 
 const iconTransition = { type: "spring" as const, stiffness: 500, damping: 28 };
 
-export function UsernameField({ registration, error, username, onStatusChange }: UsernameFieldProps) {
-  const { status } = useUsernameCheck(username);
+export function UsernameField({
+  registration,
+  error,
+  username,
+  currentUsername,
+  onStatusChange,
+  id = "onboarding-username",
+}: UsernameFieldProps) {
+  // Skip check when user hasn't changed their own username
+  const usernameToCheck =
+    currentUsername && username.toLowerCase() === currentUsername.toLowerCase() ? "" : username;
+
+  const { status } = useUsernameCheck(usernameToCheck);
 
   useEffect(() => {
     onStatusChange?.(status);
@@ -36,12 +51,12 @@ export function UsernameField({ registration, error, username, onStatusChange }:
   return (
     <FormField
       label="Username"
-      htmlFor="onboarding-username"
+      htmlFor={id}
       error={error?.message ?? (showTaken ? "Username já está em uso" : undefined)}
     >
       <div className="relative">
         <Input
-          id="onboarding-username"
+          id={id}
           type="text"
           placeholder="seu_username"
           autoComplete="username"

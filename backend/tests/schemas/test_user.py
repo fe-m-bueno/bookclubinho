@@ -42,19 +42,26 @@ class TestUserUpdate:
         assert update.preferred_genres is None
 
     def test_partial_update(self) -> None:
-        update = UserUpdate(display_name="New Name", preferred_genres=["Fiction", "Sci-Fi"])
+        update = UserUpdate(display_name="New Name", preferred_genres=["fantasia", "sci-fi"])
         assert update.display_name == "New Name"
-        assert update.preferred_genres == ["Fiction", "Sci-Fi"]
+        assert update.preferred_genres == ["fantasia", "sci-fi"]
         assert update.username is None
 
-    def test_email_notifications_update(self) -> None:
-        notif = {"meetings": False, "invites": True, "auth": True}
-        update = UserUpdate(email_notifications=notif)
-        assert update.email_notifications == notif
+    def test_status_text_update(self) -> None:
+        update = UserUpdate(status_text="Lendo muito!")
+        assert update.status_text == "Lendo muito!"
 
-    def test_onboarding_completed(self) -> None:
-        update = UserUpdate(onboarding_completed=True)
-        assert update.onboarding_completed is True
+    def test_timezone_update(self) -> None:
+        update = UserUpdate(timezone="America/Sao_Paulo")
+        assert update.timezone == "America/Sao_Paulo"
+
+    def test_invalid_timezone_raises(self) -> None:
+        with pytest.raises(ValidationError, match="inválido"):
+            UserUpdate(timezone="Invalid/Timezone")
+
+    def test_invalid_genre_raises(self) -> None:
+        with pytest.raises(ValidationError, match="inválidos"):
+            UserUpdate(preferred_genres=["genero-invalido-xyz"])
 
 
 class TestUserRead:
