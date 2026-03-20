@@ -1,9 +1,9 @@
 "use client";
 
-import { Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StarsDisplay } from "@/components/ui/stars-display";
 import type { ReviewResponse, ReviewStatsResponse } from "@/lib/types/round";
 
 const BOOL_BADGES: { key: keyof ReviewResponse; label: string; emoji: string }[] = [
@@ -13,23 +13,6 @@ const BOOL_BADGES: { key: keyof ReviewResponse; label: string; emoji: string }[]
   { key: "found_heavy", label: "Pesado", emoji: "\uD83C\uDFCB\uFE0F" },
   { key: "wants_more_from_author", label: "Mais", emoji: "\uD83D\uDCDA" },
 ];
-
-function StarsDisplay({ rating }: { rating: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <Star
-          key={s}
-          className={`h-4 w-4 ${
-            s <= rating
-              ? "fill-amber-400 text-amber-400"
-              : "fill-none text-muted-foreground/30"
-          }`}
-        />
-      ))}
-    </div>
-  );
-}
 
 function ReviewCard({ review }: { review: ReviewResponse }) {
   const activeBools = BOOL_BADGES.filter(
