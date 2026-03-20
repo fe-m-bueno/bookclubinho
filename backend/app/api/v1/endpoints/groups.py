@@ -26,12 +26,16 @@ from app.schemas.group import (
     GroupListItem,
     GroupListResponse,
     GroupValidateResponse,
+    LastMessagePreview,
+    MemberAvatar,
     MemberRoleUpdateRequest,
     MemberRoleUpdateResponse,
     MemberSummary,
     MessageResponse,
+    MyReadingProgress,
     QrCodeResponse,
     RegenerateCodeResponse,
+    RoundSummary,
 )
 from app.services.group import (
     GroupError,
@@ -40,7 +44,7 @@ from app.services.group import (
     get_qr_url,
     join_group,
     leave_group,
-    list_user_groups,
+    list_user_groups_enriched,
     regenerate_invite_code,
     remove_group_member,
     soft_delete_group,
@@ -156,19 +160,55 @@ async def list_groups_endpoint(
     db: DBSession,
     user: CurrentUser,
 ) -> GroupListResponse:
-    """Lista todos os grupos ativos do usuario autenticado."""
-    groups = await list_user_groups(db=db, user=user)
-    return GroupListResponse(
-        groups=[
+    """Lista todos os grupos ativos do usuario autenticado com dados enriquecidos."""
+    enriched = await list_user_groups_enriched(db=db, user=user)
+    items = []
+    for e in enriched:
+        g = e["group"]
+        cr = e["current_round"]
+        rp = e["my_reading_progress"]
+        lm = e["last_message"]
+
+        items.append(
             GroupListItem(
                 id=str(g.id),
                 name=g.name,
                 photo_url=g.photo_url,
                 member_count=len(g.members),
+                members_preview=[
+                    MemberAvatar(
+                        user_id=str(m.user_id),
+                        display_name=m.user.display_name,
+                        avatar_url=m.user.avatar_url,
+                    )
+                    for m in g.members[:4]
+                ],
+                current_round=RoundSummary(
+                    id=str(cr.id),
+                    round_number=cr.round_number,
+                    status=cr.status,
+                    book_title=cr.book_title,
+                    book_author=cr.book_author,
+                    book_cover_url=cr.book_cover_url,
+                    book_page_count=cr.book_page_count,
+                ) if cr else None,
+                my_reading_progress=MyReadingProgress(
+                    current_page=rp.current_page,
+                    total_pages=rp.total_pages,
+                    percentage=rp.percentage,
+                ) if rp else None,
+                last_message_preview=LastMessagePreview(
+                    sender_display_name=lm.user.display_name,
+                    sender_avatar_url=lm.user.avatar_url,
+                    content_text=lm.content_text,
+                    content_type=lm.content_type,
+                    created_at=lm.created_at,
+                ) if lm else None,
+                last_activity_at=e["last_activity_at"],
             )
-            for g in groups
-        ]
-    )
+        )
+
+    return GroupListResponse(groups=items)
 
 
 @router.get(

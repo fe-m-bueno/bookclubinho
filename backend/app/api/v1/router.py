@@ -1,6 +1,11 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints.auth import router as auth_router
+from app.api.v1.endpoints.badges import (
+    badges_catalog_router,
+    badges_group_router,
+    badges_user_router,
+)
 from app.api.v1.endpoints.books import router as books_router
 from app.api.v1.endpoints.chat_stream import router as chat_stream_router
 from app.api.v1.endpoints.config import router as config_router
@@ -51,6 +56,11 @@ api_router.include_router(
 )
 api_router.include_router(onboarding_router, prefix="/onboarding", tags=["onboarding"])
 api_router.include_router(users_router, prefix="/users", tags=["users"])
+api_router.include_router(badges_user_router, prefix="/users", tags=["badges"])
+api_router.include_router(
+    badges_group_router, prefix="/groups/{group_id}/badges", tags=["badges"]
+)
+api_router.include_router(badges_catalog_router, prefix="/badges", tags=["badges"])
 api_router.include_router(
     media_router, prefix="/groups/{group_id}/media/upload", tags=["media"]
 )

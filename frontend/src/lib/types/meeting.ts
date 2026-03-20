@@ -64,6 +64,22 @@ export interface MeetingCreatePayload {
   round_id?: string | null;
 }
 
+export interface UpcomingMeetingItem {
+  id: string;
+  title: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  meeting_type: MeetingType;
+  group_id: string;
+  group_name: string;
+  group_photo_url: string | null;
+  my_rsvp_status: string | null;
+}
+
+export interface UpcomingMeetingsResponse {
+  meetings: UpcomingMeetingItem[];
+}
+
 /** Generate Google Calendar URL client-side from meeting data. */
 export function buildGoogleCalendarUrl(meeting: {
   title: string;

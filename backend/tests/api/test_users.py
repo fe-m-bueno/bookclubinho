@@ -2,11 +2,87 @@
 
 from __future__ import annotations
 
+import uuid
+from datetime import UTC, date, datetime
 from unittest.mock import MagicMock
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
+from app.api.v1.endpoints.users import router as users_router
 from tests.conftest import mock_db_returning
+
+# ── App setup ─────────────────────────────────────────────────────────────────
+
+app = FastAPI()
+app.include_router(users_router, prefix="/api/v1/users")
+
+
+def _make_full_user(**overrides: object) -> MagicMock:
+    user = MagicMock()
+    user.id = overrides.get("id", uuid.uuid4())
+    user.email = overrides.get("email", "user@test.com")
+    user.username = overrides.get("username", "testuser")
+    user.display_name = overrides.get("display_name", "Test User")
+    user.avatar_url = overrides.get("avatar_url", None)
+    user.status_text = overrides.get("status_text", None)
+    user.auth_provider = overrides.get("auth_provider", "local")
+    user.preferred_genres = overrides.get("preferred_genres", [])
+    user.onboarding_completed = overrides.get("onboarding_completed", True)
+    user.email_notifications = overrides.get("email_notifications", {})
+    user.streak_current = overrides.get("streak_current", 0)
+    user.streak_longest = overrides.get("streak_longest", 0)
+    user.streak_last_update = overrides.get("streak_last_update", None)
+    user.total_reading_time_minutes = overrides.get("total_reading_time_minutes", 0)
+    user.timezone = overrides.get("timezone", "America/Sao_Paulo")
+    user.is_active = overrides.get("is_active", True)
+    user.last_login_at = overrides.get("last_login_at", None)
+    user.created_at = overrides.get("created_at", datetime(2026, 1, 1, tzinfo=UTC))
+    user.updated_at = overrides.get("updated_at", datetime(2026, 1, 1, tzinfo=UTC))
+    return user
+
+
+def _override_user(user: MagicMock) -> None:
+    from app.core.deps import get_current_active_user, get_session
+
+    async def fake_session():
+        yield MagicMock()
+
+    app.dependency_overrides[get_session] = fake_session
+    app.dependency_overrides[get_current_active_user] = lambda: user
+
+
+def _clear_overrides() -> None:
+    app.dependency_overrides.clear()
+
+
+# ── Endpoint: GET /users/me ────────────────────────────────────────────────
+
+
+class TestGetMe:
+    def setup_method(self) -> None:
+        self.user = _make_full_user()
+        _override_user(self.user)
+        self.client = TestClient(app, raise_server_exceptions=False)
+
+    def teardown_method(self) -> None:
+        _clear_overrides()
+
+    def test_get_me_returns_user_data(self) -> None:
+        response = self.client.get("/api/v1/users/me")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == "testuser"
+        assert data["email"] == "user@test.com"
+        assert data["timezone"] == "America/Sao_Paulo"
+
+    def test_get_me_unauthenticated(self) -> None:
+        _clear_overrides()
+        # No dependency override → no current user → 401/403
+        response = self.client.get("/api/v1/users/me")
+        assert response.status_code in (401, 403, 422)
+
 
 # ── Endpoint: GET /users/check-username/{username} ──────────────────────────
 
