@@ -34,7 +34,7 @@ export function MessageGroup({
   onToggleReaction,
 }: MessageGroupProps) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1.5">
       {messages.map((message, index) => {
         const isFirst = index === 0;
 
