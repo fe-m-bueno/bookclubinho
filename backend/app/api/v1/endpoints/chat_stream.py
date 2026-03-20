@@ -32,7 +32,7 @@ _SSE_HEADERS = {
     "Connection": "keep-alive",
     "X-Accel-Buffering": "no",
 }
-_BLOCK_MS = 15_000  # ms to block on XREAD before sending a ping
+_BLOCK_MS = 5_000  # ms to block on XREAD before sending a ping
 _BATCH_COUNT = 50
 
 
@@ -69,6 +69,9 @@ async def group_chat_stream(
         last_event_id: str = request.headers.get("Last-Event-ID", "$")
         chat_last_id = last_event_id
         events_last_id = last_event_id
+
+        # Immediate handshake so the client knows connection is alive
+        yield {"event": "connected", "data": json.dumps({"status": "ok"})}
 
         while True:
             if await request.is_disconnected():

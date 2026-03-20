@@ -127,3 +127,23 @@ def test_stream_sends_ping_on_timeout() -> None:
 
     assert resp.status_code == 200
     assert ": ping" in resp.text
+
+
+def test_stream_sends_connected_event_immediately() -> None:
+    """The stream should emit a 'connected' event before entering the XREAD loop."""
+    app = _make_app()
+    client = TestClient(app)
+
+    mock_redis = AsyncMock()
+    mock_redis.xread = AsyncMock(side_effect=[RedisError("done")])
+
+    with patch("app.api.v1.endpoints.chat_stream.get_redis", return_value=mock_redis):
+        resp = client.get(
+            f"/api/v1/groups/{FAKE_GROUP_ID}/chat/stream",
+            headers={"Accept": "text/event-stream"},
+        )
+
+    assert resp.status_code == 200
+    text = resp.text
+    assert "event: connected" in text
+    assert '"status": "ok"' in text
