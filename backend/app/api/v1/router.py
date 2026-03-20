@@ -16,6 +16,7 @@ from app.api.v1.endpoints.meetings import (
 from app.api.v1.endpoints.messages import group_messages_router, messages_router
 from app.api.v1.endpoints.onboarding import router as onboarding_router
 from app.api.v1.endpoints.reading_sessions import router as reading_sessions_router
+from app.api.v1.endpoints.reviews import reviews_router
 from app.api.v1.endpoints.rounds import group_rounds_router, rounds_router
 from app.api.v1.endpoints.users import router as users_router
 
@@ -30,6 +31,7 @@ api_router.include_router(
     group_rounds_router, prefix="/groups/{group_id}/rounds", tags=["rounds"]
 )
 api_router.include_router(rounds_router, prefix="/rounds", tags=["rounds"])
+api_router.include_router(reviews_router, prefix="/rounds", tags=["reviews"])
 api_router.include_router(
     group_messages_router, prefix="/groups/{group_id}/messages", tags=["chat"]
 )

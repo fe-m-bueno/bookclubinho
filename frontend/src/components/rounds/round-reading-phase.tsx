@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { BookOpen, MessageCircle, BookOpenCheck } from "lucide-react";
+import { MessageCircle, BookOpenCheck } from "lucide-react";
 import ReactConfetti from "react-confetti";
 import { Button } from "@/components/ui/button";
+import { BookHero } from "./book-hero";
 import { RoundStatusBadge } from "./round-status-badge";
 import { DeadlineCard } from "./deadline-card";
 import { GroupProgress } from "./group-progress";
@@ -75,37 +75,7 @@ export function RoundReadingPhase({
       <RoundStatusBadge round={round} />
 
       {/* Hero section */}
-      <div className="flex flex-col items-center gap-4 pt-2">
-        <div className="relative h-[240px] w-[160px] shrink-0 overflow-hidden rounded-xl bg-muted shadow-xl">
-          {round.book_cover_url ? (
-            <Image
-              src={round.book_cover_url}
-              alt={round.book_title ?? "Capa do livro"}
-              fill
-              className="object-cover"
-              unoptimized
-              priority
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              <BookOpen className="h-12 w-12" />
-            </div>
-          )}
-        </div>
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold leading-tight">
-            {round.book_title}
-          </h1>
-          {round.book_author && (
-            <p className="text-muted-foreground">{round.book_author}</p>
-          )}
-          {round.book_page_count && (
-            <p className="text-sm text-muted-foreground">
-              {round.book_page_count} páginas
-            </p>
-          )}
-        </div>
-      </div>
+      <BookHero round={round} showPageCount />
 
       {/* Deadline card */}
       {round.deadline && <DeadlineCard deadline={round.deadline} />}
