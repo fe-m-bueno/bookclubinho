@@ -7,9 +7,9 @@ to avoid path-param conflicts.
 
 from __future__ import annotations
 
-import uuid
+import uuid  # noqa: TC003
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 
 from app.core.deps import (  # noqa: TC001
     CurrentUser,
@@ -33,6 +33,7 @@ from app.schemas.group import (
     QrCodeResponse,
     RegenerateCodeResponse,
 )
+from app.services.badge_checker import check_and_award_badges
 from app.services.group import (
     GroupError,
     create_group,
@@ -118,6 +119,7 @@ async def join_group_endpoint(
 async def create_group_endpoint(
     db: DBSession,
     user: CurrentUser,
+    background_tasks: BackgroundTasks,
     name: str = Form(..., min_length=2, max_length=60),
     description: str | None = Form(None, max_length=500),
     photo: UploadFile | None = File(None),  # noqa: B008
@@ -136,6 +138,13 @@ async def create_group_endpoint(
         )
     except GroupError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    background_tasks.add_task(
+        check_and_award_badges,
+        str(user.id),
+        "group_created",
+        {"group_id": str(group.id)},
+    )
 
     return GroupCreateResponse(
         id=str(group.id),

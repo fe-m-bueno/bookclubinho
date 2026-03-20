@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 
 from app.core.exceptions import ServiceError
 from app.db.models.group import GroupMember
-from app.db.models.message import GroupMessage, MessageReaction
+from app.db.models.hall_of_quote import HallOfQuote
+from app.db.models.message import ContentType, GroupMessage, MessageReaction
 from app.security.sanitizer import sanitize, sanitize_rich
 from app.services.group_helpers import emit_group_event
 
@@ -135,6 +136,10 @@ async def create_message(
     await db.flush()
     await db.refresh(msg)
 
+    # Auto-create Hall of Quotes entry for quote-type messages
+    if data.content_type == ContentType.QUOTE and clean_text:
+        await _auto_create_hall_of_quote(db, msg, group_id, user_id, round_id, clean_text)
+
     await _emit_chat_event(
         group_id,
         {
@@ -146,6 +151,50 @@ async def create_message(
 
     logger.info("chat_message_created", message_id=str(msg.id), group_id=str(group_id))
     return msg
+
+
+async def _auto_create_hall_of_quote(
+    db: AsyncSession,
+    msg: GroupMessage,
+    group_id: uuid.UUID,
+    user_id: uuid.UUID,
+    round_id: uuid.UUID | None,
+    quote_text: str,
+) -> None:
+    """Auto-create a HallOfQuote entry from a quote-type chat message."""
+    try:
+        from app.db.models.round import Round
+
+        book_title = "Leitura do grupo"
+        book_author: str | None = None
+        page_reference: str | None = None
+
+        if round_id:
+            round_result = await db.execute(select(Round).where(Round.id == round_id))
+            round_ = round_result.scalar_one_or_none()
+            if round_ and round_.book_title:
+                book_title = round_.book_title
+                book_author = round_.book_author
+        elif msg.reference_value:
+            page_reference = msg.reference_value
+
+        hall_quote = HallOfQuote(
+            group_id=group_id,
+            round_id=round_id,
+            user_id=user_id,
+            quote_text=quote_text,
+            page_reference=page_reference,
+            book_title=book_title,
+            book_author=book_author,
+        )
+        db.add(hall_quote)
+        await db.flush()
+    except Exception:
+        logger.warning(
+            "auto_hall_of_quote_failed",
+            message_id=str(msg.id),
+            group_id=str(group_id),
+        )
 
 
 async def edit_message(
