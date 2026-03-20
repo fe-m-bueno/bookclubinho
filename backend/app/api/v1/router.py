@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints.auth import router as auth_router
+from app.api.v1.endpoints.integrations import router as integrations_router
 from app.api.v1.endpoints.badges import (
     badges_catalog_router,
     badges_group_router,
@@ -85,4 +86,7 @@ api_router.include_router(quotes_router, prefix="/quotes", tags=["quotes"])
 api_router.include_router(shelf_public_router, prefix="/shelf", tags=["shelf"])
 api_router.include_router(
     wrapped_group_router, prefix="/groups/{group_id}/wrapped", tags=["wrapped"]
+)
+api_router.include_router(
+    integrations_router, prefix="/integrations", tags=["integrations"]
 )

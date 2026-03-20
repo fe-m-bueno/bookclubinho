@@ -7,7 +7,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rls import get_rls_user_id
-from app.core.security import extract_access_token_sub
+from app.core.security import extract_access_token_sub, extract_refresh_token_jti
 from app.db.engine import AsyncSessionLocal
 from app.db.models.group import Group, GroupMember, GroupRole
 from app.db.models.user import User
@@ -164,3 +164,19 @@ async def get_group_admin_membership(member: GroupMemberDep) -> GroupMember:
 
 
 GroupAdminDep = Annotated[GroupMember, Depends(get_group_admin_membership)]
+
+
+async def get_current_refresh_jti(
+    refresh_token: Annotated[str | None, Cookie(alias="refresh_token")] = None,
+) -> str | None:
+    """Extract JTI from refresh_token cookie without full validation.
+
+    Used to identify the current session when listing sessions.
+    Returns None if cookie is absent or token is malformed.
+    """
+    if not refresh_token:
+        return None
+    return extract_refresh_token_jti(refresh_token)
+
+
+CurrentRefreshJTI = Annotated[str | None, Depends(get_current_refresh_jti)]

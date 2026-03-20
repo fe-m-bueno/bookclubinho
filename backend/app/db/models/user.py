@@ -86,6 +86,12 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
         default=0,
     )
     hardcover_token_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    auto_sync_hardcover: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
     timezone: Mapped[str] = mapped_column(
         String(50),
         nullable=False,

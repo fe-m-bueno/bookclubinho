@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from zoneinfo import available_timezones
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, computed_field, field_validator
 
 from app.schemas.onboarding import USERNAME_REGEX, VALID_GENRE_SLUGS
 
@@ -106,8 +106,17 @@ class UserRead(BaseModel):
     last_login_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    auto_sync_hardcover: bool = False
+    # Read from ORM but excluded from serialized output — used only to derive hardcover_connected
+    hardcover_token_encrypted: str | None = Field(None, exclude=True)
 
     model_config = {"from_attributes": True}
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def hardcover_connected(self) -> bool:
+        """True when a Hardcover API token is stored for this user."""
+        return self.hardcover_token_encrypted is not None
 
 
 class UserPublic(BaseModel):
@@ -148,3 +157,18 @@ class UserProfilePublic(UserPublic):
 
 class AvatarResponse(BaseModel):
     avatar_url: str
+
+
+class SharedGroupSummary(BaseModel):
+    id: uuid.UUID
+    name: str
+    photo_url: str | None = None
+    member_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class UserProfilePublicEnriched(UserProfilePublic):
+    """Perfil público enriquecido com grupos em comum (para viewers autenticados)."""
+
+    shared_group_count: int = 0
