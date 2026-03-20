@@ -8,6 +8,42 @@ from typing import Literal
 from pydantic import BaseModel, field_validator
 
 
+# ── Enriched list schemas ─────────────────────────────────────────────────────
+
+
+class RoundSummary(BaseModel):
+    id: str
+    round_number: int
+    status: str
+    book_title: str | None = None
+    book_author: str | None = None
+    book_cover_url: str | None = None
+    book_page_count: int | None = None
+
+
+class MyReadingProgress(BaseModel):
+    current_page: int | None = None
+    total_pages: int | None = None
+    percentage: float
+
+
+class LastMessagePreview(BaseModel):
+    sender_display_name: str | None = None
+    sender_avatar_url: str | None = None
+    content_text: str | None = None
+    content_type: str
+    created_at: datetime
+
+
+class MemberAvatar(BaseModel):
+    user_id: str
+    display_name: str | None = None
+    avatar_url: str | None = None
+
+
+# ── Validate / Join schemas ────────────────────────────────────────────────────
+
+
 class GroupValidateResponse(BaseModel):
     valid: bool
     name: str | None = None
@@ -60,8 +96,11 @@ class GroupListItem(BaseModel):
     name: str
     photo_url: str | None
     member_count: int
-    current_round: None = None
-    last_message_preview: None = None
+    members_preview: list[MemberAvatar] = []
+    current_round: RoundSummary | None = None
+    my_reading_progress: MyReadingProgress | None = None
+    last_message_preview: LastMessagePreview | None = None
+    last_activity_at: datetime | None = None
 
 
 class GroupListResponse(BaseModel):

@@ -96,3 +96,19 @@ class MeetingListItem(BaseModel):
 class MeetingListResponse(BaseModel):
     meetings: list[MeetingListItem]
     next_cursor: str | None
+
+
+class UpcomingMeetingItem(BaseModel):
+    id: str
+    title: str
+    scheduled_at: datetime
+    duration_minutes: int
+    meeting_type: str
+    group_id: str
+    group_name: str
+    group_photo_url: str | None = None
+    my_rsvp_status: str | None = None
+
+
+class UpcomingMeetingsResponse(BaseModel):
+    meetings: list[UpcomingMeetingItem]

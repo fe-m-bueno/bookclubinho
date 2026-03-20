@@ -30,6 +30,8 @@ from app.schemas.meeting import (
     MeetingUpdateRequest,
     RsvpRequest,
     RsvpSummary,
+    UpcomingMeetingItem,
+    UpcomingMeetingsResponse,
 )
 from app.security.rate_limit import limiter
 from app.services.calendar_service import generate_google_calendar_url, generate_ics
@@ -40,6 +42,7 @@ from app.services.meeting import (
     get_meeting,
     has_upcoming_soon,
     list_meetings,
+    list_upcoming_meetings,
     update_meeting,
     update_rsvp,
 )
@@ -199,6 +202,44 @@ async def has_upcoming_endpoint(
 
 
 # ── /meetings ─────────────────────────────────────────────────────────────────
+
+
+@meetings_router.get(
+    "/upcoming",
+    response_model=UpcomingMeetingsResponse,
+    summary="Próximos encontros cross-grupo",
+)
+@limiter.limit("30/minute")
+async def upcoming_meetings_endpoint(
+    request: Request,
+    current_user: CurrentUser,
+    db: DBSession,
+    limit: int = Query(default=3, ge=1, le=10),
+) -> UpcomingMeetingsResponse:
+    """Retorna próximos encontros de todos os grupos do usuário."""
+    meetings = await list_upcoming_meetings(db, user_id=current_user.id, limit=limit)
+
+    items = []
+    for m in meetings:
+        my_rsvp = next(
+            (r.status for r in m.rsvps if r.user_id == current_user.id),
+            None,
+        )
+        items.append(
+            UpcomingMeetingItem(
+                id=str(m.id),
+                title=m.title,
+                scheduled_at=m.scheduled_at,
+                duration_minutes=m.duration_minutes,
+                meeting_type=m.meeting_type,
+                group_id=str(m.group_id),
+                group_name=m.group.name,
+                group_photo_url=m.group.photo_url,
+                my_rsvp_status=my_rsvp,
+            )
+        )
+
+    return UpcomingMeetingsResponse(meetings=items)
 
 
 @meetings_router.get(

@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 import io
 import uuid
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import selectinload
 
 if TYPE_CHECKING:
@@ -22,6 +23,9 @@ from app.core.config import settings
 from app.core.exceptions import ServiceError
 from app.core.security import generate_group_code
 from app.db.models.group import Group, GroupMember, GroupRole
+from app.db.models.message import GroupMessage
+from app.db.models.reading_progress import ReadingProgress
+from app.db.models.round import Round, RoundStatus
 from app.security.sanitizer import sanitize
 from app.storage.s3_storage import get_public_url, upload_file
 
@@ -259,6 +263,138 @@ async def list_user_groups(db: AsyncSession, user: User) -> list[Group]:
     )
     memberships = result.scalars().all()
     return [m.group for m in memberships]
+
+
+async def list_user_groups_enriched(
+    db: AsyncSession,
+    user: User,
+) -> list[dict[str, Any]]:
+    """List groups with enriched data: active round, reading progress, last message."""
+    # Step 1: load groups + members with user data (avatars)
+    result = await db.execute(
+        select(GroupMember)
+        .join(Group, GroupMember.group_id == Group.id)
+        .where(GroupMember.user_id == user.id, Group.is_active.is_(True))
+        .options(
+            selectinload(GroupMember.group)
+            .selectinload(Group.members)
+            .selectinload(GroupMember.user)
+        )
+    )
+    memberships = result.scalars().unique().all()
+    groups = [m.group for m in memberships]
+
+    if not groups:
+        return []
+
+    group_ids = [g.id for g in groups]
+
+    # Step 2: batch-load latest non-finished round per group
+    rounds_result = await db.execute(
+        select(Round)
+        .where(
+            Round.group_id.in_(group_ids),
+            Round.status != RoundStatus.FINISHED,
+        )
+        .order_by(Round.group_id, Round.round_number.desc())
+    )
+    all_active_rounds = rounds_result.scalars().all()
+
+    round_by_group: dict[uuid.UUID, Round] = {}
+    for round_ in all_active_rounds:
+        if round_.group_id not in round_by_group:
+            round_by_group[round_.group_id] = round_
+
+    # Step 3: batch-load my latest ReadingProgress per active round (reading/reviewing)
+    reading_round_ids = [
+        r.id
+        for r in round_by_group.values()
+        if r.status in (RoundStatus.READING, RoundStatus.REVIEWING)
+    ]
+
+    progress_by_round: dict[uuid.UUID, ReadingProgress] = {}
+    if reading_round_ids:
+        latest_subq = (
+            select(
+                ReadingProgress.round_id,
+                func.max(ReadingProgress.created_at).label("max_at"),
+            )
+            .where(
+                ReadingProgress.user_id == user.id,
+                ReadingProgress.round_id.in_(reading_round_ids),
+            )
+            .group_by(ReadingProgress.round_id)
+            .subquery()
+        )
+        progress_result = await db.execute(
+            select(ReadingProgress)
+            .join(
+                latest_subq,
+                and_(
+                    ReadingProgress.round_id == latest_subq.c.round_id,
+                    ReadingProgress.created_at == latest_subq.c.max_at,
+                ),
+            )
+            .where(ReadingProgress.user_id == user.id)
+        )
+        for rp in progress_result.scalars().all():
+            progress_by_round[rp.round_id] = rp
+
+    # Step 4: batch-load last non-deleted GroupMessage per group
+    latest_msg_subq = (
+        select(
+            GroupMessage.group_id,
+            func.max(GroupMessage.created_at).label("max_at"),
+        )
+        .where(
+            GroupMessage.group_id.in_(group_ids),
+            GroupMessage.is_deleted.is_(False),
+        )
+        .group_by(GroupMessage.group_id)
+        .subquery()
+    )
+    msg_result = await db.execute(
+        select(GroupMessage)
+        .join(
+            latest_msg_subq,
+            and_(
+                GroupMessage.group_id == latest_msg_subq.c.group_id,
+                GroupMessage.created_at == latest_msg_subq.c.max_at,
+            ),
+        )
+        .where(GroupMessage.is_deleted.is_(False))
+        .options(selectinload(GroupMessage.user))
+    )
+    last_msg_by_group: dict[uuid.UUID, GroupMessage] = {
+        m.group_id: m for m in msg_result.scalars().all()
+    }
+
+    # Step 5: assemble and sort by last_activity_at DESC
+    enriched: list[dict[str, Any]] = []
+    for group in groups:
+        current_round = round_by_group.get(group.id)
+        my_progress = progress_by_round.get(current_round.id) if current_round else None
+        last_msg = last_msg_by_group.get(group.id)
+
+        candidates: list[datetime] = [group.created_at]
+        if last_msg:
+            candidates.append(last_msg.created_at)
+        if current_round and current_round.started_at:
+            candidates.append(current_round.started_at)
+        last_activity_at = max(candidates)
+
+        enriched.append(
+            {
+                "group": group,
+                "current_round": current_round,
+                "my_reading_progress": my_progress,
+                "last_message": last_msg,
+                "last_activity_at": last_activity_at,
+            }
+        )
+
+    enriched.sort(key=lambda x: x["last_activity_at"], reverse=True)
+    return enriched
 
 
 async def get_group_detail(db: AsyncSession, group_id: uuid.UUID) -> Group:

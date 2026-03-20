@@ -2,6 +2,7 @@
 Badge endpoints.
 
 badges_user_router — montado em /users
+  GET /me/badges/recent        — badges recentes (ANTES de /me/badges para evitar conflito)
   GET /me/badges               — meus badges agrupados por categoria
 
 badges_group_router — montado em /groups/{group_id}/badges
@@ -16,7 +17,7 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.core.deps import CurrentUser, DBSession, GroupMemberDep  # noqa: TC001
 from app.schemas.badge import (
@@ -26,6 +27,7 @@ from app.schemas.badge import (
     GroupBadgesResponse,
     MemberBadgesEntry,
     MyBadgesResponse,
+    RecentBadgesResponse,
 )
 from app.security.rate_limit import limiter
 from app.services.badge import (
@@ -34,11 +36,29 @@ from app.services.badge import (
     get_badge_progress,
     get_group_badges,
     get_my_badges,
+    get_recent_badges,
 )
 
 badges_user_router = APIRouter(tags=["badges"])
 badges_group_router = APIRouter(tags=["badges"])
 badges_catalog_router = APIRouter(tags=["badges"])
+
+
+@badges_user_router.get(
+    "/me/badges/recent",
+    response_model=RecentBadgesResponse,
+    summary="Badges recentes",
+)
+@limiter.limit("30/minute")
+async def recent_badges_endpoint(
+    request: Request,
+    current_user: CurrentUser,
+    db: DBSession,
+    limit: int = Query(default=3, ge=1, le=10),
+) -> RecentBadgesResponse:
+    """Retorna os badges mais recentes do usuário (para a home page)."""
+    badge_list = await get_recent_badges(db, user_id=current_user.id, limit=limit)
+    return RecentBadgesResponse(badges=[BadgeResponse(**b) for b in badge_list])
 
 
 @badges_user_router.get(

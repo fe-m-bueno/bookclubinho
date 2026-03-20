@@ -45,3 +45,8 @@ class BadgeProgressResponse(BaseModel):
     current: int
     target: int
     percentage: float
+
+
+
+class RecentBadgesResponse(BaseModel):
+    badges: list[BadgeResponse]

@@ -105,6 +105,32 @@ def _load_meeting_with_relations() -> list:
 # ── Service functions ─────────────────────────────────────────────────────────
 
 
+async def list_upcoming_meetings(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    limit: int = 3,
+) -> list[Meeting]:
+    """List upcoming meetings across all groups the user belongs to."""
+    now = datetime.now(UTC)
+
+    stmt = (
+        select(Meeting)
+        .join(GroupMember, GroupMember.group_id == Meeting.group_id)
+        .where(
+            GroupMember.user_id == user_id,
+            Meeting.scheduled_at > now,
+        )
+        .options(
+            selectinload(Meeting.group),
+            selectinload(Meeting.rsvps),
+        )
+        .order_by(Meeting.scheduled_at.asc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().unique().all())
+
+
 async def create_meeting(
     db: AsyncSession,
     group_id: uuid.UUID,

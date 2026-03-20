@@ -280,3 +280,34 @@ async def _compute_badge_progress(
         .where(UserBadge.user_id == user_id, Badge.slug == slug)
     )
     return int(already_earned.scalar_one() or 0)
+
+
+async def get_recent_badges(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    limit: int = 3,
+) -> list[dict[str, Any]]:
+    """Return user's most recently earned badges (flat list, not grouped)."""
+    result = await db.execute(
+        select(UserBadge, Badge, Group, Round)
+        .join(Badge, Badge.id == UserBadge.badge_id)
+        .outerjoin(Group, Group.id == UserBadge.group_id)
+        .outerjoin(Round, Round.id == UserBadge.round_id)
+        .where(UserBadge.user_id == user_id)
+        .order_by(UserBadge.earned_at.desc())
+        .limit(limit)
+    )
+    rows = result.all()
+    return [
+        {
+            "slug": badge.slug,
+            "name": badge.name,
+            "description": badge.description,
+            "emoji": badge.emoji,
+            "category": badge.category,
+            "earned_at": user_badge.earned_at,
+            "group_name": group.name if group else None,
+            "book_title": round_.book_title if round_ else None,
+        }
+        for user_badge, badge, group, round_ in rows
+    ]

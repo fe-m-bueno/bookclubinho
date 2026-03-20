@@ -13,6 +13,10 @@ export interface MyBadgesResponse {
   badges: Record<string, BadgeResponse[]>;
 }
 
+export interface RecentBadgesResponse {
+  badges: BadgeResponse[];
+}
+
 export interface BadgeCatalogResponse {
   badges: BadgeResponse[];
 }

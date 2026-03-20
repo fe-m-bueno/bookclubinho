@@ -673,17 +673,34 @@ class TestCreateGroupEndpoint:
 class TestListGroupsEndpoint:
     @pytest.mark.asyncio
     async def test_returns_groups(self) -> None:
+        from datetime import UTC, datetime
+
         from app.api.v1.endpoints.groups import list_groups_endpoint
         from app.schemas.group import GroupListResponse
 
         group = _make_group(name="Clube A", members=[MagicMock()])
+        # members must have .user with display_name and avatar_url
+        member = MagicMock()
+        member.user_id = uuid.uuid4()
+        member.user = make_user()
+        group.members = [member]
+
+        enriched = [
+            {
+                "group": group,
+                "current_round": None,
+                "my_reading_progress": None,
+                "last_message": None,
+                "last_activity_at": datetime(2026, 1, 1, tzinfo=UTC),
+            }
+        ]
         mock_db = AsyncMock()
         mock_user = make_user()
 
         with patch(
-            "app.api.v1.endpoints.groups.list_user_groups",
+            "app.api.v1.endpoints.groups.list_user_groups_enriched",
             new_callable=AsyncMock,
-            return_value=[group],
+            return_value=enriched,
         ):
             result = await list_groups_endpoint(db=mock_db, user=mock_user)
 
@@ -700,7 +717,7 @@ class TestListGroupsEndpoint:
         mock_user = make_user()
 
         with patch(
-            "app.api.v1.endpoints.groups.list_user_groups",
+            "app.api.v1.endpoints.groups.list_user_groups_enriched",
             new_callable=AsyncMock,
             return_value=[],
         ):
@@ -708,6 +725,54 @@ class TestListGroupsEndpoint:
 
         assert isinstance(result, GroupListResponse)
         assert result.groups == []
+
+    @pytest.mark.asyncio
+    async def test_returns_enriched_fields(self) -> None:
+        """GroupListItem must include members_preview, current_round, etc."""
+        from datetime import UTC, datetime
+
+        from app.api.v1.endpoints.groups import list_groups_endpoint
+        from app.schemas.group import GroupListResponse
+
+        group = _make_group(name="Clube B")
+        member = MagicMock()
+        member.user_id = uuid.uuid4()
+        member.user = make_user(display_name="Alice")
+        group.members = [member]
+
+        round_mock = MagicMock()
+        round_mock.id = uuid.uuid4()
+        round_mock.round_number = 1
+        round_mock.status = "reading"
+        round_mock.book_title = "Dom Quixote"
+        round_mock.book_author = "Cervantes"
+        round_mock.book_cover_url = None
+        round_mock.book_page_count = 400
+
+        enriched = [
+            {
+                "group": group,
+                "current_round": round_mock,
+                "my_reading_progress": None,
+                "last_message": None,
+                "last_activity_at": datetime(2026, 1, 1, tzinfo=UTC),
+            }
+        ]
+        mock_db = AsyncMock()
+        mock_user = make_user()
+
+        with patch(
+            "app.api.v1.endpoints.groups.list_user_groups_enriched",
+            new_callable=AsyncMock,
+            return_value=enriched,
+        ):
+            result = await list_groups_endpoint(db=mock_db, user=mock_user)
+
+        assert isinstance(result, GroupListResponse)
+        item = result.groups[0]
+        assert item.current_round is not None
+        assert item.current_round.book_title == "Dom Quixote"
+        assert len(item.members_preview) == 1
 
 
 # ── Endpoint: GET /groups/{group_id} (detail) ───────────────────────────────
