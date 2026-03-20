@@ -72,3 +72,34 @@ def send_magic_link_email(to_email: str, display_name: str, magic_url: str) -> N
 
     response = resend.Emails.send(params)
     logger.info("magic_link_email_sent", to=to_email, resend_id=response.get("id"))
+
+
+def send_email_change_email(to_email: str, display_name: str, confirm_url: str) -> None:
+    """Envia link de confirmação de troca de e-mail — síncrona, rodar via asyncio.to_thread."""
+    resend.api_key = settings.RESEND_API_KEY
+
+    html_body = f"""
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2>Olá, {display_name}!</h2>
+      <p>Recebemos uma solicitação para alterar o e-mail da sua conta no Bookclub.
+         Clique no botão abaixo para confirmar o novo e-mail:</p>
+      <a href="{confirm_url}"
+         style="display:inline-block;padding:12px 24px;background:#c2410c;color:#fff;
+                border-radius:6px;text-decoration:none;font-weight:bold;">
+        Confirmar novo e-mail
+      </a>
+      <p style="margin-top:24px;color:#666;font-size:13px;">
+        O link expira em 1 hora. Se você não solicitou esta alteração, ignore este e-mail.
+      </p>
+    </div>
+    """
+
+    params: resend.Emails.SendParams = {
+        "from": settings.RESEND_FROM_EMAIL,
+        "to": [to_email],
+        "subject": "Bookclub — confirme seu novo e-mail",
+        "html": html_body,
+    }
+
+    response = resend.Emails.send(params)
+    logger.info("email_change_email_sent", to=to_email, resend_id=response.get("id"))

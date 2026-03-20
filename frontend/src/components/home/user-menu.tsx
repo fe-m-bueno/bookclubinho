@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Settings } from "lucide-react";
+import { Bell, Lock, LogOut, Settings, Trophy, User } from "lucide-react";
 import { useTheme } from "next-themes";
 import {
   Avatar,
@@ -15,7 +15,14 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { ensureCsrf, withCsrf } from "@/lib/csrf";
 import type { UserMe } from "@/lib/types/user";
 
@@ -28,12 +35,18 @@ function getInitials(user: UserMe): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-export function UserMenu({ user }: UserMenuProps) {
-  const [open, setOpen] = useState(false);
+interface MenuContentProps {
+  user: UserMe;
+  onClose: () => void;
+}
+
+function MenuContent({ user, onClose }: MenuContentProps) {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const handleLogout = async () => {
+    onClose();
     await ensureCsrf();
     await fetch("/api/v1/auth/logout", {
       method: "POST",
@@ -43,76 +56,146 @@ export function UserMenu({ user }: UserMenuProps) {
     router.push("/auth/login");
   };
 
+  function navigate(href: string) {
+    onClose();
+    router.push(href);
+  }
+
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label="Menu do usuário"
-      >
-        <Avatar className="h-10 w-10">
+    <div className="flex flex-col gap-1 p-2">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-2 py-3">
+        <Avatar className="h-12 w-12 shrink-0">
           <AvatarImage src={user.avatar_url ?? undefined} alt={user.display_name ?? "Usuário"} />
-          <AvatarFallback className="bg-primary/20 text-sm font-semibold">
+          <AvatarFallback className="bg-primary/20 font-semibold">
             {getInitials(user)}
           </AvatarFallback>
         </Avatar>
-      </button>
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm font-semibold truncate">
+            {user.display_name || user.username}
+          </span>
+          {user.username && (
+            <span className="text-xs text-muted-foreground truncate">
+              @{user.username}
+            </span>
+          )}
+          {user.status_text && (
+            <span className="text-xs text-muted-foreground truncate italic">
+              {user.status_text}
+            </span>
+          )}
+        </div>
+      </div>
 
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle className="flex items-center gap-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={user.avatar_url ?? undefined} alt={user.display_name ?? "Usuário"} />
-                <AvatarFallback className="bg-primary/20 font-semibold">
-                  {getInitials(user)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col items-start">
-                <span className="text-base font-semibold">
-                  {user.display_name || user.username}
-                </span>
-                <span className="text-sm font-normal text-muted-foreground">
-                  {user.email}
-                </span>
-              </div>
-            </DrawerTitle>
-          </DrawerHeader>
+      <Separator />
 
-          <div className="flex flex-col gap-1 p-4 pb-8">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      <Button
+        variant="ghost"
+        className="w-full justify-start gap-3 h-9"
+        onClick={() => navigate("/settings/profile")}
+      >
+        <User className="h-4 w-4" />
+        <span>Meu perfil</span>
+      </Button>
+
+      <Button
+        variant="ghost"
+        className="w-full justify-start gap-3 h-9"
+        onClick={() => navigate("/settings")}
+      >
+        <Settings className="h-4 w-4" />
+        <span>Configurações</span>
+      </Button>
+
+      <Button
+        variant="ghost"
+        className="w-full justify-start gap-3 h-9"
+        onClick={() => navigate("/badges")}
+      >
+        <Trophy className="h-4 w-4" />
+        <span>Meus badges</span>
+      </Button>
+
+      {/* Dark mode toggle */}
+      <div className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent transition-colors">
+        <span className="text-sm">Modo escuro</span>
+        <Switch
+          checked={isDark}
+          onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+          aria-label="Alternar modo escuro"
+        />
+      </div>
+
+      <Separator />
+
+      <Button
+        variant="ghost"
+        className="w-full justify-start gap-3 h-9 text-destructive hover:text-destructive"
+        onClick={handleLogout}
+      >
+        <LogOut className="h-4 w-4" />
+        <span>Sair</span>
+      </Button>
+    </div>
+  );
+}
+
+export function UserMenu({ user }: UserMenuProps) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
+  const avatarButton = (
+    <Avatar className="h-10 w-10">
+      <AvatarImage src={user.avatar_url ?? undefined} alt={user.display_name ?? "Usuário"} />
+      <AvatarFallback className="bg-primary/20 text-sm font-semibold">
+        {getInitials(user)}
+      </AvatarFallback>
+    </Avatar>
+  );
+
+  return (
+    <>
+      {/* Desktop: Popover */}
+      <div className="hidden md:block">
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Menu do usuário"
             >
-              <span className="text-lg">{theme === "dark" ? "☀️" : "🌙"}</span>
-              <span>{theme === "dark" ? "Modo claro" : "Modo escuro"}</span>
-            </Button>
+              {avatarButton}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 p-0">
+            <MenuContent user={user} onClose={() => setPopoverOpen(false)} />
+          </PopoverContent>
+        </Popover>
+      </div>
 
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3"
-              onClick={() => {
-                setOpen(false);
-                router.push("/profile");
-              }}
-            >
-              <Settings className="h-5 w-5" />
-              <span>Perfil</span>
-            </Button>
+      {/* Mobile: Drawer */}
+      <div className="md:hidden">
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Menu do usuário"
+        >
+          {avatarButton}
+        </button>
 
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-destructive hover:text-destructive"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-5 w-5" />
-              <span>Sair</span>
-            </Button>
-          </div>
-        </DrawerContent>
-      </Drawer>
+        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle className="sr-only">Menu do usuário</DrawerTitle>
+            </DrawerHeader>
+            <div className="pb-8">
+              <MenuContent user={user} onClose={() => setDrawerOpen(false)} />
+            </div>
+          </DrawerContent>
+        </Drawer>
+      </div>
     </>
   );
 }

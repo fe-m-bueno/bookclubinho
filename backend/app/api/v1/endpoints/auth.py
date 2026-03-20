@@ -1,11 +1,14 @@
 """
-POST /api/v1/auth/register  — cria conta e envia e-mail de verificação
-POST /api/v1/auth/verify-email  — valida token do Redis e marca e-mail como verificado
-POST /api/v1/auth/login  — autentica e seta cookies httpOnly (access + refresh)
-POST /api/v1/auth/magic-link  — solicita magic link por e-mail
-GET  /api/v1/auth/magic/callback  — valida magic token e autentica
-GET  /api/v1/auth/google/login  — redireciona para consentimento Google
-GET  /api/v1/auth/google/callback  — recebe code, autentica e redireciona
+POST  /api/v1/auth/register       — cria conta e envia e-mail de verificação
+POST  /api/v1/auth/verify-email   — valida token do Redis e marca e-mail como verificado
+POST  /api/v1/auth/login          — autentica e seta cookies httpOnly (access + refresh)
+POST  /api/v1/auth/magic-link     — solicita magic link por e-mail
+GET   /api/v1/auth/magic/callback — valida magic token e autentica
+GET   /api/v1/auth/google/login   — redireciona para consentimento Google
+GET   /api/v1/auth/google/callback — recebe code, autentica e redireciona
+PATCH /api/v1/auth/password       — altera senha (contas locais)
+PATCH /api/v1/auth/email          — inicia troca de e-mail
+GET   /api/v1/auth/email/confirm  — confirma troca de e-mail via token
 """
 
 from __future__ import annotations
@@ -20,8 +23,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.config import settings
 from app.core.cookies import clear_auth_cookies, set_auth_cookies
-from app.core.deps import DBSession  # noqa: TC001
+from app.core.deps import CurrentUser, DBSession  # noqa: TC001
 from app.core.redis import get_redis
+from app.schemas.account import ChangeEmailRequest, ChangePasswordRequest, MessageResponse
 from app.schemas.auth import (
     LoginResponse,
     LogoutResponse,
@@ -35,6 +39,7 @@ from app.schemas.auth import (
     VerifyEmailResponse,
 )
 from app.security.rate_limit import limiter
+from app.services.account import AccountError, change_password, confirm_email_change, initiate_email_change
 from app.services.auth import (
     AuthError,
     authenticate_user,
@@ -301,3 +306,86 @@ async def google_callback(
     response = RedirectResponse(url=redirect_url, status_code=303)
     set_auth_cookies(response, access_token, refresh_token)
     return response
+
+
+# ── Password change ───────────────────────────────────────────────────────────
+
+
+@router.patch(
+    "/password",
+    response_model=MessageResponse,
+    summary="Alterar senha",
+)
+@limiter.limit("5/hour")
+async def update_password(
+    request: Request,
+    body: ChangePasswordRequest,
+    user: CurrentUser,
+    db: DBSession,  # noqa: TC001
+) -> MessageResponse:
+    """Altera a senha de uma conta local. Rate limit: 5 por hora."""
+    try:
+        await change_password(
+            db=db,
+            user=user,
+            current_password=body.current_password,
+            new_password=body.new_password,
+        )
+    except AccountError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return MessageResponse(message="Senha alterada com sucesso.")
+
+
+# ── Email change ──────────────────────────────────────────────────────────────
+
+
+@router.patch(
+    "/email",
+    response_model=MessageResponse,
+    summary="Iniciar troca de e-mail",
+)
+@limiter.limit("3/hour")
+async def update_email(
+    request: Request,
+    body: ChangeEmailRequest,
+    user: CurrentUser,
+    db: DBSession,  # noqa: TC001
+) -> MessageResponse:
+    """Inicia o processo de troca de e-mail. Envia confirmação para o novo e-mail."""
+    try:
+        redis = get_redis()
+        await initiate_email_change(
+            redis=redis,
+            db=db,
+            user=user,
+            new_email=str(body.new_email),
+            current_password=body.current_password,
+        )
+    except AccountError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return MessageResponse(
+        message=f"E-mail de confirmação enviado para {body.new_email}."
+    )
+
+
+@router.get(
+    "/email/confirm",
+    response_class=RedirectResponse,
+    summary="Confirmar troca de e-mail",
+)
+async def confirm_email(
+    token: str,
+    db: DBSession,  # noqa: TC001
+) -> RedirectResponse:
+    """Valida token de troca de e-mail e atualiza o e-mail do usuário."""
+    base_url = settings.APP_URL.rstrip("/")
+    try:
+        redis = get_redis()
+        await confirm_email_change(redis=redis, db=db, token=token)
+    except AccountError:
+        return RedirectResponse(
+            url=f"{base_url}/settings/account?email_error=true", status_code=303
+        )
+    return RedirectResponse(
+        url=f"{base_url}/settings/account?email_changed=true", status_code=303
+    )
