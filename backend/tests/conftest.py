@@ -26,4 +26,7 @@ def make_user(**overrides: object) -> MagicMock:
     user.preferred_genres = overrides.get("preferred_genres", ["fantasia"])
     user.onboarding_completed = overrides.get("onboarding_completed", False)
     user.is_active = overrides.get("is_active", True)
+    user.hardcover_token_encrypted = overrides.get("hardcover_token_encrypted")
+    user.auto_sync_hardcover = overrides.get("auto_sync_hardcover", False)
+    user.auth_provider = overrides.get("auth_provider", "local")
     return user

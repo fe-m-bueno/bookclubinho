@@ -103,3 +103,23 @@ def generate_group_code() -> str:
 def generate_magic_token() -> str:
     """Generate a cryptographically secure URL-safe token for magic link auth."""
     return secrets.token_urlsafe(32)
+
+
+def extract_refresh_token_jti(token: str) -> str | None:
+    """Extract JTI from a refresh token without validating expiry.
+
+    Returns the JTI string or None on any failure.
+    Used for identifying the current session when listing sessions.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            options={"verify_exp": False},
+        )
+        if payload.get("type") != "refresh":
+            return None
+        return payload.get("jti")
+    except JWTError:
+        return None

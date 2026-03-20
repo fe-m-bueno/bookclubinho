@@ -7,7 +7,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text as sa_text
 
 if TYPE_CHECKING:
     from fastapi import UploadFile
@@ -145,3 +145,34 @@ async def get_public_profile(
         "total_books_finished": total_books_finished,
         "badges": badges,
     }
+
+
+async def get_public_profile_by_username(
+    db: "AsyncSession",
+    username: str,
+    viewer_id: uuid.UUID | None = None,
+) -> dict:
+    """Return enriched public profile for a user by username (case-insensitive).
+
+    Raises ProfileError(404) if user not found or inactive.
+    Includes shared_group_count when viewer_id is provided and differs from target.
+    """
+    result = await db.execute(
+        select(User).where(func.lower(User.username) == username.lower())
+    )
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise ProfileError("Usuário não encontrado.", status_code=404)
+
+    profile = await get_public_profile(db=db, user_id=user.id)
+
+    shared_group_count = 0
+    if viewer_id is not None and viewer_id != user.id:
+        from app.services.shared_groups import get_shared_groups
+
+        shared = await get_shared_groups(
+            db=db, viewer_id=viewer_id, target_user_id=user.id
+        )
+        shared_group_count = len(shared)
+
+    return {**profile, "shared_group_count": shared_group_count}

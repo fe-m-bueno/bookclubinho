@@ -103,3 +103,37 @@ def send_email_change_email(to_email: str, display_name: str, confirm_url: str) 
 
     response = resend.Emails.send(params)
     logger.info("email_change_email_sent", to=to_email, resend_id=response.get("id"))
+
+
+def send_data_export_email(
+    to_email: str, display_name: str, download_url: str
+) -> None:
+    """Envia link de download do export de dados — síncrona, rodar via asyncio.to_thread."""
+    resend.api_key = settings.RESEND_API_KEY
+
+    html_body = f"""
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2>Olá, {display_name}!</h2>
+      <p>Sua exportação de dados do Bookclub está pronta.
+         Clique no botão abaixo para baixar:</p>
+      <a href="{download_url}"
+         style="display:inline-block;padding:12px 24px;background:#c2410c;color:#fff;
+                border-radius:6px;text-decoration:none;font-weight:bold;">
+        Baixar meus dados
+      </a>
+      <p style="margin-top:24px;color:#666;font-size:13px;">
+        O link expira em 24 horas.
+        Se você não solicitou esta exportação, ignore este e-mail.
+      </p>
+    </div>
+    """
+
+    params: resend.Emails.SendParams = {
+        "from": settings.RESEND_FROM_EMAIL,
+        "to": [to_email],
+        "subject": "Bookclub — seus dados estão prontos",
+        "html": html_body,
+    }
+
+    response = resend.Emails.send(params)
+    logger.info("data_export_email_sent", to=to_email, resend_id=response.get("id"))

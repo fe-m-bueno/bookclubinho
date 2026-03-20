@@ -14,6 +14,7 @@ GET   /api/v1/auth/email/confirm  — confirma troca de e-mail via token
 from __future__ import annotations
 
 import secrets
+import uuid
 from typing import Annotated
 from urllib.parse import urlencode
 
@@ -23,9 +24,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.config import settings
 from app.core.cookies import clear_auth_cookies, set_auth_cookies
-from app.core.deps import CurrentUser, DBSession  # noqa: TC001
+from app.core.deps import CurrentRefreshJTI, CurrentUser, DBSession  # noqa: TC001
 from app.core.redis import get_redis
 from app.schemas.account import ChangeEmailRequest, ChangePasswordRequest, MessageResponse
+from app.schemas.session import SessionListResponse, SessionResponse
 from app.schemas.auth import (
     LoginResponse,
     LogoutResponse,
@@ -40,6 +42,7 @@ from app.schemas.auth import (
 )
 from app.security.rate_limit import limiter
 from app.services.account import AccountError, change_password, confirm_email_change, initiate_email_change
+from app.services.session import SessionError, list_sessions, revoke_all_other_sessions, revoke_session
 from app.services.auth import (
     AuthError,
     authenticate_user,
@@ -389,3 +392,77 @@ async def confirm_email(
     return RedirectResponse(
         url=f"{base_url}/settings/account?email_changed=true", status_code=303
     )
+
+
+# ── Session management ────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/sessions",
+    response_model=SessionListResponse,
+    summary="Listar sessões ativas",
+)
+@limiter.limit("20/minute")
+async def list_active_sessions(
+    request: Request,
+    user: CurrentUser,
+    db: DBSession,  # noqa: TC001
+    current_jti: CurrentRefreshJTI,
+) -> SessionListResponse:
+    """Retorna todas as sessões ativas do usuário autenticado.
+
+    A sessão atual é marcada com is_current=True.
+    """
+    sessions = await list_sessions(db=db, user_id=user.id, current_jti=current_jti)
+    return SessionListResponse(
+        sessions=[SessionResponse.model_validate(s) for s in sessions]
+    )
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Revogar sessão específica",
+)
+@limiter.limit("10/minute")
+async def revoke_specific_session(
+    request: Request,
+    session_id: uuid.UUID,
+    user: CurrentUser,
+    db: DBSession,  # noqa: TC001
+) -> dict:
+    """Revoga uma sessão ativa específica pelo seu ID."""
+    redis = get_redis()
+    try:
+        await revoke_session(db=db, redis=redis, user_id=user.id, session_id=session_id)
+    except SessionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return {"detail": "Sessão revogada com sucesso."}
+
+
+@router.delete(
+    "/sessions",
+    status_code=status.HTTP_200_OK,
+    summary="Revogar todas as outras sessões",
+)
+@limiter.limit("5/minute")
+async def revoke_other_sessions(
+    request: Request,
+    user: CurrentUser,
+    db: DBSession,  # noqa: TC001
+    current_jti: CurrentRefreshJTI,
+) -> dict:
+    """Revoga todas as sessões ativas exceto a sessão atual.
+
+    Requer refresh_token cookie para identificar a sessão atual.
+    """
+    if not current_jti:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cookie de refresh token ausente.",
+        )
+    redis = get_redis()
+    count = await revoke_all_other_sessions(
+        db=db, redis=redis, user_id=user.id, current_jti=current_jti
+    )
+    return {"detail": f"{count} sessão(ões) revogada(s) com sucesso.", "count": count}

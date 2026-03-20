@@ -1,25 +1,47 @@
 """
-GET    /api/v1/users/me                      — dados do usuário autenticado
-PATCH  /api/v1/users/me                      — atualiza perfil do usuário autenticado
-POST   /api/v1/users/me/avatar               — upload de avatar
-DELETE /api/v1/users/me/avatar               — remove avatar
-GET    /api/v1/users/check-username/{username} — verifica disponibilidade de username
-GET    /api/v1/users/{user_id}/profile       — perfil público enriquecido
+GET    /api/v1/users/me                           — dados do usuário autenticado
+PATCH  /api/v1/users/me                           — atualiza perfil do usuário autenticado
+POST   /api/v1/users/me/avatar                    — upload de avatar
+DELETE /api/v1/users/me/avatar                    — remove avatar
+POST   /api/v1/users/me/data-export               — solicitar exportação de dados
+DELETE /api/v1/users/me/account                   — excluir conta
+GET    /api/v1/users/check-username/{username}    — verifica disponibilidade de username
+GET    /api/v1/users/{user_id}/profile            — perfil público enriquecido por ID
+GET    /api/v1/users/by-username/{username}/profile       — perfil público por username
+GET    /api/v1/users/by-username/{username}/shared-groups — grupos em comum
 """
 
 from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, status
 
-from app.core.deps import CurrentUser, DBSession  # noqa: TC001
+from app.core.cookies import clear_auth_cookies
+from app.core.deps import CurrentUser, DBSession, OptionalUser  # noqa: TC001
 from app.core.exceptions import ServiceError
+from app.core.redis import get_redis
 from app.schemas.onboarding import UsernameCheckResponse
-from app.schemas.user import AvatarResponse, UserProfilePublic, UserRead, UserUpdate
+from app.schemas.privacy import DataExportResponse, DeleteAccountRequest
+from app.schemas.user import (
+    AvatarResponse,
+    SharedGroupSummary,
+    UserProfilePublic,
+    UserProfilePublicEnriched,
+    UserRead,
+    UserUpdate,
+)
 from app.security.rate_limit import limiter
+from app.services.account_deletion import AccountDeletionError, delete_account
+from app.services.data_export import DataExportError, request_data_export
 from app.services.onboarding import check_username_available
-from app.services.user_profile import ProfileError, get_public_profile, update_user_profile
+from app.services.shared_groups import get_shared_groups
+from app.services.user_profile import (
+    ProfileError,
+    get_public_profile,
+    get_public_profile_by_username,
+    update_user_profile,
+)
 from app.services.user_profile import delete_user_avatar as svc_delete_avatar
 from app.services.user_profile import upload_user_avatar as svc_upload_avatar
 
@@ -142,3 +164,121 @@ async def get_user_profile(
     except ProfileError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return UserProfilePublic.model_validate(profile)
+
+
+# ── By-username endpoints ──────────────────────────────────────────────────────
+
+
+@router.get(
+    "/by-username/{username}/profile",
+    response_model=UserProfilePublicEnriched,
+    summary="Perfil público por username",
+)
+@limiter.limit("30/minute")
+async def get_profile_by_username(
+    request: Request,
+    username: str,
+    db: DBSession,
+    viewer: OptionalUser,
+) -> UserProfilePublicEnriched:
+    """Retorna o perfil público enriquecido de um usuário buscado pelo username.
+
+    Inclui shared_group_count quando o viewer é um usuário autenticado diferente do alvo.
+    """
+    viewer_id = viewer.id if viewer else None
+    try:
+        profile = await get_public_profile_by_username(
+            db=db, username=username, viewer_id=viewer_id
+        )
+    except ProfileError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return UserProfilePublicEnriched.model_validate(profile)
+
+
+@router.get(
+    "/by-username/{username}/shared-groups",
+    response_model=list[SharedGroupSummary],
+    summary="Grupos em comum com um usuário",
+)
+@limiter.limit("20/minute")
+async def get_shared_groups_endpoint(
+    request: Request,
+    username: str,
+    db: DBSession,
+    viewer: CurrentUser,
+) -> list[SharedGroupSummary]:
+    """Retorna grupos que o viewer autenticado e o usuário-alvo têm em comum."""
+    from sqlalchemy import func, select
+
+    from app.db.models.user import User
+
+    result = await db.execute(
+        select(User).where(func.lower(User.username) == username.lower())
+    )
+    target = result.scalar_one_or_none()
+    if target is None or not target.is_active:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    groups = await get_shared_groups(
+        db=db, viewer_id=viewer.id, target_user_id=target.id
+    )
+    return [SharedGroupSummary.model_validate(g) for g in groups]
+
+
+# ── Privacy / account lifecycle ────────────────────────────────────────────────
+
+
+@router.post(
+    "/me/data-export",
+    response_model=DataExportResponse,
+    summary="Solicitar exportação de dados pessoais",
+)
+@limiter.limit("3/day")
+async def post_data_export(
+    request: Request,
+    user: CurrentUser,
+    db: DBSession,
+) -> DataExportResponse:
+    """Coleta os dados do usuário, faz upload no R2 e envia link por e-mail.
+
+    Limitado a uma exportação por 24 horas. Retorna cooldown_until se em espera.
+    """
+    redis = get_redis()
+    try:
+        result = await request_data_export(redis=redis, db=db, user=user)
+    except DataExportError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return DataExportResponse(**result)
+
+
+@router.delete(
+    "/me/account",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir conta permanentemente",
+)
+@limiter.limit("3/hour")
+async def delete_account_endpoint(
+    request: Request,
+    response: Response,
+    body: DeleteAccountRequest,
+    user: CurrentUser,
+    db: DBSession,
+) -> None:
+    """Anonimiza e soft-deleta a conta do usuário autenticado.
+
+    Exige confirmação com a string literal "EXCLUIR".
+    Para contas locais, também exige a senha atual.
+    Revoga todas as sessões ativas.
+    """
+    redis = get_redis()
+    try:
+        await delete_account(
+            db=db,
+            redis=redis,
+            user=user,
+            confirmation=body.confirmation,
+            current_password=body.current_password,
+        )
+    except AccountDeletionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    clear_auth_cookies(response)

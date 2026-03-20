@@ -53,6 +53,8 @@ const mockUser: UserMe = {
   streak_last_update: null,
   total_reading_time_minutes: 240,
   timezone: "America/Sao_Paulo",
+  auto_sync_hardcover: false,
+  hardcover_connected: false,
   is_active: true,
   last_login_at: null,
   created_at: "2026-01-01T00:00:00Z",

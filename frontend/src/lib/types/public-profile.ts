@@ -1,23 +1,29 @@
-export interface UserMe {
+export interface BadgeSummary {
+  slug: string;
+  emoji: string | null;
+}
+
+export interface PublicProfile {
   id: string;
-  email: string;
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
   status_text: string | null;
-  auth_provider: string;
   preferred_genres: string[];
-  onboarding_completed: boolean;
-  email_notifications: Record<string, unknown>;
   streak_current: number;
   streak_longest: number;
-  streak_last_update: string | null;
   total_reading_time_minutes: number;
   timezone: string;
-  auto_sync_hardcover: boolean;
-  hardcover_connected: boolean;
   is_active: boolean;
-  last_login_at: string | null;
   created_at: string;
-  updated_at: string;
+  total_books_finished: number;
+  badges: BadgeSummary[];
+  shared_group_count: number;
+}
+
+export interface SharedGroup {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  member_count: number;
 }

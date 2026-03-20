@@ -9,6 +9,7 @@ from app.db.models.reading_progress import ReadingProgress
 from app.db.models.reading_session import ReadingSession
 from app.db.models.round import Round, RoundNomination, RoundStatus, RoundVote
 from app.db.models.user import User
+from app.db.models.user_session import UserSession
 from app.db.models.wrapped_report import WrappedReport
 
 __all__ = [
@@ -36,5 +37,6 @@ __all__ = [
     "TimestampMixin",
     "User",
     "UserBadge",
+    "UserSession",
     "WrappedReport",
 ]
