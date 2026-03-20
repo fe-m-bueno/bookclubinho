@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from typing import TYPE_CHECKING
 
 import structlog
@@ -27,11 +28,19 @@ class OnboardingError(ServiceError):
     """Raised when onboarding validation fails."""
 
 
-async def check_username_available(db: AsyncSession, username: str) -> bool:
-    """Check if a username is available (case-insensitive)."""
-    result = await db.execute(
-        select(User).where(func.lower(User.username) == username.lower())
-    )
+async def check_username_available(
+    db: AsyncSession,
+    username: str,
+    exclude_user_id: uuid.UUID | None = None,
+) -> bool:
+    """Check if a username is available (case-insensitive).
+
+    Optionally exclude a specific user_id so existing owners don't block themselves.
+    """
+    stmt = select(User).where(func.lower(User.username) == username.lower())
+    if exclude_user_id is not None:
+        stmt = stmt.where(User.id != exclude_user_id)
+    result = await db.execute(stmt)
     return result.scalar_one_or_none() is None
 
 
