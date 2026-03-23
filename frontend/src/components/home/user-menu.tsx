@@ -93,7 +93,7 @@ function MenuContent({ user, onClose }: MenuContentProps) {
       <Button
         variant="ghost"
         className="w-full justify-start gap-3 h-9"
-        onClick={() => navigate("/settings/profile")}
+        onClick={() => navigate(`/users/${user.username}`)}
       >
         <User className="h-4 w-4" />
         <span>Meu perfil</span>

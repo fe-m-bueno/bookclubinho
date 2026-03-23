@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, Settings } from "lucide-react";
+import { Home, Settings } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -48,7 +48,7 @@ export function GroupHeader({ group }: GroupHeaderProps) {
           className="inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted"
           aria-label="Voltar para o início"
         >
-          <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+          <Home className="h-4 w-4 text-muted-foreground" />
         </Link>
         <ThemeToggle />
         {isAdmin && (
