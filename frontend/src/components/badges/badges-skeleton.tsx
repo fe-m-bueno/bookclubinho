@@ -10,7 +10,7 @@ export function BadgesSkeleton() {
       <Skeleton className="h-9 w-full rounded-lg sm:w-96" />
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
         {Array.from({ length: 12 }).map((_, i) => (
-          <Skeleton key={i} className="rounded-xl h-20 w-full" />
+          <Skeleton key={i} className="rounded-2xl h-20 w-full" />
         ))}
       </div>
     </div>

@@ -27,12 +27,12 @@ export function ChapterMarkerCard({ message }: ChapterMarkerCardProps) {
     <button
       type="button"
       onClick={handleClick}
-      className="w-full cursor-pointer rounded-r-lg border-l-4 border-brand-400 bg-muted/50 p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="w-full cursor-pointer rounded-r-lg border-l-4 border-sage-400 bg-muted/50 p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       aria-label={`Filtrar mensagens do capítulo ${chapter ?? "?"}`}
     >
       <div className="flex items-center gap-2">
         <BookOpen
-          className="size-4 shrink-0 text-brand-600 dark:text-brand-300"
+          className="size-4 shrink-0 text-sage-600 dark:text-sage-300"
           aria-hidden="true"
         />
 
@@ -51,7 +51,7 @@ export function ChapterMarkerCard({ message }: ChapterMarkerCardProps) {
             {getAuthorName(message.author)}
           </span>{" "}
           chegou no capítulo{" "}
-          <span className="font-semibold text-brand-700 dark:text-brand-300">
+          <span className="font-semibold text-sage-700 dark:text-sage-300">
             {chapter ?? "—"}
           </span>
         </span>

@@ -36,7 +36,7 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
   if (isDesktop) {
     return (
       <nav
-        className="hidden md:flex items-center gap-1 bg-card rounded-2xl shadow-sm p-1.5"
+        className="hidden md:flex items-center gap-1 bg-card rounded-2xl shadow-warm-sm p-1.5"
         aria-label="Navegação do grupo"
       >
         {tabs.map(({ label, icon: Icon, segment }) => {
@@ -50,7 +50,7 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
               className={cn(
                 "relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-colors flex-1 justify-center",
                 isActive
-                  ? "text-brand-900 dark:text-brand-100"
+                  ? "text-sage-900 dark:text-sage-100"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
               aria-current={isActive ? "page" : undefined}
@@ -58,7 +58,7 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
               {isActive && (
                 <motion.div
                   layoutId={`tab-pill-${groupId}-desktop`}
-                  className="absolute inset-0 bg-brand-200/60 dark:bg-brand-800/40 rounded-xl"
+                  className="absolute inset-0 bg-sage-200/60 dark:bg-sage-800/40 rounded-xl"
                   transition={
                     noMotion
                       ? { duration: 0 }
@@ -69,7 +69,7 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
               <span className="relative z-10">
                 <Icon className="h-4 w-4" />
                 {segment === "meetings" && hasMeetingSoon && (
-                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-brand-500" />
+                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-sage-500" />
                 )}
               </span>
               <span className="relative z-10">{label}</span>
@@ -97,7 +97,7 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
               className={cn(
                 "relative flex flex-col items-center justify-center min-h-[44px] min-w-[44px] px-2 py-1 text-[10px] font-medium rounded-xl transition-colors",
                 isActive
-                  ? "text-brand-900 dark:text-brand-100"
+                  ? "text-sage-900 dark:text-sage-100"
                   : "text-muted-foreground"
               )}
               aria-current={isActive ? "page" : undefined}
@@ -105,7 +105,7 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
               {isActive && (
                 <motion.div
                   layoutId={`tab-pill-${groupId}-mobile`}
-                  className="absolute inset-0.5 bg-brand-200/50 dark:bg-brand-800/30 rounded-xl"
+                  className="absolute inset-0.5 bg-sage-200/50 dark:bg-sage-800/30 rounded-xl"
                   transition={
                     noMotion
                       ? { duration: 0 }
@@ -116,7 +116,7 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
               <span className="relative z-10">
                 <Icon className="h-5 w-5 mb-0.5" />
                 {segment === "meetings" && hasMeetingSoon && (
-                  <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-brand-500" />
+                  <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-sage-500" />
                 )}
               </span>
               <span className="relative z-10">{label}</span>

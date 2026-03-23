@@ -79,7 +79,7 @@ function SessionCard({ session }: SessionCardProps) {
 
   return (
     <>
-      <div className="bg-card rounded-2xl shadow-sm p-5 flex items-center gap-4">
+      <div className="bg-card rounded-2xl shadow-warm-sm p-5 flex items-center gap-4">
         <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
           {getDeviceIcon(session.device_info)}
         </div>
@@ -161,7 +161,7 @@ export function SessionsSettingsClient() {
 
   if (sessions.length === 0) {
     return (
-      <div className="bg-card rounded-2xl shadow-sm p-8 text-center space-y-2">
+      <div className="bg-card rounded-2xl shadow-warm-sm p-8 text-center space-y-2">
         <Monitor className="h-10 w-10 text-muted-foreground mx-auto" />
         <p className="text-sm text-muted-foreground">
           Nenhuma sessao ativa encontrada.

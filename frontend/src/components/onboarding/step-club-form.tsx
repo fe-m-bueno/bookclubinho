@@ -91,7 +91,7 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-lg font-semibold">Entre em um clube</h2>
+        <h2 className="text-lg font-display font-semibold">Entre em um clube</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Use um código de convite ou crie seu próprio clube.
         </p>

@@ -69,7 +69,7 @@ export function SlideBookPages({ data }: SlideBooksPageProps) {
           <CountingNumber
             to={data.total_books_read}
             reducedMotion={shouldReduce}
-            className="text-8xl font-black tabular-nums text-foreground"
+            className="text-8xl font-display font-black tabular-nums text-foreground"
           />
           <p className="text-2xl font-semibold text-foreground/70 mt-1">
             {data.total_books_read === 1 ? "livro" : "livros"}
@@ -90,7 +90,7 @@ export function SlideBookPages({ data }: SlideBooksPageProps) {
           <CountingNumber
             to={data.total_pages}
             reducedMotion={shouldReduce}
-            className="text-4xl font-bold tabular-nums text-foreground"
+            className="text-4xl font-display font-bold tabular-nums text-foreground"
             formatter={formatPtBR}
           />
           <span className="text-xl font-semibold text-foreground/70">páginas</span>

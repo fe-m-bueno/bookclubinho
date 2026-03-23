@@ -60,10 +60,10 @@ export function NominationCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.2 }}
-      className="flex gap-3 rounded-xl border bg-card p-3"
+      className="flex gap-3 rounded-2xl border bg-card p-4 shadow-warm-sm"
     >
       {/* Cover */}
-      <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+      <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
         {nomination.book_cover_url ? (
           <Image
             src={nomination.book_cover_url}
@@ -82,7 +82,7 @@ export function NominationCard({
 
       {/* Info */}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="font-medium text-sm leading-tight line-clamp-1">
+        <p className="font-medium font-display text-sm leading-tight line-clamp-1">
           {nomination.book_title}
         </p>
         {nomination.book_author && (

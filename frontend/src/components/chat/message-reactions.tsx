@@ -45,7 +45,7 @@ export function MessageReactions({
               "flex min-h-[28px] items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
               reaction.did_i_react
-                ? "border-brand-400 bg-brand-200 ring-1 ring-brand-400 dark:border-brand-600 dark:bg-brand-700"
+                ? "border-sage-400 bg-sage-100 ring-1 ring-sage-400 dark:border-sage-600 dark:bg-sage-800"
                 : "border-border bg-muted hover:bg-accent",
             )}
           >

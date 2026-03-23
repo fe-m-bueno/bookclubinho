@@ -92,7 +92,7 @@ function DataExportCard() {
   const inCooldown = cooldownUntil !== null && cooldownUntil > new Date();
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm p-5 space-y-3">
+    <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
       <h2 className="font-semibold text-base">Exportar meus dados</h2>
       <p className="text-sm text-muted-foreground">
         Receba um arquivo com todos os seus dados: perfil, grupos, progresso,

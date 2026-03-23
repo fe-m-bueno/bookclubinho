@@ -99,7 +99,7 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <h2 className="text-lg font-semibold">Escolha seus gêneros favoritos</h2>
+        <h2 className="text-lg font-display font-semibold">Escolha seus gêneros favoritos</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Selecione de 1 a 10 gêneros que você mais curte.
         </p>

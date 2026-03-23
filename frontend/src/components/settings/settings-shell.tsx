@@ -40,9 +40,9 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
             key={href}
             href={href}
             onClick={onNavigate}
-            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
+            className={`flex items-center gap-3 px-3 py-2 rounded-2xl text-sm transition-colors ${
               active
-                ? "bg-accent font-medium"
+                ? "bg-sage-100 dark:bg-sage-900/30 font-medium"
                 : "hover:bg-accent/50 text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -114,7 +114,7 @@ export function SettingsShell({ children }: SettingsShellProps) {
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <h1 className="font-semibold text-base">Configurações</h1>
+                <h1 className="font-display font-semibold text-base">Configurações</h1>
               </div>
               <NavLinks pathname={pathname} />
             </div>

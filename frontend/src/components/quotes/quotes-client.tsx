@@ -68,7 +68,7 @@ export function QuotesClient({ groupId }: QuotesClientProps) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold text-lg text-foreground flex items-center gap-2">
+        <h2 className="font-display font-semibold text-lg text-foreground flex items-center gap-2 tracking-tight">
           <Quote className="h-5 w-5 text-muted-foreground" />
           Hall of Quotes
         </h2>

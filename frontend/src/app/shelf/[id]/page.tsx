@@ -83,13 +83,13 @@ export default async function PublicShelfPage({
                 />
               </div>
             ) : (
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-100 dark:bg-brand-900 text-2xl shadow-md">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-sage-100 dark:bg-sage-900 text-2xl shadow-warm-md">
                 📚
               </div>
             )}
 
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold truncate">{shelf.group_name}</h1>
+              <h1 className="text-xl font-display font-bold truncate">{shelf.group_name}</h1>
               <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                 <span>
                   {bookCount} livro{bookCount !== 1 ? "s" : ""} lido

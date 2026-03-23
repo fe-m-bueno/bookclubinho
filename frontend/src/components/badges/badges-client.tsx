@@ -58,7 +58,7 @@ export function BadgesClient() {
             </Link>
           </Button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-semibold truncate">
+            <h1 className="text-xl font-display font-semibold truncate">
               Minhas Conquistas
             </h1>
             {!loading && !error && (

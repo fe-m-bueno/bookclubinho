@@ -82,13 +82,13 @@ describe("MessageBubble", () => {
     expect(row).toBeInTheDocument();
   });
 
-  it("applies brand color classes to own message bubble", () => {
+  it("applies sage color classes to own message bubble", () => {
     const msg = makeMessage();
     const { container } = render(
       <MessageBubble {...defaultProps} message={msg} isOwn currentUserId="u1" />,
     );
-    // Own bubbles use bg-brand-200
-    const bubble = container.querySelector(".bg-brand-200");
+    // Own bubbles use bg-sage-100
+    const bubble = container.querySelector(".bg-sage-100");
     expect(bubble).toBeInTheDocument();
   });
 

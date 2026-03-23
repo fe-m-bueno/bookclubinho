@@ -54,7 +54,7 @@ export function HomeClient() {
             <div className="mx-auto flex max-w-lg items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">{greeting}</p>
-                <h1 className="text-lg font-bold">{firstName}</h1>
+                <h1 className="text-xl font-display font-semibold tracking-tight">{firstName}</h1>
               </div>
               <UserMenu user={user} />
             </div>
@@ -78,7 +78,7 @@ export function HomeClient() {
         <div className="mx-auto flex max-w-lg items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">{greeting}</p>
-            <h1 className="text-lg font-bold text-foreground">{firstName}</h1>
+            <h1 className="text-xl font-display font-semibold tracking-tight text-foreground">{firstName}</h1>
           </div>
           <UserMenu user={user} />
         </div>
@@ -89,7 +89,7 @@ export function HomeClient() {
         <section aria-labelledby="groups-heading">
           <h2
             id="groups-heading"
-            className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide"
+            className="mb-3 font-display text-xs tracking-[0.2em] uppercase text-muted-foreground/70"
           >
             Meus clubes
           </h2>
@@ -112,7 +112,7 @@ export function HomeClient() {
           <section aria-labelledby="meetings-heading">
             <h2
               id="meetings-heading"
-              className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide"
+              className="mb-3 font-display text-xs tracking-[0.2em] uppercase text-muted-foreground/70"
             >
               Próximos encontros
             </h2>
@@ -136,7 +136,7 @@ export function HomeClient() {
           <section aria-labelledby="badges-heading">
             <h2
               id="badges-heading"
-              className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide"
+              className="mb-3 font-display text-xs tracking-[0.2em] uppercase text-muted-foreground/70"
             >
               Conquistas recentes
             </h2>

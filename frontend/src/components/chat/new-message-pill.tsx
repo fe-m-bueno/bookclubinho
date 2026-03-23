@@ -23,7 +23,7 @@ export function NewMessagePill({ count, onClick }: NewMessagePillProps) {
           <button
             type="button"
             onClick={onClick}
-            className="pointer-events-auto flex min-h-[44px] items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-brand-700 active:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-brand-500 dark:hover:bg-brand-400"
+            className="pointer-events-auto flex min-h-[44px] items-center gap-1.5 rounded-full bg-sage-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-sage-700 active:bg-sage-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-sage-500 dark:hover:bg-sage-400"
             aria-label={`${count} nova(s) mensagem(ns) — rolar para o final`}
           >
             <span>

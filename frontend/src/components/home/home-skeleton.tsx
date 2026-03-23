@@ -22,7 +22,7 @@ export function HomeSkeleton() {
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="rounded-xl border bg-card p-4 shadow-sm"
+                className="rounded-2xl border bg-card p-5 shadow-warm-sm"
               >
                 <div className="flex items-center gap-3">
                   <Skeleton className="h-12 w-12 rounded-xl" />

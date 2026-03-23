@@ -37,13 +37,13 @@ function ReplyPreview({ message }: { message: ChatMessage }) {
   const preview = message.content_text?.slice(0, 80) ?? "[mídia]";
 
   return (
-    <div className="mb-1.5 flex items-start gap-2 rounded-xl rounded-b-sm border-l-2 border-brand-400 bg-black/5 px-2.5 py-1.5 dark:bg-white/5">
+    <div className="mb-1.5 flex items-start gap-2 rounded-xl rounded-b-sm border-l-2 border-sage-400 bg-black/5 px-2.5 py-1.5 dark:bg-white/5">
       <Reply
-        className="mt-0.5 size-3 shrink-0 text-brand-500 dark:text-brand-400"
+        className="mt-0.5 size-3 shrink-0 text-sage-500 dark:text-sage-400"
         aria-hidden="true"
       />
       <div className="min-w-0">
-        <p className="truncate text-xs font-medium text-brand-700 dark:text-brand-300">
+        <p className="truncate text-xs font-medium text-sage-700 dark:text-sage-300">
           {authorName}
         </p>
         <p className="truncate text-xs text-muted-foreground">{preview}</p>
@@ -143,7 +143,7 @@ export function MessageBubble({
             className={cn(
               "relative rounded-2xl px-3 py-2 text-sm",
               isOwn
-                ? "rounded-br-sm bg-brand-200 text-brand-900 dark:bg-brand-700 dark:text-brand-100"
+                ? "rounded-br-sm bg-sage-100 text-sage-900 dark:bg-sage-800 dark:text-sage-100"
                 : "rounded-bl-sm bg-muted text-foreground",
             )}
           >

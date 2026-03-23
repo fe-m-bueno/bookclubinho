@@ -99,7 +99,7 @@ export default function RegisterPage() {
             <p className="text-4xl" aria-hidden="true">
               📚
             </p>
-            <h1 className="text-2xl font-bold tracking-tight">Criar conta</h1>
+            <h1 className="text-2xl font-display font-bold tracking-tight">Criar conta</h1>
             <p className="text-sm text-muted-foreground">
               Junte-se ao clube
             </p>
@@ -205,7 +205,7 @@ export default function RegisterPage() {
             >
               <Mail className="h-16 w-16 text-primary" />
             </motion.div>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-2xl font-display font-bold tracking-tight">
               Verifique seu e-mail
             </h1>
             <p className="text-sm text-muted-foreground">

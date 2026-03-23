@@ -64,7 +64,7 @@ export function SlideReadingHours({ data }: SlideReadingHoursProps) {
           🔥
         </motion.p>
         <div className="flex items-baseline gap-2 mt-4">
-          <span className="text-8xl font-black tabular-nums text-foreground">
+          <span className="text-8xl font-display font-black tabular-nums text-foreground">
             {display}
           </span>
           <span className="text-3xl font-bold text-foreground/70">h</span>

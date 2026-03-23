@@ -19,10 +19,10 @@ export function HomeEmptyState({
       </div>
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold text-foreground">
+        <h2 className="text-2xl font-display font-semibold tracking-tight text-foreground">
           Seu cantinho de leitura está vazio
         </h2>
-        <p className="max-w-xs text-sm text-muted-foreground">
+        <p className="max-w-sm text-sm text-muted-foreground">
           Crie um clube para ler com amigos ou entre em um existente com um
           código de convite.
         </p>

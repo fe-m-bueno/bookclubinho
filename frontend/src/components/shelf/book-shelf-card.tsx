@@ -94,7 +94,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
       <motion.button
         type="button"
         onClick={() => setOpen(true)}
-        className="group w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-xl"
+        className="group w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
         aria-label={`Ver detalhes de ${book.book_title}`}
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.97 }}
@@ -102,7 +102,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
       >
         {/* Book cover with 3D spine effect */}
         <div
-          className="relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-brand-200 dark:border-brand-800"
+          className="relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-sage-200 dark:border-sage-700"
           style={{
             transform: "perspective(600px) rotateY(-8deg)",
             boxShadow:
@@ -237,7 +237,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
             {groupId && (
               <Link
                 href={`/groups/${groupId}/quotes`}
-                className="block text-center text-xs text-brand-600 dark:text-brand-400 hover:underline"
+                className="block text-center text-xs text-sage-600 dark:text-sage-400 hover:underline"
                 onClick={() => setOpen(false)}
               >
                 Ver todas as quotes →

@@ -33,7 +33,7 @@ export function SlideEmotionalStats({ data }: SlideEmotionalStatsProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 w-full max-w-sm mx-auto text-center">
         <p className="text-5xl">💭</p>
-        <h2 className="text-2xl font-bold text-foreground">Sem reviews ainda</h2>
+        <h2 className="text-2xl font-display font-bold text-foreground">Sem reviews ainda</h2>
       </div>
     );
   }

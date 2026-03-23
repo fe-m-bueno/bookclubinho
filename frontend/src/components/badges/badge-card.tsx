@@ -29,11 +29,11 @@ export function BadgeCard({ badge, isEarned, earnedAt }: BadgeCardProps) {
         type="button"
         onClick={() => setOpen(true)}
         className={[
-          "relative rounded-xl p-3 flex flex-col items-center gap-1",
+          "relative rounded-2xl p-3 flex flex-col items-center gap-1",
           "min-h-[44px] w-full cursor-pointer transition-transform active:scale-95",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           isEarned
-            ? "bg-card border border-border shadow-[0_0_12px_oklch(0.8_0.15_68)]"
+            ? "bg-card border border-border shadow-[0_0_16px_oklch(0.7_0.08_152)]"
             : "bg-muted/40 border border-border/50",
         ].join(" ")}
         aria-label={`${badge.name}${isEarned ? " (conquistado)" : " (bloqueado)"}`}

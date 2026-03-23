@@ -16,7 +16,7 @@ export function SlideMostActive({ data }: SlideMostActiveProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 w-full max-w-sm mx-auto text-center">
         <p className="text-5xl">🏆</p>
-        <h2 className="text-2xl font-bold text-foreground">Nenhum membro ativo ainda</h2>
+        <h2 className="text-2xl font-display font-bold text-foreground">Nenhum membro ativo ainda</h2>
       </div>
     );
   }
@@ -70,7 +70,7 @@ export function SlideMostActive({ data }: SlideMostActiveProps) {
         </div>
 
         <div className="space-y-1">
-          <h2 className="text-3xl font-black text-foreground">{displayName}</h2>
+          <h2 className="text-3xl font-display font-black text-foreground">{displayName}</h2>
           <p className="text-base text-foreground/60">@{member.username}</p>
         </div>
       </motion.div>

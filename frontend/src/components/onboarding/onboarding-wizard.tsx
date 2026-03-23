@@ -9,6 +9,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { SPRING_TRANSITION } from "@/lib/motion-variants";
 import { ProgressHeader } from "./progress-header";
 import { StepProfileForm } from "./step-profile-form";
 import { StepGenresForm } from "./step-genres-form";
@@ -56,7 +57,7 @@ export function OnboardingWizard() {
       transition={
         noMotion
           ? { duration: 0 }
-          : { type: "spring", stiffness: 380, damping: 30 }
+          : SPRING_TRANSITION
       }
       className={cn("w-full transition-all duration-300", currentStep === 2 ? "max-w-2xl" : "max-w-lg")}
     >
@@ -80,7 +81,7 @@ export function OnboardingWizard() {
               transition={
                 noMotion
                   ? { duration: 0 }
-                  : { type: "spring", stiffness: 400, damping: 32 }
+                  : SPRING_TRANSITION
               }
             >
               {currentStep === 0 && <StepProfileForm onNext={goNext} />}

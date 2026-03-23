@@ -27,7 +27,7 @@ export function RoundSkeleton() {
       <div className="space-y-3">
         <Skeleton className="h-4 w-32" />
         {[1, 2].map((i) => (
-          <div key={i} className="flex gap-3 p-3 rounded-xl border">
+          <div key={i} className="flex gap-3 p-4 rounded-2xl border shadow-warm-sm">
             <Skeleton className="h-16 w-12 rounded-md shrink-0" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-3/4" />

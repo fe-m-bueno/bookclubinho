@@ -100,19 +100,19 @@ export function ChatInput({
             transition={{ duration: 0.15, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="flex items-center gap-2 rounded-lg bg-brand-100/60 px-3 py-1.5 dark:bg-brand-900/40">
+            <div className="flex items-center gap-2 rounded-lg bg-sage-100/60 px-3 py-1.5 dark:bg-sage-900/40">
               <Pencil
-                className="size-3.5 shrink-0 text-brand-600 dark:text-brand-400"
+                className="size-3.5 shrink-0 text-sage-600 dark:text-sage-400"
                 aria-hidden="true"
               />
-              <p className="min-w-0 flex-1 truncate text-xs font-medium text-brand-700 dark:text-brand-300">
+              <p className="min-w-0 flex-1 truncate text-xs font-medium text-sage-700 dark:text-sage-300">
                 Editando mensagem
               </p>
               <button
                 type="button"
                 aria-label="Cancelar edição"
                 onClick={() => setEditingMessage(null)}
-                className="flex size-5 shrink-0 items-center justify-center rounded-full text-brand-600 transition-colors hover:bg-brand-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-brand-400 dark:hover:bg-brand-800/40"
+                className="flex size-5 shrink-0 items-center justify-center rounded-full text-sage-600 transition-colors hover:bg-sage-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-sage-400 dark:hover:bg-sage-800/40"
               >
                 <X className="size-3.5" aria-hidden="true" />
               </button>
@@ -151,10 +151,10 @@ export function ChatInput({
           disabled={disabled}
           className={cn(
             "flex size-11 shrink-0 items-center justify-center rounded-full",
-            "bg-brand-500 text-white shadow-sm",
+            "bg-primary text-primary-foreground shadow-sm",
             "transition-all duration-150",
-            "hover:bg-brand-600 active:scale-95",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2",
+            "hover:bg-primary/90 active:scale-95",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             "disabled:pointer-events-none disabled:opacity-50",
           )}
         >

@@ -5,7 +5,7 @@ export function GroupLayoutSkeleton() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header skeleton */}
-      <div className="bg-card rounded-2xl shadow-sm p-4 mx-4 mt-4 flex items-center gap-3 animate-pulse">
+      <div className="bg-card rounded-2xl shadow-warm-sm p-4 mx-4 mt-4 flex items-center gap-3 animate-pulse">
         <div className="w-10 h-10 rounded-full bg-muted shrink-0" />
         <div className="flex-1 min-w-0 space-y-2">
           <div className="h-5 w-32 bg-muted rounded" />

@@ -58,7 +58,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className="flex cursor-pointer flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex cursor-pointer flex-col gap-3 rounded-2xl border bg-card p-5 shadow-warm-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {/* Header row */}
       <div className="flex items-center gap-3">
@@ -77,7 +77,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
         {/* Name + status */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="truncate font-semibold text-foreground">
+            <h3 className="truncate font-display font-semibold text-foreground">
               {group.name}
             </h3>
             {round && (
@@ -119,7 +119,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
 
       {/* Book + progress row */}
       {round?.book_title && (
-        <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-3 py-2">
+        <div className="flex items-center gap-3 rounded-xl bg-muted/30 px-3.5 py-2.5">
           {round.book_cover_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img

@@ -44,7 +44,7 @@ function ChangePasswordCard({ authProvider }: { authProvider: string }) {
 
   if (authProvider !== "local") {
     return (
-      <div className="bg-card rounded-2xl shadow-sm p-5 space-y-3">
+      <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
         <h2 className="font-semibold text-base">Alterar senha</h2>
         <p className="text-sm text-muted-foreground">
           Sua conta usa{" "}
@@ -86,7 +86,7 @@ function ChangePasswordCard({ authProvider }: { authProvider: string }) {
   }
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm p-5 space-y-5">
+    <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-5">
       <h2 className="font-semibold text-base">Alterar senha</h2>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <FormField label="Senha atual" htmlFor="current_password" error={errors.current_password?.message}>
@@ -162,7 +162,7 @@ function ChangeEmailCard({
   }
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm p-5 space-y-4">
+    <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-4">
       <h2 className="font-semibold text-base">E-mail</h2>
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{currentEmail}</span>
@@ -237,7 +237,7 @@ function ChangeEmailCard({
 
 function AuthProviderCard({ authProvider }: { authProvider: string }) {
   return (
-    <div className="bg-card rounded-2xl shadow-sm p-5 space-y-3">
+    <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
       <h2 className="font-semibold text-base">Método de login</h2>
       <div className="flex items-center gap-2">
         <Badge variant="secondary">

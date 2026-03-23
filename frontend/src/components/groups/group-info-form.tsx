@@ -47,7 +47,7 @@ export function GroupInfoForm({ group, refetch }: GroupInfoFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-card rounded-2xl shadow-sm p-5 space-y-5"
+      className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-5"
     >
       <h3 className="font-semibold">Informações do clube</h3>
 

@@ -48,7 +48,7 @@ export function GroupDangerSection({ group, isAdmin }: GroupDangerSectionProps) 
   });
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm p-5 space-y-4 border border-destructive/30">
+    <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-4 border border-destructive/30">
       <h3 className="font-semibold text-destructive">Zona de perigo</h3>
 
       {isAdmin ? (
