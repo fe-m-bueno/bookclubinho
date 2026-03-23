@@ -162,7 +162,7 @@ export function UserMenu({ user }: UserMenuProps) {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Menu do usuário"
             >
               {avatarButton}

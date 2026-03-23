@@ -55,7 +55,7 @@ export function GroupLayoutShell({ groupId, children }: GroupLayoutShellProps) {
   return (
     <GroupProvider group={group} refetch={refetch}>
       <div className="flex flex-col min-h-screen">
-        <div className="mx-auto w-full max-w-7xl px-4 pt-4 space-y-2">
+        <div className="mx-auto w-full max-w-7xl px-4 pt-4">
           <GroupHeader group={group} />
           <GroupTabBar groupId={groupId} variant="desktop" hasMeetingSoon={hasUpcomingSoon ?? false} />
         </div>

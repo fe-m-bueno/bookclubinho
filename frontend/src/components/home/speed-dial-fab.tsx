@@ -25,7 +25,7 @@ export function SpeedDialFAB({ onCreateGroup }: SpeedDialFABProps) {
         if (onCreateGroup) {
           onCreateGroup();
         } else {
-          router.push("/groups/new");
+          router.push("/groups/create");
         }
       },
     },

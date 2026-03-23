@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MemberAvatarStack } from "./member-avatar-stack";
+import { UserMenu } from "@/components/home/user-menu";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import type { GroupDetailResponse } from "@/lib/types/group";
 
 interface GroupHeaderProps {
@@ -18,29 +20,32 @@ interface GroupHeaderProps {
 export function GroupHeader({ group }: GroupHeaderProps) {
   const isAdmin = group.invite_code !== null;
   const initial = group.name.charAt(0).toUpperCase();
+  const { data: user } = useCurrentUser();
 
   return (
-    <header className="bg-card rounded-2xl shadow-warm-sm p-4 flex items-center gap-3">
+    <header className="flex items-center gap-4 py-4">
       <Avatar size="lg">
         {group.photo_url && (
           <AvatarImage src={group.photo_url} alt={group.name} />
         )}
-        <AvatarFallback className="bg-sage-100 text-sage-700 font-semibold">
+        <AvatarFallback className="bg-sage-100 text-sage-700 font-display font-bold text-lg dark:bg-sage-800 dark:text-sage-200">
           {initial}
         </AvatarFallback>
       </Avatar>
 
-      <div className="flex-1 min-w-0">
-        <h1 className="text-lg font-semibold font-display truncate">{group.name}</h1>
+      <div className="min-w-0 flex-1">
+        <h1 className="truncate text-xl font-display font-bold tracking-tight">
+          {group.name}
+        </h1>
         <div className="mt-1">
           <MemberAvatarStack members={group.members} />
         </div>
       </div>
 
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex shrink-0 items-center gap-1">
         <Link
           href="/"
-          className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-muted transition-colors"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted"
           aria-label="Voltar para o início"
         >
           <ChevronLeft className="h-4 w-4 text-muted-foreground" />
@@ -49,12 +54,13 @@ export function GroupHeader({ group }: GroupHeaderProps) {
         {isAdmin && (
           <Link
             href={`/groups/${group.id}/settings`}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-muted transition-colors"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted"
             aria-label="Configurações do grupo"
           >
             <Settings className="h-4 w-4 text-muted-foreground" />
           </Link>
         )}
+        {user && <UserMenu user={user} />}
       </div>
     </header>
   );

@@ -53,29 +53,44 @@ async def get_my_badges(
     user_id: uuid.UUID,
 ) -> dict[str, list[dict[str, Any]]]:
     """Return user's earned badges grouped by category."""
+    # Scalar subqueries for group_name and book_title — avoids multi-ORM join
+    # complexity with RLS on groups/rounds tables.
+    group_name_sq = select(Group.name).where(Group.id == UserBadge.group_id).scalar_subquery()
+    book_title_sq = select(Round.book_title).where(Round.id == UserBadge.round_id).scalar_subquery()
+
+    # Start from Badge (visible to all authenticated users) and join UserBadge
+    # (RLS restricts to current user). This mirrors the pattern used in
+    # get_public_profile which is known to work correctly.
     result = await db.execute(
-        select(UserBadge, Badge, Group, Round)
-        .join(Badge, Badge.id == UserBadge.badge_id)
-        .outerjoin(Group, Group.id == UserBadge.group_id)
-        .outerjoin(Round, Round.id == UserBadge.round_id)
+        select(
+            Badge.slug,
+            Badge.name,
+            Badge.description,
+            Badge.emoji,
+            Badge.category,
+            UserBadge.earned_at,
+            group_name_sq.label("group_name"),
+            book_title_sq.label("book_title"),
+        )
+        .join(UserBadge, UserBadge.badge_id == Badge.id)
         .where(UserBadge.user_id == user_id)
         .order_by(UserBadge.earned_at.desc())
     )
     rows = result.all()
 
     grouped: dict[str, list[dict[str, Any]]] = {}
-    for user_badge, badge, group, round_ in rows:
+    for row in rows:
         entry = {
-            "slug": badge.slug,
-            "name": badge.name,
-            "description": badge.description,
-            "emoji": badge.emoji,
-            "category": badge.category,
-            "earned_at": user_badge.earned_at,
-            "group_name": group.name if group else None,
-            "book_title": round_.book_title if round_ else None,
+            "slug": row.slug,
+            "name": row.name,
+            "description": row.description,
+            "emoji": row.emoji,
+            "category": row.category,
+            "earned_at": row.earned_at,
+            "group_name": row.group_name,
+            "book_title": row.book_title,
         }
-        grouped.setdefault(badge.category, []).append(entry)
+        grouped.setdefault(row.category, []).append(entry)
 
     return grouped
 
@@ -288,11 +303,21 @@ async def get_recent_badges(
     limit: int = 3,
 ) -> list[dict[str, Any]]:
     """Return user's most recently earned badges (flat list, not grouped)."""
+    group_name_sq = select(Group.name).where(Group.id == UserBadge.group_id).scalar_subquery()
+    book_title_sq = select(Round.book_title).where(Round.id == UserBadge.round_id).scalar_subquery()
+
     result = await db.execute(
-        select(UserBadge, Badge, Group, Round)
-        .join(Badge, Badge.id == UserBadge.badge_id)
-        .outerjoin(Group, Group.id == UserBadge.group_id)
-        .outerjoin(Round, Round.id == UserBadge.round_id)
+        select(
+            Badge.slug,
+            Badge.name,
+            Badge.description,
+            Badge.emoji,
+            Badge.category,
+            UserBadge.earned_at,
+            group_name_sq.label("group_name"),
+            book_title_sq.label("book_title"),
+        )
+        .join(UserBadge, UserBadge.badge_id == Badge.id)
         .where(UserBadge.user_id == user_id)
         .order_by(UserBadge.earned_at.desc())
         .limit(limit)
@@ -300,14 +325,14 @@ async def get_recent_badges(
     rows = result.all()
     return [
         {
-            "slug": badge.slug,
-            "name": badge.name,
-            "description": badge.description,
-            "emoji": badge.emoji,
-            "category": badge.category,
-            "earned_at": user_badge.earned_at,
-            "group_name": group.name if group else None,
-            "book_title": round_.book_title if round_ else None,
+            "slug": row.slug,
+            "name": row.name,
+            "description": row.description,
+            "emoji": row.emoji,
+            "category": row.category,
+            "earned_at": row.earned_at,
+            "group_name": row.group_name,
+            "book_title": row.book_title,
         }
-        for user_badge, badge, group, round_ in rows
+        for row in rows
     ]

@@ -25,18 +25,32 @@ export function BadgesClient() {
   const { myBadges, catalog, loading, error, refetch } = useBadges();
   const [activeTab, setActiveTab] = useState<TabValue>("all");
 
-  const earnedSlugs = useMemo<Set<string>>(() => {
+  const earnedMap = useMemo(() => {
+    const map = new Map<string, BadgeResponse>();
     const all = Object.values(myBadges).flat();
-    return new Set(all.map((b) => b.slug));
+    for (const b of all) {
+      map.set(b.slug, b);
+    }
+    return map;
   }, [myBadges]);
 
   const mergedBadges = useMemo<Array<BadgeResponse & { isEarned: boolean }>>(
     () =>
-      catalog.map((badge) => ({
-        ...badge,
-        isEarned: earnedSlugs.has(badge.slug),
-      })),
-    [catalog, earnedSlugs],
+      catalog.map((badge) => {
+        const earned = earnedMap.get(badge.slug);
+        return {
+          ...badge,
+          ...(earned
+            ? {
+                earned_at: earned.earned_at,
+                group_name: earned.group_name,
+                book_title: earned.book_title,
+              }
+            : {}),
+          isEarned: earned != null,
+        };
+      }),
+    [catalog, earnedMap],
   );
 
   const filteredBadges = useMemo(() => {
@@ -44,29 +58,27 @@ export function BadgesClient() {
     return mergedBadges.filter((b) => b.category === activeTab);
   }, [mergedBadges, activeTab]);
 
-  const earnedCount = earnedSlugs.size;
+  const earnedCount = earnedMap.size;
   const totalCount = catalog.length;
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
-        <header className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild className="gap-1 px-2">
+      <div className="mx-auto max-w-3xl px-6 py-8 space-y-8">
+        <header>
+          <Button variant="ghost" size="sm" asChild className="gap-1 px-2 mb-4">
             <Link href="/">
               <ChevronLeftIcon className="size-4" />
               Voltar
             </Link>
           </Button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-display font-semibold truncate">
-              Minhas Conquistas
-            </h1>
-            {!loading && !error && (
-              <p className="text-sm text-muted-foreground">
-                {earnedCount} de {totalCount} desbloqueadas
-              </p>
-            )}
-          </div>
+          <h1 className="text-2xl font-display font-bold tracking-tight md:text-3xl">
+            Conquistas
+          </h1>
+          {!loading && !error && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {earnedCount} de {totalCount} desbloqueadas
+            </p>
+          )}
         </header>
 
         {loading && <BadgesSkeleton />}

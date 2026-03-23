@@ -26,17 +26,23 @@ interface GroupTabBarProps {
   hasMeetingSoon?: boolean;
 }
 
-export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarProps) {
+export function GroupTabBar({
+  groupId,
+  variant,
+  hasMeetingSoon,
+}: GroupTabBarProps) {
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
   const noMotion = shouldReduceMotion ?? false;
 
-  const isDesktop = variant === "desktop";
+  const springTransition = noMotion
+    ? { duration: 0 }
+    : { type: "spring" as const, stiffness: 350, damping: 30 };
 
-  if (isDesktop) {
+  if (variant === "desktop") {
     return (
       <nav
-        className="hidden md:flex items-center gap-1 bg-card rounded-2xl shadow-warm-sm p-1.5"
+        className="hidden items-center justify-center gap-1 border-b border-border/40 md:flex"
         aria-label="Navegação do grupo"
       >
         {tabs.map(({ label, icon: Icon, segment }) => {
@@ -48,31 +54,25 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
               key={segment}
               href={href}
               className={cn(
-                "relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-colors flex-1 justify-center",
+                "relative flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors",
                 isActive
-                  ? "text-sage-900 dark:text-sage-100"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
               aria-current={isActive ? "page" : undefined}
             >
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+              {segment === "meetings" && hasMeetingSoon && (
+                <span className="size-1.5 rounded-full bg-sage-500" />
+              )}
               {isActive && (
                 <motion.div
-                  layoutId={`tab-pill-${groupId}-desktop`}
-                  className="absolute inset-0 bg-sage-200/60 dark:bg-sage-800/40 rounded-xl"
-                  transition={
-                    noMotion
-                      ? { duration: 0 }
-                      : { type: "spring", stiffness: 350, damping: 30 }
-                  }
+                  layoutId={`tab-underline-${groupId}`}
+                  className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary"
+                  transition={springTransition}
                 />
               )}
-              <span className="relative z-10">
-                <Icon className="h-4 w-4" />
-                {segment === "meetings" && hasMeetingSoon && (
-                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-sage-500" />
-                )}
-              </span>
-              <span className="relative z-10">{label}</span>
             </Link>
           );
         })}
@@ -82,10 +82,10 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 backdrop-blur-md border-t border-border/50 pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden"
       aria-label="Navegação do grupo"
     >
-      <div className="flex items-center justify-around px-2 py-1.5">
+      <div className="flex items-center justify-around px-2 py-1">
         {tabs.map(({ label, icon: Icon, segment }) => {
           const href = `/groups/${groupId}/${segment}`;
           const isActive = pathname.startsWith(href);
@@ -95,31 +95,25 @@ export function GroupTabBar({ groupId, variant, hasMeetingSoon }: GroupTabBarPro
               key={segment}
               href={href}
               className={cn(
-                "relative flex flex-col items-center justify-center min-h-[44px] min-w-[44px] px-2 py-1 text-[10px] font-medium rounded-xl transition-colors",
-                isActive
-                  ? "text-sage-900 dark:text-sage-100"
-                  : "text-muted-foreground"
+                "relative flex min-h-[44px] min-w-[44px] flex-col items-center justify-center px-2 py-1.5 text-[10px] font-medium transition-colors",
+                isActive ? "text-primary" : "text-muted-foreground",
               )}
               aria-current={isActive ? "page" : undefined}
             >
               {isActive && (
                 <motion.div
-                  layoutId={`tab-pill-${groupId}-mobile`}
-                  className="absolute inset-0.5 bg-sage-200/50 dark:bg-sage-800/30 rounded-xl"
-                  transition={
-                    noMotion
-                      ? { duration: 0 }
-                      : { type: "spring", stiffness: 350, damping: 30 }
-                  }
+                  layoutId={`tab-accent-${groupId}-mobile`}
+                  className="absolute top-0 left-3 right-3 h-0.5 rounded-full bg-primary"
+                  transition={springTransition}
                 />
               )}
-              <span className="relative z-10">
-                <Icon className="h-5 w-5 mb-0.5" />
+              <span className="relative">
+                <Icon className="mb-0.5 h-5 w-5" />
                 {segment === "meetings" && hasMeetingSoon && (
                   <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-sage-500" />
                 )}
               </span>
-              <span className="relative z-10">{label}</span>
+              <span>{label}</span>
             </Link>
           );
         })}
