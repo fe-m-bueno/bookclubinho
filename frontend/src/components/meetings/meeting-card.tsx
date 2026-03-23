@@ -23,22 +23,8 @@ import {
   useDeleteMeeting,
   useDownloadIcs,
 } from "@/hooks/use-meeting-mutations";
-import { TYPE_BADGE } from "./meeting-form-shared";
+import { TYPE_BADGE, RSVP_OPTIONS, DATE_FORMATTER } from "./meeting-form-shared";
 import { EditMeetingDialog } from "./edit-meeting-dialog";
-
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-const RSVP_OPTIONS: { value: Exclude<RsvpStatus, "pending">; label: string }[] = [
-  { value: "going", label: "Vou" },
-  { value: "maybe", label: "Talvez" },
-  { value: "not_going", label: "Não vou" },
-];
 
 interface MeetingCardProps {
   meeting: MeetingListItem;
@@ -63,7 +49,7 @@ export function MeetingCard({
   const isCreator = meeting.created_by === currentUserId;
   const canManage = isCreator || isAdmin;
   const typeBadge = TYPE_BADGE[meeting.meeting_type];
-  const formattedDate = dateFormatter.format(new Date(meeting.scheduled_at));
+  const formattedDate = DATE_FORMATTER.format(new Date(meeting.scheduled_at));
 
   const handleRsvp = (status: Exclude<RsvpStatus, "pending">) => {
     updateRsvp.mutate(

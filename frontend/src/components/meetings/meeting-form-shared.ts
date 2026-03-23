@@ -40,3 +40,37 @@ export const TYPE_BADGE: Record<string, { label: string; icon: string }> = {
   virtual: { label: "Virtual", icon: "💻" },
   hybrid: { label: "Híbrido", icon: "🔄" },
 };
+
+import type { RsvpStatus } from "@/lib/types/meeting";
+
+export const RSVP_OPTIONS: {
+  value: Exclude<RsvpStatus, "pending">;
+  label: string;
+}[] = [
+  { value: "going", label: "Vou" },
+  { value: "maybe", label: "Talvez" },
+  { value: "not_going", label: "Não vou" },
+];
+
+export const RSVP_LABELS: Record<
+  Exclude<RsvpStatus, "pending">,
+  string
+> = {
+  going: "Vou",
+  maybe: "Talvez",
+  not_going: "Não vou",
+};
+
+export const DATE_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+export const DATE_ONLY_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});

@@ -138,3 +138,58 @@ export function useDownloadIcs() {
   });
 }
 
+/**
+ * Standalone versions for meeting detail pages (outside group context).
+ * These invalidate the ["meeting", meetingId] query instead of ["meetings", groupId].
+ */
+
+export function useUpdateRsvpStandalone(meetingId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    MeetingResponse,
+    Error,
+    { status: Exclude<RsvpStatus, "pending"> }
+  >({
+    mutationFn: async ({ status }) => {
+      await ensureCsrf();
+      const res = await fetch(`/api/v1/meetings/${meetingId}/rsvp`, {
+        method: "POST",
+        headers: withCsrf({ "Content-Type": "application/json" }),
+        credentials: "include",
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || "Erro ao atualizar RSVP");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["meeting", meetingId] });
+    },
+  });
+}
+
+export function useDeleteMeetingStandalone() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (meetingId) => {
+      await ensureCsrf();
+      const res = await fetch(`/api/v1/meetings/${meetingId}`, {
+        method: "DELETE",
+        headers: withCsrf(),
+        credentials: "include",
+      });
+      if (!res.ok && res.status !== 204) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || "Erro ao cancelar encontro");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["upcomingMeetings"] });
+    },
+  });
+}
+
