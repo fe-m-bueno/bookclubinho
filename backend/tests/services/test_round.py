@@ -64,6 +64,7 @@ def _make_nomination(**overrides: object) -> MagicMock:
     n.book_author = overrides.get("book_author", "Machado de Assis")
     n.book_cover_url = overrides.get("book_cover_url")
     n.book_page_count = overrides.get("book_page_count")
+    n.book_hardcover_slug = overrides.get("book_hardcover_slug", None)
     n.votes = overrides.get("votes", [])
     return n
 
@@ -924,6 +925,88 @@ async def test_finalize_round_redis_failure_non_fatal() -> None:
         result = await finalize_round(db, round_id=round_.id, user_id=user_id)
 
     assert result.status == RoundStatus.READING
+
+
+@pytest.mark.asyncio
+async def test_finalize_round_populates_book_genres() -> None:
+    from app.schemas.hardcover import BookDetail
+
+    user_id = uuid.uuid4()
+    nom = _make_nomination(
+        book_id="bk-1",
+        book_title="Livro Teste",
+        votes=[_make_vote()],
+    )
+    nom.book_hardcover_slug = "livro-teste"
+    round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom])
+    member = _make_member(user_id=user_id, role="admin")
+    db = _db_for_finalize(round_, member, vote_counts=[(nom.id, 1)])
+
+    book_detail = BookDetail(
+        book_id="bk-1",
+        title="Livro Teste",
+        author="Autor",
+        cover_url=None,
+        slug="livro-teste",
+        description=None,
+        page_count=300,
+        genres=["Fiction", "Drama"],
+    )
+    mock_client = AsyncMock()
+    mock_client.get_book = AsyncMock(return_value=book_detail)
+    mock_client.aclose = AsyncMock()
+
+    with (
+        patch("app.services.round.get_redis", return_value=AsyncMock()),
+        patch("app.services.hardcover.HardcoverClient", return_value=mock_client),
+    ):
+        result = await finalize_round(db, round_id=round_.id, user_id=user_id)
+
+    assert result.book_genres == ["Fiction", "Drama"]
+    mock_client.get_book.assert_called_once_with("livro-teste")
+    mock_client.aclose.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_finalize_round_genres_graceful_on_hardcover_failure() -> None:
+    user_id = uuid.uuid4()
+    nom = _make_nomination(book_id="bk-1", votes=[_make_vote()])
+    nom.book_hardcover_slug = "livro-teste"
+    round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom])
+    member = _make_member(user_id=user_id, role="admin")
+    db = _db_for_finalize(round_, member, vote_counts=[(nom.id, 1)])
+
+    mock_client = AsyncMock()
+    mock_client.get_book = AsyncMock(return_value=None)
+    mock_client.aclose = AsyncMock()
+
+    with (
+        patch("app.services.round.get_redis", return_value=AsyncMock()),
+        patch("app.services.hardcover.HardcoverClient", return_value=mock_client),
+    ):
+        result = await finalize_round(db, round_id=round_.id, user_id=user_id)
+
+    assert result.status == RoundStatus.READING
+    mock_client.aclose.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_finalize_round_genres_skipped_without_slug() -> None:
+    user_id = uuid.uuid4()
+    nom = _make_nomination(book_id="bk-1", votes=[_make_vote()])
+    nom.book_hardcover_slug = None
+    round_ = _make_round(status=RoundStatus.VOTING, nominations=[nom])
+    member = _make_member(user_id=user_id, role="admin")
+    db = _db_for_finalize(round_, member, vote_counts=[(nom.id, 1)])
+
+    with (
+        patch("app.services.round.get_redis", return_value=AsyncMock()),
+        patch("app.services.hardcover.HardcoverClient") as mock_cls,
+    ):
+        result = await finalize_round(db, round_id=round_.id, user_id=user_id)
+
+    assert result.status == RoundStatus.READING
+    mock_cls.assert_not_called()
 
 
 # ── start_review ──────────────────────────────────────────────────────────────

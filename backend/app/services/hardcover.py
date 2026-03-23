@@ -38,7 +38,7 @@ query GetBook($slug: String!) {
     pages
     image { url }
     contributions { author { name } }
-    book_genres { genre { name } }
+    cached_tags
   }
 }
 """
@@ -204,10 +204,11 @@ class HardcoverClient:
             if not books:
                 return None
             book = books[0]
+            cached_tags: dict = book.get("cached_tags") or {}
             genres = [
-                bg["genre"]["name"]
-                for bg in (book.get("book_genres") or [])
-                if bg.get("genre", {}).get("name")
+                entry["tag"]
+                for entry in (cached_tags.get("Genre") or [])
+                if entry.get("tag")
             ]
             return BookDetail(
                 book_id=str(book["id"]),
