@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { differenceInDays, parseISO } from "date-fns";
 import { motion, useReducedMotion } from "framer-motion";
-import { BookOpen } from "lucide-react";
+import { BookOpen, CheckCircle2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -122,9 +122,9 @@ export function GroupProgress({
               }}
               className="space-y-1"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 {/* Avatar */}
-                <Avatar className="h-8 w-8 shrink-0">
+                <Avatar className="h-8 w-8 shrink-0 mt-0.5">
                   {item.avatar_url && (
                     <AvatarImage
                       src={item.avatar_url}
@@ -152,38 +152,42 @@ export function GroupProgress({
                     )}
                   </div>
 
-                  {/* Gradient progress bar */}
-                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-sage-200/30 dark:bg-sage-800/30">
-                    <motion.div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-sage-300 to-sage-500"
-                      initial={{ width: 0 }}
-                      animate={{
-                        width: `${Math.min(100, item.percentage)}%`,
-                      }}
-                      transition={
-                        shouldReduce
-                          ? { duration: 0 }
-                          : {
-                              type: "spring",
-                              stiffness: 350,
-                              damping: 30,
-                            }
-                      }
-                    />
-                  </div>
-                </div>
+                  {/* Bar + Label row */}
+                  <div className="flex items-center gap-3">
+                    {/* Gradient progress bar */}
+                    <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-sage-200/30 dark:bg-sage-800/30">
+                      <motion.div
+                        className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-sage-300 to-sage-500"
+                        initial={{ width: 0 }}
+                        animate={{
+                          width: `${Math.min(100, item.percentage)}%`,
+                        }}
+                        transition={
+                          shouldReduce
+                            ? { duration: 0 }
+                            : {
+                                type: "spring",
+                                stiffness: 350,
+                                damping: 30,
+                              }
+                        }
+                      />
+                    </div>
 
-                {/* Label */}
-                <div className="shrink-0 min-w-[3rem] text-right">
-                  {item.is_finished ? (
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                      ✅ {label}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      {label}
-                    </span>
-                  )}
+                    {/* Label */}
+                    <div className="shrink-0">
+                      {item.is_finished ? (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[--color-sage-100] text-[--color-sage-700] dark:bg-[--color-sage-900] dark:text-[--color-sage-300]">
+                          <CheckCircle2 className="size-3 shrink-0" />
+                          {label}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 

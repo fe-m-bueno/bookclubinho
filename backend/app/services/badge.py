@@ -35,7 +35,7 @@ _BADGE_TARGETS: dict[str, int] = {
     "streak_7": 7,
     "streak_30": 30,
     "streak_100": 100,
-    "marathon": 1,
+    "marathon": 120,
     "night_owl": 5,
     "first_blood": 1,
     "quote_king": 1,

@@ -1,0 +1,19 @@
+feat: backend tasks 11.8-11.12 — integrations, sessions, privacy, public profile
+
+- Add UserSession model + migration 0019 with full RLS policies and JTI blacklist
+- Add auto_sync_hardcover field to users table
+- Implement Hardcover integration service: connect/disconnect/status/auto-sync with Fernet encryption
+- Implement session management: list, revoke, revoke-all-others with Redis blacklist
+- Implement data export: collect data, upload to R2 (presigned), email link with 24h cooldown
+- Implement account deletion: anonymize PII, soft delete, revoke all sessions
+- Implement shared groups: find groups two users have in common (aliased JOIN)
+- Implement public profile by username with shared_group_count enrichment
+- Update UserRead schema with auto_sync_hardcover + hardcover_connected computed field
+- Add SharedGroupSummary and UserProfilePublicEnriched schemas
+- Add CurrentRefreshJTI dependency and extract_refresh_token_jti to security
+- Extend auth service with session tracking on all login flows and token rotation
+- Add session endpoints to auth router: GET/DELETE /auth/sessions
+- Add privacy/profile endpoints to users router
+- Register integrations router under /api/v1/integrations
+- Add send_data_export_email to email service
+- Add 4 test modules covering all new endpoints (32 new tests, 743 total passing)

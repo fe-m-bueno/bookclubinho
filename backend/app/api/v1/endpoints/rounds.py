@@ -33,6 +33,9 @@ from app.core.deps import (  # noqa: TC001
     GroupAdminDep,
     GroupMemberDep,
 )
+from sqlalchemy import select
+
+from app.db.models.group import GroupMember  # noqa: TC001
 from app.db.models.reading_progress import ReadingProgress  # noqa: TC001
 from app.db.models.round import Round, RoundNomination  # noqa: TC001
 from app.schemas.group import MessageResponse
@@ -461,13 +464,25 @@ async def finish_round_endpoint(
     await invalidate_group_stats(group_id)
     background_tasks.add_task(populate_shelf_cache, db, group_id)
 
-    # Award book_finished badges for members who completed the book
+    # Award book_finished badges for all group members
+    badge_payload = {"group_id": str(group_id), "round_id": str(round_id)}
     background_tasks.add_task(
         check_and_award_badges,
         str(current_user.id),
         "book_finished",
-        {"group_id": str(group_id), "round_id": str(round_id)},
+        badge_payload,
     )
+    members_result = await db.execute(
+        select(GroupMember.user_id).where(GroupMember.group_id == group_id)
+    )
+    for (member_id,) in members_result.all():
+        if str(member_id) != str(current_user.id):
+            background_tasks.add_task(
+                check_and_award_badges,
+                str(member_id),
+                "book_finished",
+                badge_payload,
+            )
 
     return _round_to_detail(round_)
 
@@ -488,6 +503,7 @@ async def log_reading_progress(
     body: ProgressUpdateRequest,
     current_user: CurrentUser,
     db: DBSession,
+    background_tasks: BackgroundTasks,
 ) -> ProgressResponse:
     """Registra um snapshot de progresso de leitura. Rodada deve estar em 'reading'."""
     try:
@@ -503,6 +519,22 @@ async def log_reading_progress(
         )
     except ReadingProgressError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    background_tasks.add_task(
+        check_and_award_badges,
+        str(current_user.id),
+        "streak_updated",
+        {},
+    )
+    if progress.percentage >= 100.0:
+        round_result = await db.execute(select(Round.group_id).where(Round.id == round_id))
+        group_id = round_result.scalar_one_or_none()
+        if group_id:
+            background_tasks.add_task(
+                check_and_award_badges,
+                str(current_user.id),
+                "book_finished",
+                {"round_id": str(round_id), "group_id": str(group_id)},
+            )
     return _progress_to_response(progress)
 
 
