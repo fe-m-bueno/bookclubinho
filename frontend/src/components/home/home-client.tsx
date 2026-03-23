@@ -136,8 +136,8 @@ export function HomeClient() {
               animate="visible"
               className="space-y-2"
             >
-              {badges.map((badge) => (
-                <motion.li key={badge.slug} variants={variants.item}>
+              {badges.map((badge, i) => (
+                <motion.li key={`${badge.slug}-${i}`} variants={variants.item}>
                   <RecentBadgeCard badge={badge} />
                 </motion.li>
               ))}
