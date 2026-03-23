@@ -51,7 +51,7 @@ export function SlideOutro({ data, groupId, year }: SlideOutroProps) {
         </motion.p>
 
         <motion.div variants={variants.item} className="space-y-3">
-          <h2 className="text-4xl font-black text-foreground leading-tight">
+          <h2 className="text-4xl font-display font-black text-foreground leading-tight">
             Nos vemos no próximo livro!
           </h2>
           <p className="text-lg text-foreground/70">
@@ -64,7 +64,7 @@ export function SlideOutro({ data, groupId, year }: SlideOutroProps) {
           className="grid grid-cols-3 gap-4 w-full"
         >
           <div className="bg-foreground/10 rounded-2xl p-4 text-center">
-            <p className="text-2xl font-black text-foreground">{data.total_books_read}</p>
+            <p className="text-2xl font-display font-black text-foreground">{data.total_books_read}</p>
             <p className="text-xs text-foreground/60 mt-0.5">livros</p>
           </div>
           <div className="bg-foreground/10 rounded-2xl p-4 text-center">

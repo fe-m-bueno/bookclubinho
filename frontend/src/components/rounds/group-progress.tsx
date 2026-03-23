@@ -153,9 +153,9 @@ export function GroupProgress({
                   </div>
 
                   {/* Gradient progress bar */}
-                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-brand-200/30 dark:bg-brand-800/30">
+                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-sage-200/30 dark:bg-sage-800/30">
                     <motion.div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-brand-300 to-brand-500"
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-sage-300 to-sage-500"
                       initial={{ width: 0 }}
                       animate={{
                         width: `${Math.min(100, item.percentage)}%`,

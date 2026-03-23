@@ -437,7 +437,7 @@ export function InputToolbar({
                         type="checkbox"
                         checked={isSpoiler}
                         onChange={(e) => setIsSpoiler(e.target.checked)}
-                        className="size-4 rounded accent-brand-500"
+                        className="size-4 rounded accent-sage-500"
                       />
                       <span className="text-sm">Marcar como spoiler</span>
                     </label>

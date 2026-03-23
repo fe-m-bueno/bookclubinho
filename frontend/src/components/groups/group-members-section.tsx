@@ -101,7 +101,7 @@ export function GroupMembersSection({
     confirming?.userId === userId && confirming?.action === action;
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm p-5 space-y-4">
+    <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-4">
       <h3 className="font-semibold">
         Membros ({group.member_count}/{group.max_members})
       </h3>
@@ -123,7 +123,7 @@ export function GroupMembersSection({
                 {member.avatar_url && (
                   <AvatarImage src={member.avatar_url} alt={displayName} />
                 )}
-                <AvatarFallback className="bg-brand-200 text-brand-700 text-xs font-semibold">
+                <AvatarFallback className="bg-sage-100 text-sage-700 text-xs font-semibold">
                   {initial}
                 </AvatarFallback>
               </Avatar>

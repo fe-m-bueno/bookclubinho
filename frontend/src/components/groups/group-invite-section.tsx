@@ -90,7 +90,7 @@ export function GroupInviteSection({ group, refetch }: GroupInviteSectionProps) 
   if (!group.invite_code) return null;
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm p-5 space-y-5">
+    <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-5">
       <h3 className="font-semibold">Código de convite</h3>
 
       <div className="flex items-center justify-center gap-3">

@@ -159,7 +159,7 @@ export function FloatingTimerButton() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 16 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="flex flex-col gap-3 rounded-2xl bg-card border border-border shadow-xl p-4 w-64"
+            className="flex flex-col gap-3 rounded-2xl bg-card border border-border shadow-warm-lg p-4 w-64"
           >
             {/* Header */}
             <div className="flex items-center gap-3">

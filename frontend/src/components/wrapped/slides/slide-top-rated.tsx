@@ -33,7 +33,7 @@ export function SlideTopRated({ data }: SlideTopRatedProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 w-full max-w-sm mx-auto text-center">
         <p className="text-5xl">📖</p>
-        <h2 className="text-2xl font-bold text-foreground">Nenhum livro avaliado ainda</h2>
+        <h2 className="text-2xl font-display font-bold text-foreground">Nenhum livro avaliado ainda</h2>
       </div>
     );
   }
@@ -89,7 +89,7 @@ export function SlideTopRated({ data }: SlideTopRatedProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.4, delay: 0.3 }}
       >
-        <h2 className="text-2xl font-bold text-foreground leading-tight">{book.title}</h2>
+        <h2 className="text-2xl font-display font-bold text-foreground leading-tight">{book.title}</h2>
         {book.author && (
           <p className="text-base text-foreground/60">{book.author}</p>
         )}

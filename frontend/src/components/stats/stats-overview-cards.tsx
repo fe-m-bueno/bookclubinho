@@ -65,7 +65,7 @@ function CountingCard({ label, to, decimals = 0, suffix = "", reducedMotion }: C
     <Card>
       <CardContent className="pt-6">
         <p className="text-sm text-muted-foreground mb-1">{label}</p>
-        <p className="text-3xl font-bold tabular-nums">
+        <p className="text-3xl font-display font-bold tabular-nums">
           {display}
           {suffix}
         </p>
@@ -118,7 +118,7 @@ export function StatsOverviewCards({ data }: StatsOverviewCardsProps) {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground mb-1">Nota média</p>
-              <p className="text-3xl font-bold">—</p>
+              <p className="text-3xl font-display font-bold">—</p>
             </CardContent>
           </Card>
         )}

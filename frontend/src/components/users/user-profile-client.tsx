@@ -35,12 +35,12 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon }: StatCardProps) {
   return (
-    <div className="bg-card rounded-2xl p-4 space-y-1 shadow-sm">
+    <div className="bg-card rounded-2xl p-4 space-y-1 shadow-warm-sm">
       <div className="flex items-center gap-1.5 text-muted-foreground">
         {icon}
         <span className="text-xs">{label}</span>
       </div>
-      <p className="font-bold text-lg">{value}</p>
+      <p className="font-display font-bold text-lg">{value}</p>
     </div>
   );
 }
@@ -94,18 +94,18 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
           <img
             src={profile.avatar_url}
             alt={profile.display_name ?? profile.username ?? "Avatar"}
-            className="h-24 w-24 rounded-full object-cover ring-2 ring-brand-300 dark:ring-brand-700"
+            className="h-24 w-24 rounded-full object-cover ring-2 ring-sage-300 dark:ring-sage-700"
           />
         ) : (
-          <div className="h-24 w-24 rounded-full bg-brand-100 dark:bg-brand-800 flex items-center justify-center ring-2 ring-brand-300 dark:ring-brand-700">
-            <span className="text-3xl font-bold text-brand-700 dark:text-brand-200">
+          <div className="h-24 w-24 rounded-full bg-sage-100 dark:bg-sage-800 flex items-center justify-center ring-2 ring-sage-300 dark:ring-sage-700">
+            <span className="text-3xl font-bold text-sage-700 dark:text-sage-200">
               {getInitial(profile.display_name, profile.username)}
             </span>
           </div>
         )}
 
         <div className="space-y-0.5">
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-display font-bold tracking-tight">
             {profile.display_name ?? profile.username ?? "Usuario"}
           </h1>
           {profile.username && (
@@ -163,7 +163,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
 
       {/* Genres */}
       {profile.preferred_genres.length > 0 && (
-        <div className="bg-card rounded-2xl p-5 shadow-sm space-y-3">
+        <div className="bg-card rounded-2xl p-5 shadow-warm-sm space-y-3">
           <h2 className="font-semibold text-sm">Generos favoritos</h2>
           <div className="flex flex-wrap gap-2">
             {profile.preferred_genres.map((genre) => (
@@ -177,7 +177,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
 
       {/* Badges */}
       {profile.badges.length > 0 && (
-        <div className="bg-card rounded-2xl p-5 shadow-sm space-y-3">
+        <div className="bg-card rounded-2xl p-5 shadow-warm-sm space-y-3">
           <h2 className="font-semibold text-sm">Conquistas</h2>
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
             {profile.badges.slice(0, 12).map((badge) => (
@@ -200,7 +200,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
 
       {/* Shared groups */}
       {profile.shared_group_count > 0 && (
-        <div className="bg-card rounded-2xl p-5 shadow-sm space-y-3">
+        <div className="bg-card rounded-2xl p-5 shadow-warm-sm space-y-3">
           <h2 className="font-semibold text-sm flex items-center gap-2">
             <Users className="h-4 w-4" />
             Clubes em comum

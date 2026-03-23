@@ -49,7 +49,7 @@ function FutureIntegrationCard({
   icon,
 }: FutureIntegrationCardProps) {
   return (
-    <div className="bg-card rounded-2xl shadow-sm p-5 opacity-60">
+    <div className="bg-card rounded-2xl shadow-warm-sm p-5 opacity-60">
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground shrink-0">
           {icon}
@@ -122,7 +122,7 @@ function HardcoverCard() {
 
   return (
     <>
-      <div className="bg-card rounded-2xl shadow-sm p-5 space-y-4">
+      <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
             <BookOpen className="h-5 w-5 text-foreground" />

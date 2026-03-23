@@ -156,7 +156,7 @@ export function TiptapEditor({
       <div
         className={cn(
           "border rounded-xl px-3 py-2 bg-background transition-shadow",
-          "focus-within:ring-2 focus-within:ring-brand-500",
+          "focus-within:ring-2 focus-within:ring-ring",
           isOverLimit && "border-destructive focus-within:ring-destructive/50",
           disabled && "opacity-50 pointer-events-none",
         )}

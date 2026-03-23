@@ -171,12 +171,12 @@ export function ProfileSettingsClient() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {/* Card 1: Avatar */}
-      <div className="bg-card rounded-2xl shadow-sm p-5">
+      <div className="bg-card rounded-2xl shadow-warm-sm p-5">
         <ProfileAvatarUpload avatarUrl={user.avatar_url} initials={initials} />
       </div>
 
       {/* Card 2: Profile info */}
-      <div className="bg-card rounded-2xl shadow-sm p-5 space-y-5">
+      <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-5">
         <h2 className="font-semibold text-base">Informações do perfil</h2>
 
         <FormField label="Nome" htmlFor="display_name" error={errors.display_name?.message}>
@@ -250,7 +250,7 @@ export function ProfileSettingsClient() {
       </div>
 
       {/* Card 3: Account info (read-only) */}
-      <div className="bg-card rounded-2xl shadow-sm p-5 space-y-3">
+      <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
         <h2 className="font-semibold text-base">Informações da conta</h2>
         <div className="flex items-center gap-2 text-sm">
           <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -272,7 +272,7 @@ export function ProfileSettingsClient() {
       </div>
 
       {/* Card 4: Stats (read-only) */}
-      <div className="bg-card rounded-2xl shadow-sm p-5 space-y-3">
+      <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
         <h2 className="font-semibold text-base">Estatísticas</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard

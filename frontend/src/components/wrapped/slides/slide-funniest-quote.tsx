@@ -16,7 +16,7 @@ export function SlideFunniestQuote({ data }: SlideFunniestQuoteProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 w-full max-w-sm mx-auto text-center">
         <p className="text-5xl">😂</p>
-        <h2 className="text-2xl font-bold text-foreground">Sem one-liners ainda</h2>
+        <h2 className="text-2xl font-display font-bold text-foreground">Sem one-liners ainda</h2>
         <p className="text-base text-foreground/60">Escrevam reviews para aparecer aqui!</p>
       </div>
     );
@@ -48,7 +48,7 @@ export function SlideFunniestQuote({ data }: SlideFunniestQuoteProps) {
         <span className="absolute -top-4 left-4 text-5xl text-foreground/20 font-serif leading-none select-none">
           &ldquo;
         </span>
-        <p className="text-xl font-semibold text-foreground leading-relaxed pt-4 px-2">
+        <p className="text-xl font-serif font-semibold italic text-foreground leading-relaxed pt-4 px-2">
           {quote.text}
         </p>
         <span className="absolute -bottom-6 right-4 text-5xl text-foreground/20 font-serif leading-none select-none">

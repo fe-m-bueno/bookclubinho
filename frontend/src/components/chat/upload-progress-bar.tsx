@@ -16,7 +16,7 @@ export function UploadProgressBar({ progress }: UploadProgressBarProps) {
       <p className="self-end text-xs text-muted-foreground tabular-nums">{pct}%</p>
       <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
         <motion.div
-          className="h-full rounded-full bg-brand-500"
+          className="h-full rounded-full bg-sage-500"
           initial={{ width: "0%" }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.2, ease: "easeOut" }}

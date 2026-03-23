@@ -56,10 +56,10 @@ export function QuoteCard({
           onSelect(quote);
         }
       }}
-      className="break-inside-avoid mb-4 cursor-pointer rounded-xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="break-inside-avoid mb-4 cursor-pointer rounded-2xl border bg-card p-4 shadow-warm-sm hover:shadow-warm transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {/* Quote text */}
-      <p className="italic font-medium text-sm leading-relaxed text-foreground mb-3 line-clamp-6">
+      <p className="font-serif italic font-medium text-sm leading-relaxed text-foreground mb-3 line-clamp-6">
         &ldquo;{quote.quote_text}&rdquo;
       </p>
 

@@ -38,11 +38,11 @@ export function VotingCard({
       whileTap={disabled ? undefined : { scale: 0.98 }}
       onClick={() => !disabled && onVote(nomination.id)}
       className={cn(
-        "relative w-full rounded-xl border bg-card p-4 text-left transition-all",
+        "relative w-full rounded-xl border bg-card p-4 text-left transition-all shadow-warm-sm",
         isSelected && !isRevealed
-          ? "border-brand-400 dark:border-brand-300 ring-2 ring-brand-400/40"
+          ? "border-sage-400 dark:border-sage-300 ring-2 ring-sage-400/40"
           : "border-border",
-        isWinner && isRevealed && "ring-4 ring-brand-500",
+        isWinner && isRevealed && "ring-4 ring-sage-500",
         disabled
           ? "pointer-events-none"
           : "cursor-pointer hover:border-muted-foreground/40",
@@ -117,7 +117,7 @@ export function VotingCard({
           </Badge>
         )}
         {isWinner && isRevealed && (
-          <Badge className="gap-1 text-xs bg-brand-500 hover:bg-brand-500 text-white">
+          <Badge className="gap-1 text-xs bg-sage-600 hover:bg-sage-600 text-white">
             <Trophy className="h-3 w-3" />
             Vencedor
           </Badge>
@@ -127,7 +127,7 @@ export function VotingCard({
       {/* Pulse ring for selected card */}
       {isSelected && !isRevealed && (
         <motion.div
-          className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-brand-400/30"
+          className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-sage-400/30"
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         />

@@ -13,10 +13,10 @@ export function QuoteCard({ message }: QuoteCardProps) {
   const page = message.reference_value;
 
   return (
-    <div className="w-full rounded-xl border border-border bg-card p-4">
+    <div className="w-full rounded-xl border border-border bg-sage-50/50 p-4 dark:bg-sage-900/20">
       {/* Opening quotation mark */}
       <p
-        className="mb-1 font-serif text-4xl leading-none text-brand-300 select-none"
+        className="mb-1 font-serif text-4xl leading-none text-sage-300 select-none"
         aria-hidden="true"
       >
         &ldquo;

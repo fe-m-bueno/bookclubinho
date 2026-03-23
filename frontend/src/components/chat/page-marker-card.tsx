@@ -13,10 +13,10 @@ export function PageMarkerCard({ message }: PageMarkerCardProps) {
   const page = message.reference_value;
 
   return (
-    <div className="w-full rounded-r-lg border-l-4 border-brand-400 bg-muted/50 p-3">
+    <div className="w-full rounded-r-lg border-l-4 border-sage-400 bg-muted/50 p-3">
       <div className="flex items-center gap-2">
         <FileText
-          className="size-4 shrink-0 text-brand-600 dark:text-brand-300"
+          className="size-4 shrink-0 text-sage-600 dark:text-sage-300"
           aria-hidden="true"
         />
 
@@ -35,7 +35,7 @@ export function PageMarkerCard({ message }: PageMarkerCardProps) {
             {getAuthorName(message.author)}
           </span>{" "}
           está na página{" "}
-          <span className="font-semibold text-brand-700 dark:text-brand-300">
+          <span className="font-semibold text-sage-700 dark:text-sage-300">
             {page ?? "—"}
           </span>
         </span>

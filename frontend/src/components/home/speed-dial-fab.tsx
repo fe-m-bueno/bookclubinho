@@ -25,7 +25,7 @@ export function SpeedDialFAB({ onCreateGroup }: SpeedDialFABProps) {
         if (onCreateGroup) {
           onCreateGroup();
         } else {
-          router.push("/groups/new");
+          router.push("/groups/create");
         }
       },
     },
@@ -59,7 +59,7 @@ export function SpeedDialFAB({ onCreateGroup }: SpeedDialFABProps) {
                 }
                 transition={{ duration: shouldReduce ? 0 : 0.15, delay: i * 0.05 }}
                 onClick={action.onClick}
-                className="flex min-h-[44px] items-center gap-2 rounded-full bg-card px-4 py-2 shadow-lg ring-1 ring-border transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-h-[44px] items-center gap-2 rounded-full bg-card px-4 py-2 shadow-warm-lg ring-1 ring-border/60 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={action.label}
               >
                 <action.icon className="h-4 w-4 shrink-0 text-foreground" />

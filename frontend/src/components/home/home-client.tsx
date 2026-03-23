@@ -23,15 +23,16 @@ import { JoinGroupDialog } from "./join-group-dialog";
 export function HomeClient() {
   const [joinOpen, setJoinOpen] = useState(false);
   const shouldReduce = useReducedMotion();
-  const variants = shouldReduce ? STAGGER_VARIANTS_REDUCED : STAGGER_VARIANTS_NORMAL;
+  const variants = shouldReduce
+    ? STAGGER_VARIANTS_REDUCED
+    : STAGGER_VARIANTS_NORMAL;
 
   const userQuery = useCurrentUser();
   const groupsQuery = useHomeGroups();
   const meetingsQuery = useUpcomingMeetings(3);
   const badgesQuery = useRecentBadges(3);
 
-  const isLoading =
-    userQuery.isLoading || groupsQuery.isLoading;
+  const isLoading = userQuery.isLoading || groupsQuery.isLoading;
 
   if (isLoading) return <HomeSkeleton />;
 
@@ -44,24 +45,26 @@ export function HomeClient() {
 
   const greeting = getGreeting(user.timezone);
   const firstName =
-    user.display_name?.split(" ")[0] ?? user.username ?? "você";
+    user.display_name?.split(" ")[0] ?? user.username ?? "you";
 
   if (groups.length === 0) {
     return (
       <>
         <div className="flex min-h-screen flex-col bg-background">
-          <header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-3 backdrop-blur">
-            <div className="mx-auto flex max-w-lg items-center justify-between">
+          <header className="px-6 pt-10 pb-2">
+            <div className="mx-auto flex max-w-2xl items-end justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">{greeting}</p>
-                <h1 className="text-lg font-bold">{firstName}</h1>
+                <p className="text-sm text-muted-foreground">{greeting}</p>
+                <h1 className="mt-1 text-3xl font-display font-bold tracking-tight md:text-4xl">
+                  {firstName}
+                </h1>
               </div>
               <UserMenu user={user} />
             </div>
           </header>
-          <main className="mx-auto w-full max-w-lg flex-1 px-4">
+          <main className="mx-auto w-full max-w-2xl flex-1 px-6">
             <HomeEmptyState
-              onCreateGroup={() => (window.location.href = "/groups/new")}
+              onCreateGroup={() => (window.location.href = "/groups/create")}
               onJoinGroup={() => setJoinOpen(true)}
             />
           </main>
@@ -73,31 +76,28 @@ export function HomeClient() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-lg items-center justify-between">
+      {/* Greeting — warm, personal, large */}
+      <header className="px-6 pt-10 pb-8">
+        <div className="mx-auto flex max-w-2xl items-end justify-between">
           <div>
-            <p className="text-xs text-muted-foreground">{greeting}</p>
-            <h1 className="text-lg font-bold text-foreground">{firstName}</h1>
+            <p className="text-sm text-muted-foreground">{greeting}</p>
+            <h1 className="mt-1 text-3xl font-display font-bold tracking-tight md:text-4xl">
+              {firstName}
+            </h1>
           </div>
           <UserMenu user={user} />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-lg flex-1 space-y-6 px-4 py-6">
+      <main className="mx-auto w-full max-w-2xl flex-1 px-6">
         {/* Groups */}
-        <section aria-labelledby="groups-heading">
-          <h2
-            id="groups-heading"
-            className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide"
-          >
-            Meus clubes
-          </h2>
+        <section>
+          <h2 className="divider-ornament mb-6">meus clubes</h2>
           <motion.ul
             variants={variants.container}
             initial="hidden"
             animate="visible"
-            className="space-y-3"
+            className="space-y-4"
           >
             {groups.map((group) => (
               <motion.li key={group.id} variants={variants.item}>
@@ -109,13 +109,8 @@ export function HomeClient() {
 
         {/* Upcoming meetings */}
         {meetings.length > 0 && (
-          <section aria-labelledby="meetings-heading">
-            <h2
-              id="meetings-heading"
-              className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              Próximos encontros
-            </h2>
+          <section className="mt-10">
+            <h2 className="divider-ornament mb-6">encontros</h2>
             <motion.ul
               variants={variants.container}
               initial="hidden"
@@ -133,13 +128,8 @@ export function HomeClient() {
 
         {/* Recent badges */}
         {badges.length > 0 && (
-          <section aria-labelledby="badges-heading">
-            <h2
-              id="badges-heading"
-              className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              Conquistas recentes
-            </h2>
+          <section className="mt-10">
+            <h2 className="divider-ornament mb-6">conquistas</h2>
             <motion.ul
               variants={variants.container}
               initial="hidden"

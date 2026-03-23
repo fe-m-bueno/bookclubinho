@@ -4,6 +4,15 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/groups/g1/chat",
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock("@/hooks/use-current-user", () => ({
+  useCurrentUser: () => ({ data: null, isLoading: false }),
+}));
+
+vi.mock("next-themes", () => ({
+  useTheme: () => ({ resolvedTheme: "light", setTheme: vi.fn() }),
 }));
 
 import { GroupHeader } from "../group-header";

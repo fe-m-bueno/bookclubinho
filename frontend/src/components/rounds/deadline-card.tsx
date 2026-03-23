@@ -19,9 +19,9 @@ export function DeadlineCard({ deadline }: DeadlineCardProps) {
   const isPassed = daysRemaining < 0;
 
   return (
-    <Card>
+    <Card className="shadow-warm-sm">
       <CardContent className="flex items-center gap-3 py-4">
-        <CalendarDays className="h-5 w-5 shrink-0 text-muted-foreground" />
+        <CalendarDays className="h-5 w-5 shrink-0 text-sage-600" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground capitalize">
             {formattedDate}

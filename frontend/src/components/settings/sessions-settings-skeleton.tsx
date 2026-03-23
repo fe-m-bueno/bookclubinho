@@ -6,7 +6,7 @@ export function SessionsSettingsSkeleton() {
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="bg-card rounded-2xl shadow-sm p-5 flex items-center gap-4"
+          className="bg-card rounded-2xl shadow-warm-sm p-5 flex items-center gap-4"
         >
           <Skeleton className="h-10 w-10 rounded-full" />
           <div className="flex-1 space-y-2">

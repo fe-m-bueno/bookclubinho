@@ -17,7 +17,6 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { FormField } from "@/components/auth/form-field";
 import { GoogleIcon } from "@/components/icons/google-icon";
 import { useAuthSubmit, FORM_HEADERS } from "@/hooks/use-auth-submit";
@@ -112,7 +111,7 @@ export default function LoginPage() {
           <p className="text-4xl" aria-hidden="true">
             📚
           </p>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-2xl font-display font-bold tracking-tight">
             Bem-vindo de volta
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -201,11 +200,8 @@ export default function LoginPage() {
             </form>
           )}
 
-          <div className="relative">
-            <Separator />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-              ou
-            </span>
+          <div className="divider-ornament">
+            <span>ou</span>
           </div>
 
           <Button

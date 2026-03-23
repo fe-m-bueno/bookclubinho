@@ -7,7 +7,7 @@ export function QuotesSkeleton() {
     <div className="columns-1 sm:columns-2 lg:columns-3 gap-4">
       {SKELETON_HEIGHTS.map((height, i) => (
         <div key={i} className="break-inside-avoid mb-4">
-          <Skeleton className={`w-full rounded-xl ${height}`} />
+          <Skeleton className={`w-full rounded-2xl ${height}`} />
         </div>
       ))}
     </div>

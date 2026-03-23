@@ -31,10 +31,10 @@ export function SlideIntro({ data }: SlideIntroProps) {
         </motion.div>
 
         <motion.div variants={variants.item} className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+          <h1 className="text-4xl font-display font-bold tracking-tight text-foreground">
             {data.group_name}
           </h1>
-          <p className="text-2xl font-semibold text-foreground/70">
+          <p className="text-2xl font-display font-semibold text-foreground/70">
             Wrapped {data.year}
           </p>
         </motion.div>

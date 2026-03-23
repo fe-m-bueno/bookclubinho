@@ -52,25 +52,27 @@ async def check_and_award_badges(
         return
 
     try:
+        uid = uuid.UUID(user_id)
         async with AsyncSessionLocal() as db:
-            try:
-                # Set RLS context
-                uid = uuid.UUID(user_id)
+            # db.begin() issues explicit BEGIN before SET LOCAL.
+            # SET LOCAL requires an active transaction — without explicit begin(),
+            # the asyncpg driver may execute SET LOCAL before BEGIN is issued,
+            # leaving the RLS context unset for subsequent queries.
+            async with db.begin():
                 await db.execute(text(f"SET LOCAL app.current_user_id = '{uid}'"))
                 for slug in slugs_to_check:
                     try:
-                        await _check_and_award(db, uid, slug, context)
+                        # Savepoint per badge: a failure on one doesn't corrupt
+                        # the outer transaction, so other badges can still be awarded.
+                        async with db.begin_nested():
+                            await _check_and_award(db, uid, slug, context)
                     except Exception:
                         logger.exception(
                             "badge_check_failed",
                             user_id=user_id,
                             slug=slug,
                         )
-
-                await db.commit()
-            except Exception:
-                await db.rollback()
-                raise
+                # auto-commit on exit from db.begin()
     except Exception:
         logger.exception("badge_checker_session_failed", user_id=user_id)
 
