@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Reply } from "lucide-react";
@@ -15,6 +15,7 @@ import { MessageContent } from "./message-content";
 import { MessageDeleted } from "./message-deleted";
 import { MessageReactions } from "./message-reactions";
 import { MessageContextMenu } from "./message-context-menu";
+import { useChatStore } from "@/stores/chat-store";
 import { SpoilerOverlay } from "./spoiler-overlay";
 
 interface MessageBubbleProps {
@@ -84,8 +85,17 @@ export function MessageBubble({
     () => onDelete?.(message.id),
     [message.id, onDelete],
   );
-  // no-ops: emoji picker and copy are handled inside the context-menu component
-  const handleReact = useCallback(() => {}, []);
+  const columnRef = useRef<HTMLDivElement>(null);
+  const handleReact = useCallback(() => {
+    const rect = columnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    useChatStore.getState().openReactionPicker({
+      messageId: message.id,
+      isOwn,
+      rect: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right },
+    });
+  }, [message.id, isOwn]);
+  // no-op: copy is handled inside the context-menu component
   const handleCopy = useCallback(() => {}, []);
 
   return (
@@ -126,6 +136,7 @@ export function MessageBubble({
 
         {/* Message content column */}
         <div
+          ref={columnRef}
           className={cn(
             "flex max-w-[75%] flex-col gap-0.5 sm:max-w-[65%]",
             isOwn ? "items-end" : "items-start",

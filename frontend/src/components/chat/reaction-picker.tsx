@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type React from "react";
 
 // Lazy-load the heavy emoji-mart picker only when the user opens the full picker
 const EmojiPicker = dynamic(
@@ -16,13 +18,15 @@ const QUICK_EMOJIS = ["❤️", "😂", "👍", "😮", "😢", "🔥"] as const
 interface ReactionPickerProps {
   onSelect: (emoji: string) => void;
   onClose: () => void;
+  /** Absolute positioning style relative to the chat area container */
+  style: React.CSSProperties;
 }
 
-export function ReactionPicker({ onSelect, onClose }: ReactionPickerProps) {
+export function ReactionPicker({ onSelect, onClose, style }: ReactionPickerProps) {
   const [showFullPicker, setShowFullPicker] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Dismiss on click outside
+  // Dismiss on click outside or scroll
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (
@@ -32,8 +36,15 @@ export function ReactionPicker({ onSelect, onClose }: ReactionPickerProps) {
         onClose();
       }
     }
+    function handleScroll() {
+      onClose();
+    }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("scroll", handleScroll, { capture: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("scroll", handleScroll, { capture: true });
+    };
   }, [onClose]);
 
   function handleQuickSelect(emoji: string) {
@@ -55,8 +66,8 @@ export function ReactionPicker({ onSelect, onClose }: ReactionPickerProps) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85 }}
       transition={{ duration: 0.15, ease: "easeOut" }}
-      // Position: appears above the trigger; parent must be relative
-      className="absolute bottom-full left-0 z-50 mb-2 rounded-xl border bg-popover p-2 shadow-lg"
+      style={{ position: "absolute", zIndex: 200, ...style }}
+      className="rounded-xl border bg-popover p-2 shadow-lg"
     >
       <AnimatePresence mode="wait">
         {showFullPicker ? (
@@ -103,7 +114,11 @@ export function ReactionPicker({ onSelect, onClose }: ReactionPickerProps) {
               type="button"
               onClick={() => setShowFullPicker(true)}
               aria-label="Abrir todos os emojis"
-              className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={cn(
+                "flex size-9 items-center justify-center rounded-lg text-muted-foreground",
+                "transition-colors hover:bg-accent hover:text-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              )}
             >
               <Plus className="size-4" aria-hidden="true" />
             </button>

@@ -1,9 +1,12 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ChatMessage } from "@/lib/types/chat";
 
 vi.mock("framer-motion");
+
+// ReactionPicker is now rendered in ChatContainer, not MessageBubble.
+// These tests cover MessageBubble in isolation, so no ReactionPicker mock needed.
 
 // ---------------------------------------------------------------------------
 // Mock radix-ui ContextMenu — context menus don't work in jsdom without a
@@ -36,6 +39,21 @@ vi.mock("radix-ui", async (importOriginal) => {
     ...actual,
     ContextMenu: stubContextMenu,
   };
+});
+
+// jsdom returns zeros for getBoundingClientRect; stub it so handleReact computes coords
+beforeAll(() => {
+  Element.prototype.getBoundingClientRect = vi.fn(() => ({
+    top: 100,
+    bottom: 120,
+    left: 16,
+    right: 200,
+    width: 184,
+    height: 20,
+    x: 16,
+    y: 100,
+    toJSON: () => ({}),
+  }));
 });
 
 import { MessageBubble } from "../message-bubble";
@@ -234,5 +252,32 @@ describe("MessageBubble", () => {
       <MessageBubble {...defaultProps} message={msg} isOwn={false} showName />,
     );
     expect(screen.getByText("bob_77")).toBeInTheDocument();
+  });
+
+  describe("Reagir → openReactionPicker", () => {
+    it("calls openReactionPicker on the store when 'Reagir' is clicked", () => {
+      const msg = makeMessage();
+      render(<MessageBubble {...defaultProps} message={msg} />);
+      fireEvent.click(screen.getByText("Reagir"));
+      const state = useChatStore.getState().reactionPickerState;
+      expect(state).not.toBeNull();
+      expect(state?.messageId).toBe("msg-1");
+    });
+
+    it("sets isOwn=true for own messages", () => {
+      const msg = makeMessage();
+      render(
+        <MessageBubble {...defaultProps} message={msg} isOwn currentUserId="u1" />,
+      );
+      fireEvent.click(screen.getByText("Reagir"));
+      expect(useChatStore.getState().reactionPickerState?.isOwn).toBe(true);
+    });
+
+    it("sets isOwn=false for others' messages", () => {
+      const msg = makeMessage();
+      render(<MessageBubble {...defaultProps} message={msg} isOwn={false} />);
+      fireEvent.click(screen.getByText("Reagir"));
+      expect(useChatStore.getState().reactionPickerState?.isOwn).toBe(false);
+    });
   });
 });

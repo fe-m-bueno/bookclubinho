@@ -18,6 +18,13 @@ export interface TypingUser {
   lastTypingAt: number;
 }
 
+interface ReactionPickerState {
+  messageId: string;
+  isOwn: boolean;
+  /** Viewport-relative bounding rect of the message bubble column */
+  rect: { top: number; bottom: number; left: number; right: number };
+}
+
 interface ChatState {
   chapterFilter: number | null;
   replyTo: ReplyTo | null;
@@ -27,6 +34,7 @@ interface ChatState {
   uploadProgress: number | null;
   editingMessage: EditingMessage | null;
   typingUsers: Map<string, TypingUser>;
+  reactionPickerState: ReactionPickerState | null;
 
   setChapterFilter: (chapter: number | null) => void;
   setReplyTo: (reply: ReplyTo | null) => void;
@@ -40,6 +48,8 @@ interface ChatState {
   setTypingUser: (userId: string, user: TypingUser) => void;
   removeTypingUser: (userId: string) => void;
   clearTypingUsers: () => void;
+  openReactionPicker: (state: ReactionPickerState) => void;
+  closeReactionPicker: () => void;
   reset: () => void;
 }
 
@@ -52,6 +62,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   uploadProgress: null,
   editingMessage: null,
   typingUsers: new Map<string, TypingUser>(),
+  reactionPickerState: null,
 
   setChapterFilter: (chapter) => set({ chapterFilter: chapter }),
   setReplyTo: (reply) => set({ replyTo: reply }),
@@ -77,6 +88,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     set({ typingUsers: next });
   },
   clearTypingUsers: () => set({ typingUsers: new Map() }),
+  openReactionPicker: (state) => set({ reactionPickerState: state }),
+  closeReactionPicker: () => set({ reactionPickerState: null }),
   reset: () =>
     set({
       chapterFilter: null,
@@ -87,5 +100,6 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       uploadProgress: null,
       editingMessage: null,
       typingUsers: new Map(),
+      reactionPickerState: null,
     }),
 }));

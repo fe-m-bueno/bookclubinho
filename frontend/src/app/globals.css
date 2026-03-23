@@ -161,6 +161,39 @@
   --sidebar-ring: oklch(0.68 0.07 152);
 }
 
+/* ─── emoji-mart: design system theme override ─────────────────────────────
+   em-emoji-picker is a Web Component. CSS custom properties pierce the shadow
+   boundary. emoji-mart reads --rgb-* (triplets) and --color-border* (full
+   rgba values) as fallbacks inside its [data-theme] selector.
+   Light: warm cream palette / Dark: warm charcoal palette
+   ─────────────────────────────────────────────────────────────────────────── */
+em-emoji-picker {
+  /* oklch(0.98 0.01 76) warm cream popover */
+  --rgb-background: 251, 245, 237;
+  /* oklch(0.20 0.015 80) dark foreground */
+  --rgb-color: 39, 33, 26;
+  /* oklch(0.52 0.08 152) sage green primary */
+  --rgb-accent: 53, 133, 100;
+  /* oklch(0.93 0.015 78) muted/input */
+  --rgb-input: 239, 233, 223;
+  /* border colors as full rgba values */
+  --color-border: rgba(205, 196, 184, 0.6);
+  --color-border-over: rgba(160, 150, 138, 0.5);
+}
+
+.dark em-emoji-picker {
+  /* oklch(0.23 0.013 76) dark popover */
+  --rgb-background: 45, 39, 33;
+  /* oklch(0.91 0.02 78) light foreground */
+  --rgb-color: 234, 227, 215;
+  /* oklch(0.68 0.07 152) sage green lighter */
+  --rgb-accent: 90, 177, 140;
+  /* oklch(0.24 0.012 78) dark muted */
+  --rgb-input: 47, 42, 36;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-over: rgba(255, 255, 255, 0.15);
+}
+
 /* Custom warm shadow utilities */
 @utility shadow-warm-sm {
   box-shadow:
