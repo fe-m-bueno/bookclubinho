@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Em dev o MinIO roda em localhost (IP privado) — desativa otimização server-side
+    // para evitar "upstream image resolved to private ip". Em prod usa Cloudflare R2.
+    unoptimized: process.env.NODE_ENV !== "production",
     remotePatterns: [
       // Local MinIO (dev)
       {
