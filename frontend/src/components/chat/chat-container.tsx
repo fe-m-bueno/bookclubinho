@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useGroup } from "@/lib/contexts/group-context";
 import { useChatStore } from "@/stores/chat-store";
 import { useChatMessages } from "@/hooks/use-chat-messages";
@@ -17,6 +17,7 @@ import { ChatHeader } from "./chat-header";
 import { MessageList } from "./message-list";
 import { ChatInput } from "./chat-input";
 import { NewMessagePill } from "./new-message-pill";
+import { ReactionPicker } from "./reaction-picker";
 import type { ChatMessage, MessageCreatePayload } from "@/lib/types/chat";
 
 interface ChatContainerProps {
@@ -35,6 +36,7 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
   const unreadCount = useChatStore((s) => s.unreadCount);
   const editingMessage = useChatStore((s) => s.editingMessage);
   const replyTo = useChatStore((s) => s.replyTo);
+  const reactionPickerState = useChatStore((s) => s.reactionPickerState);
 
   const {
     messages,
@@ -58,6 +60,7 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
   const { upload: uploadMedia } = useMediaUpload(groupId);
 
   const scrollRef = useRef<{ scrollToBottom: () => void }>(null);
+  const chatAreaRef = useRef<HTMLDivElement>(null);
 
   const handleSend = useCallback(
     (text: string, richJson: Record<string, unknown>) => {
@@ -164,6 +167,26 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
     });
   }, []);
 
+  // Calculate absolute position of the reaction picker relative to chatAreaRef.
+  // The picker is rendered as a sibling of MessageList (outside overflow-y-auto),
+  // so it is never clipped by the scroll container.
+  const pickerStyle = useMemo(() => {
+    if (!reactionPickerState || !chatAreaRef.current) return null;
+    const { rect, isOwn } = reactionPickerState;
+    const area = chatAreaRef.current.getBoundingClientRect();
+    // Quick picker bar is ~52px tall; flip to open below if not enough space above
+    const spaceAbove = rect.top - area.top;
+    const GAP = 8;
+    const vertical =
+      spaceAbove > 60
+        ? { bottom: area.bottom - rect.top + GAP }
+        : { top: rect.bottom - area.top + GAP };
+    const horizontal = isOwn
+      ? { right: area.right - rect.right }
+      : { left: rect.left - area.left };
+    return { ...vertical, ...horizontal };
+  }, [reactionPickerState]);
+
   return (
     <div className="flex flex-col h-full min-h-0 -mx-4 -mt-4 -mb-20 md:-mb-0">
       <ChatHeader
@@ -172,7 +195,7 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
         onClearFilter={handleClearFilter}
         connected={connected}
       />
-      <div className="relative flex-1 min-h-0">
+      <div ref={chatAreaRef} className="relative flex-1 min-h-0">
         <MessageList
           ref={scrollRef}
           messages={messages}
@@ -194,6 +217,16 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
               onClick={handleScrollToBottom}
             />
           </div>
+        )}
+
+        {reactionPickerState && pickerStyle && (
+          <ReactionPicker
+            style={pickerStyle}
+            onSelect={(emoji) =>
+              handleToggleReaction(reactionPickerState.messageId, emoji)
+            }
+            onClose={() => useChatStore.getState().closeReactionPicker()}
+          />
         )}
       </div>
       <ChatInput
