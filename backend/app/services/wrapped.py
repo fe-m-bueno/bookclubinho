@@ -226,31 +226,29 @@ async def _compute_wrapped_data(
             "avatar_url": streak_user.avatar_url,
         }
 
-    # ── Funniest oneliner (most voted HallOfQuote in year rounds) ─────────────
+    # ── Funniest oneliner (funny_oneliner from BookReview in year rounds) ────────
     funniest_oneliner = None
     if round_ids:
-        quote_result = await db.execute(
-            select(
-                HallOfQuote,
-                User,
-                func.count(QuoteVote.id).label("vote_count"),
+        oneliner_result = await db.execute(
+            select(BookReview, User)
+            .join(User, User.id == BookReview.user_id)
+            .where(
+                BookReview.round_id.in_(round_ids),
+                BookReview.funny_oneliner.isnot(None),
+                BookReview.funny_oneliner != "",
             )
-            .join(User, User.id == HallOfQuote.user_id)
-            .outerjoin(QuoteVote, QuoteVote.quote_id == HallOfQuote.id)
-            .where(HallOfQuote.round_id.in_(round_ids))
-            .group_by(HallOfQuote.id, User.id)
-            .order_by(func.count(QuoteVote.id).desc())
+            .order_by(BookReview.completed_at.desc())
             .limit(1)
         )
-        quote_row = quote_result.one_or_none()
-        if quote_row is not None:
-            quote, quote_author, vote_count = quote_row
+        oneliner_row = oneliner_result.one_or_none()
+        if oneliner_row is not None:
+            review, oneliner_author = oneliner_row
             funniest_oneliner = {
-                "text": quote.quote_text,
-                "author_username": quote_author.username or "",
-                "author_display_name": quote_author.display_name,
-                "author_avatar_url": quote_author.avatar_url,
-                "vote_count": int(vote_count),
+                "text": review.funny_oneliner,
+                "author_username": oneliner_author.username or "",
+                "author_display_name": oneliner_author.display_name,
+                "author_avatar_url": oneliner_author.avatar_url,
+                "vote_count": 0,
             }
 
     # ── Most emotional book (highest cried percentage) ────────────────────────

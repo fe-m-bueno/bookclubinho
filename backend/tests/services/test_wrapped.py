@@ -203,7 +203,7 @@ def _build_compute_db(
     avg_rating_row: MagicMock | None = None,
     active_user: MagicMock | None = None,
     streak_user: MagicMock | None = None,
-    quote_row: tuple[MagicMock, MagicMock, int] | None = None,
+    oneliner_row: tuple[MagicMock, MagicMock] | None = None,
     emotional_row: MagicMock | None = None,
     es_row: MagicMock | None = None,
     members: list[MagicMock] | None = None,
@@ -218,7 +218,7 @@ def _build_compute_db(
       4.  avg_rating (highest)      → one_or_none        (only if round_ids)
       5.  active member (JOIN User) → scalar_one_or_none (only if round_ids)
       6.  streak member select      → scalar_one_or_none (always)
-      7.  funniest quote (3-tuple)  → one_or_none        (only if round_ids)
+      7.  funniest oneliner (2-tuple) → one_or_none       (only if round_ids)
       8.  most emotional book       → one_or_none        (only if round_ids)
       9.  member_avatars            → scalars().all()    (always)
      10.  speed reader              → one_or_none        (only if round_ids and members)
@@ -281,7 +281,7 @@ def _build_compute_db(
     side_effects.append(_scalar_or_none(streak_user))          # 6. streak member
 
     if has_rounds:
-        side_effects.append(_one_or_none(quote_row))           # 7. funniest quote (3-tuple)
+        side_effects.append(_one_or_none(oneliner_row))        # 7. funniest oneliner (2-tuple)
         side_effects.append(_one_or_none(emotional_row))       # 8. most emotional book
 
     side_effects.append(_scalars_all(members))                 # 9. member_avatars
@@ -376,24 +376,21 @@ async def test_most_active_member_correct() -> None:
 
 
 @pytest.mark.asyncio
-async def test_funniest_oneliner_most_votes() -> None:
-    """A quote com mais votos deve aparecer em funniest_oneliner."""
+async def test_funniest_oneliner_from_review() -> None:
+    """O funny_oneliner mais recente de BookReview deve aparecer em funniest_oneliner."""
     group_id = uuid.uuid4()
     group = _make_group(id=group_id)
 
-    quote = MagicMock()
-    quote.id = uuid.uuid4()
-    quote.quote_text = "Isso foi horrível de uma forma muito boa."
-    quote.user_id = uuid.uuid4()
+    review = MagicMock()
+    review.funny_oneliner = "Isso foi horrível de uma forma muito boa."
 
     author = _make_user(username="citador", display_name="Citador Pro")
-    author.id = quote.user_id
 
     streak_user = _make_user()
     db = _build_compute_db(
         group=group,
         rounds=[_make_round(group_id=group_id)],
-        quote_row=(quote, author, 7),
+        oneliner_row=(review, author),
         streak_user=streak_user,
     )
 
@@ -401,7 +398,7 @@ async def test_funniest_oneliner_most_votes() -> None:
 
     assert result["funniest_oneliner"] is not None
     assert result["funniest_oneliner"]["text"] == "Isso foi horrível de uma forma muito boa."
-    assert result["funniest_oneliner"]["vote_count"] == 7
+    assert result["funniest_oneliner"]["vote_count"] == 0
     assert result["funniest_oneliner"]["author_username"] == "citador"
 
 
