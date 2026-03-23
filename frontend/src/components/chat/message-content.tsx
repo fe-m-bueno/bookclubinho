@@ -1,9 +1,11 @@
 "use client";
 
 import { type ChatMessage } from "@/lib/types/chat";
+import { extractUrls } from "@/lib/url-utils";
 import { MessageTextContent } from "./message-text-content";
 import { QuoteCard } from "./quote-card";
 import { VideoEmbedCard } from "./video-embed-card";
+import { LinkPreviewCard } from "./link-preview-card";
 import { ChapterMarkerCard } from "./chapter-marker-card";
 import { PageMarkerCard } from "./page-marker-card";
 
@@ -21,13 +23,24 @@ interface MessageContentProps {
  */
 export function MessageContent({ message }: MessageContentProps) {
   switch (message.content_type) {
-    case "text":
+    case "text": {
+      const urls = extractUrls(message.content_text ?? "").slice(0, 3);
       return (
-        <MessageTextContent
-          text={message.content_text}
-          richJson={message.content_rich_json}
-        />
+        <>
+          <MessageTextContent
+            text={message.content_text}
+            richJson={message.content_rich_json}
+          />
+          {urls.length > 0 && (
+            <div className="mt-1.5 space-y-1.5">
+              {urls.map((url) => (
+                <LinkPreviewCard key={url} url={url} />
+              ))}
+            </div>
+          )}
+        </>
       );
+    }
 
     case "image":
       return message.media_url ? (

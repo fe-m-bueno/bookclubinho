@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.integrations import router as integrations_router
+from app.api.v1.endpoints.link_preview import router as link_preview_router
 from app.api.v1.endpoints.badges import (
     badges_catalog_router,
     badges_group_router,
@@ -90,3 +91,4 @@ api_router.include_router(
 api_router.include_router(
     integrations_router, prefix="/integrations", tags=["integrations"]
 )
+api_router.include_router(link_preview_router)
