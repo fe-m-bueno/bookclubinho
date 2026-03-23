@@ -1,3 +1,11 @@
+export interface EmailNotificationPreferences {
+  meetings: boolean;
+  invites: boolean;
+  auth: boolean;
+  approaching_end: boolean;
+  all_updates: boolean;
+}
+
 export interface UserMe {
   id: string;
   email: string;
@@ -8,7 +16,7 @@ export interface UserMe {
   auth_provider: string;
   preferred_genres: string[];
   onboarding_completed: boolean;
-  email_notifications: Record<string, unknown>;
+  email_notifications: EmailNotificationPreferences;
   streak_current: number;
   streak_longest: number;
   streak_last_update: string | null;

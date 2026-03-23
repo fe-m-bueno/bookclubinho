@@ -1,0 +1,21 @@
+{% extends "emails/base.html" %}
+{% block preheader %}Confirme seu e-mail para começar a usar o Bookclub.{% endblock %}
+{% block content %}
+  <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #30261D;">Olá, {{ display_name }}!</h2>
+  <p style="margin: 0 0 24px 0; color: #30261D;">
+    Bem-vindo ao Bookclub. Confirme seu e-mail clicando no botão abaixo:
+  </p>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="border-radius: 8px; background-color: #c2410c;">
+        <a href="{{ verify_url }}"
+           style="display: inline-block; padding: 14px 28px; background-color: #c2410c; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 8px;">
+          Verificar e-mail
+        </a>
+      </td>
+    </tr>
+  </table>
+  <p style="margin: 24px 0 0 0; color: #7a6555; font-size: 13px;">
+    O link expira em 24 horas. Se você não criou uma conta, ignore este e-mail.
+  </p>
+{% endblock %}

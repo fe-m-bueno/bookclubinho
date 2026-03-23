@@ -1,0 +1,23 @@
+{% extends "emails/base.html" %}
+{% block preheader %}{{ inviter_name }} te convidou para um clube de leitura no Bookclub.{% endblock %}
+{% block content %}
+  <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #30261D;">Olá, {{ display_name }}!</h2>
+  <p style="margin: 0 0 24px 0; color: #30261D;">
+    <strong>{{ inviter_name }}</strong> te convidou para participar do clube de leitura
+    <strong>{{ group_name }}</strong> no Bookclub.
+    Clique no botão abaixo para aceitar o convite:
+  </p>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="border-radius: 8px; background-color: #c2410c;">
+        <a href="{{ invite_url }}"
+           style="display: inline-block; padding: 14px 28px; background-color: #c2410c; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 8px;">
+          Aceitar convite
+        </a>
+      </td>
+    </tr>
+  </table>
+  <p style="margin: 24px 0 0 0; color: #7a6555; font-size: 13px;">
+    Se você não conhece {{ inviter_name }} ou não quer entrar no clube, pode ignorar este e-mail.
+  </p>
+{% endblock %}

@@ -323,6 +323,19 @@ async def _emit_progress_events(
                 maxlen=10000,
                 approximate=True,
             )
+            # Also notify the notifications worker
+            await redis.xadd(
+                "bookclub:notifications",
+                {
+                    "type": "approaching_end",
+                    "round_id": str(round_.id),
+                    "group_id": str(round_.group_id),
+                    "user_id": str(user_id),
+                    "percentage": str(percentage),
+                },
+                maxlen=50000,
+                approximate=True,
+            )
     except RedisError:
         logger.warning("redis_event_emission_failed", round_id=str(round_.id))
 

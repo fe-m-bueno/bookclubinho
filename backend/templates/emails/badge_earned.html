@@ -1,0 +1,27 @@
+{% extends "emails/base.html" %}
+{% block preheader %}Parabéns! Você desbloqueou um novo badge no Bookclub.{% endblock %}
+{% block content %}
+  <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #30261D;">Olá, {{ display_name }}!</h2>
+  <p style="margin: 0 0 20px 0; color: #30261D;">
+    Parabéns! Você desbloqueou um novo badge:
+  </p>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 24px 0;">
+    <tr>
+      <td style="background-color: #fdf6ee; border: 2px solid #e8d9c8; border-radius: 12px; padding: 20px 24px; text-align: center;">
+        <div style="font-size: 48px; line-height: 1; margin-bottom: 12px;">{{ badge_emoji }}</div>
+        <p style="margin: 0 0 6px 0; font-size: 20px; font-weight: 700; color: #30261D;">{{ badge_name }}</p>
+        <p style="margin: 0; font-size: 14px; color: #7a6555;">{{ badge_description }}</p>
+      </td>
+    </tr>
+  </table>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="border-radius: 8px; background-color: #c2410c;">
+        <a href="{{ profile_url }}"
+           style="display: inline-block; padding: 14px 28px; background-color: #c2410c; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 8px;">
+          Ver perfil
+        </a>
+      </td>
+    </tr>
+  </table>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "emails/base.html" %}
+{% block preheader %}Há novas mensagens no clube {{ group_name }}.{% endblock %}
+{% block content %}
+  <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #30261D;">Olá, {{ display_name }}!</h2>
+  <p style="margin: 0 0 16px 0; color: #30261D;">
+    Há novas mensagens no clube <strong>{{ group_name }}</strong>. Veja o que está rolando:
+  </p>
+  {% if messages_preview %}
+  <ul style="margin: 0 0 24px 0; padding: 0 0 0 20px; color: #30261D; font-size: 15px; line-height: 1.7;">
+    {% for message in messages_preview %}
+    <li style="margin-bottom: 6px;">{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="border-radius: 8px; background-color: #c2410c;">
+        <a href="{{ group_url }}"
+           style="display: inline-block; padding: 14px 28px; background-color: #c2410c; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 8px;">
+          Ver conversa
+        </a>
+      </td>
+    </tr>
+  </table>
+{% endblock %}
