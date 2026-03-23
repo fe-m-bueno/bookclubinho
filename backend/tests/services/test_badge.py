@@ -230,3 +230,58 @@ async def test_get_badge_progress_partial() -> None:
     assert result["current"] == 2
     assert result["target"] == 5
     assert result["percentage"] == 40.0
+
+
+# ── marathon target ─────────────────────────────────────────────────────────────
+
+
+def test_marathon_target_is_120() -> None:
+    """_BADGE_TARGETS['marathon'] deve ser 120, não 1."""
+    from app.services.badge import _BADGE_TARGETS
+
+    assert _BADGE_TARGETS["marathon"] == 120
+
+
+@pytest.mark.asyncio
+async def test_get_badge_progress_marathon_target() -> None:
+    """Progresso do marathon retorna target=120."""
+    user_id = uuid.uuid4()
+    badge = _make_badge(slug="marathon")
+
+    db = AsyncMock()
+
+    res_badge = MagicMock()
+    res_badge.scalar_one_or_none.return_value = badge
+
+    # marathon progress usa ReadingSession max duration
+    res_progress = MagicMock()
+    res_progress.scalar_one.return_value = 60  # 60 min de máximo
+
+    db.execute = AsyncMock(side_effect=[res_badge, res_progress])
+
+    result = await get_badge_progress(db, user_id=user_id, slug="marathon")
+
+    assert result["target"] == 120
+    assert result["current"] == 60
+    assert result["percentage"] == 50.0
+
+
+@pytest.mark.asyncio
+async def test_get_badge_progress_marathon_119_min_not_full() -> None:
+    """119 minutos não alcança 100% no badge marathon."""
+    user_id = uuid.uuid4()
+    badge = _make_badge(slug="marathon")
+
+    db = AsyncMock()
+
+    res_badge = MagicMock()
+    res_badge.scalar_one_or_none.return_value = badge
+
+    res_progress = MagicMock()
+    res_progress.scalar_one.return_value = 119
+
+    db.execute = AsyncMock(side_effect=[res_badge, res_progress])
+
+    result = await get_badge_progress(db, user_id=user_id, slug="marathon")
+
+    assert result["percentage"] < 100.0

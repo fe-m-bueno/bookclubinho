@@ -482,3 +482,124 @@ class TestDeleteRound:
             response = client.delete(f"/api/v1/rounds/{round_id}")
 
         assert response.status_code == 404
+
+
+# ── Badge integration: finish_round + log_reading_progress ─────────────────────
+
+
+class TestFinishRoundBadges:
+    """Verifica que check_and_award_badges é disparado para todos os membros."""
+
+    def test_finish_round_triggers_badge_for_admin(self) -> None:
+        round_ = _make_round(status=RoundStatus.READING)
+        round_id = round_.id
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        member_result = MagicMock()
+        member_result.all.return_value = [(FAKE_USER.id,)]
+        FAKE_DB.execute = AsyncMock(return_value=member_result)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.rounds.verify_round_admin",
+                new=AsyncMock(return_value=round_),
+            ),
+            patch(
+                "app.api.v1.endpoints.rounds.finish_round",
+                new=AsyncMock(return_value=round_),
+            ),
+            patch("app.api.v1.endpoints.rounds.invalidate_group_stats", new=AsyncMock()),
+            patch("app.api.v1.endpoints.rounds.populate_shelf_cache"),
+            patch(
+                "app.api.v1.endpoints.rounds.check_and_award_badges",
+                new=AsyncMock(),
+            ) as mock_award,
+        ):
+            response = client.post(f"/api/v1/rounds/{round_id}/finish")
+
+        assert response.status_code == 200
+        calls = mock_award.call_args_list
+        user_ids_called = [c.args[0] for c in calls]
+        assert str(FAKE_USER.id) in user_ids_called
+
+    def test_finish_round_triggers_badge_for_other_members(self) -> None:
+        """Outros membros além do admin também recebem o evento book_finished."""
+        round_ = _make_round(status=RoundStatus.READING)
+        round_id = round_.id
+        other_member_id = uuid.uuid4()
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        member_result = MagicMock()
+        member_result.all.return_value = [(FAKE_USER.id,), (other_member_id,)]
+        FAKE_DB.execute = AsyncMock(return_value=member_result)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.rounds.verify_round_admin",
+                new=AsyncMock(return_value=round_),
+            ),
+            patch(
+                "app.api.v1.endpoints.rounds.finish_round",
+                new=AsyncMock(return_value=round_),
+            ),
+            patch("app.api.v1.endpoints.rounds.invalidate_group_stats", new=AsyncMock()),
+            patch("app.api.v1.endpoints.rounds.populate_shelf_cache"),
+            patch(
+                "app.api.v1.endpoints.rounds.check_and_award_badges",
+                new=AsyncMock(),
+            ) as mock_award,
+        ):
+            response = client.post(f"/api/v1/rounds/{round_id}/finish")
+
+        assert response.status_code == 200
+        calls = mock_award.call_args_list
+        user_ids_called = [c.args[0] for c in calls]
+        assert str(other_member_id) in user_ids_called
+        events_called = [c.args[1] for c in calls]
+        assert all(e == "book_finished" for e in events_called)
+
+
+class TestLogReadingProgressBadges:
+    """Verifica que streak_updated é disparado ao registrar progresso."""
+
+    @staticmethod
+    def _make_progress(**overrides: object) -> MagicMock:
+        p = MagicMock()
+        p.id = overrides.get("id", uuid.uuid4())
+        p.round_id = overrides.get("round_id", uuid.uuid4())
+        p.user_id = overrides.get("user_id", uuid.uuid4())
+        p.current_page = overrides.get("current_page", 50)
+        p.percentage = overrides.get("percentage", 50.0)
+        p.progress_type = overrides.get("progress_type", "page")
+        p.total_pages = overrides.get("total_pages", 100)
+        p.note = overrides.get("note", None)
+        p.created_at = overrides.get("created_at", datetime(2026, 3, 1, tzinfo=UTC))
+        return p
+
+    def test_log_progress_triggers_streak_updated(self) -> None:
+        round_id = uuid.uuid4()
+        progress = TestLogReadingProgressBadges._make_progress(round_id=round_id)
+        app = _make_rounds_app()
+        client = TestClient(app)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.rounds.reading_progress_service.log_progress",
+                new=AsyncMock(return_value=progress),
+            ),
+            patch(
+                "app.api.v1.endpoints.rounds.check_and_award_badges",
+                new=AsyncMock(),
+            ) as mock_award,
+        ):
+            response = client.post(
+                f"/api/v1/rounds/{round_id}/progress",
+                json={"current_page": 50, "total_pages": 100, "progress_type": "page"},
+            )
+
+        assert response.status_code == 201
+        mock_award.assert_called_once()
+        call_args = mock_award.call_args
+        assert call_args.args[1] == "streak_updated"
