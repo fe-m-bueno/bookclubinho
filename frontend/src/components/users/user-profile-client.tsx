@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { BookOpen, Flame, Trophy, Users } from "lucide-react";
+import { BookOpen, Flame, Home, Trophy, Users } from "lucide-react";
 
 import { usePublicProfile } from "@/hooks/use-public-profile";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
@@ -62,6 +62,15 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
   if (error || !profile) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-3">
+        <div className="flex items-center justify-start">
+          <Link
+            href="/"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted"
+            aria-label="Voltar para o início"
+          >
+            <Home className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        </div>
         <p className="text-5xl">404</p>
         <h1 className="text-xl font-semibold">Usuario nao encontrado</h1>
         <p className="text-muted-foreground text-sm">
@@ -88,6 +97,17 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      {/* Home button */}
+      <div className="flex items-center">
+        <Link
+          href="/"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted"
+          aria-label="Voltar para o início"
+        >
+          <Home className="h-4 w-4 text-muted-foreground" />
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col items-center gap-3 text-center">
         {profile.avatar_url ? (
