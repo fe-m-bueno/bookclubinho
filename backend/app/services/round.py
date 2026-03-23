@@ -491,6 +491,18 @@ async def finalize_round(
     round_.book_author = winner.book_author
     round_.book_cover_url = winner.book_cover_url
     round_.book_page_count = winner.book_page_count
+
+    if winner.book_hardcover_slug:
+        from app.services.hardcover import HardcoverClient
+
+        client = HardcoverClient()
+        try:
+            detail = await client.get_book(winner.book_hardcover_slug)
+            if detail:
+                round_.book_genres = detail.genres
+        finally:
+            await client.aclose()
+
     round_.status = RoundStatus.READING
 
     if deadline is not None:
