@@ -1,8 +1,8 @@
 "use client";
 
-import { Heart, Trash2 } from "lucide-react";
-import Image from "next/image";
+import { BookOpen, Heart, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { QuoteResponse } from "@/lib/types/quote";
 
 interface QuoteCardProps {
@@ -71,7 +71,8 @@ export function QuoteCard({
       )}
 
       {/* Book info */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-start gap-1.5 mb-3">
+        <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium truncate text-foreground">
             {quote.book_title}
@@ -87,22 +88,12 @@ export function QuoteCard({
       {/* Footer: author + actions */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          {quote.avatar_url ? (
-            <Image
-              src={quote.avatar_url}
-              alt={authorName}
-              width={20}
-              height={20}
-              className="rounded-full object-cover shrink-0"
-            />
-          ) : (
-            <div
-              aria-hidden="true"
-              className="w-5 h-5 rounded-full bg-muted shrink-0 flex items-center justify-center text-[10px] font-medium text-muted-foreground"
-            >
+          <Avatar className="size-5 shrink-0">
+            <AvatarImage src={quote.avatar_url ?? undefined} alt={authorName} />
+            <AvatarFallback className="text-[10px]">
               {authorName[0]?.toUpperCase() ?? "?"}
-            </div>
-          )}
+            </AvatarFallback>
+          </Avatar>
           <span className="text-xs text-muted-foreground truncate">
             {authorName}
           </span>
