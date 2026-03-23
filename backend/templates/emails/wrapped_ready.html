@@ -1,0 +1,19 @@
+{% extends "emails/base.html" %}
+{% block preheader %}Seu wrapped {{ year }} do Bookclub está pronto para ver!{% endblock %}
+{% block content %}
+  <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #30261D;">Olá, {{ display_name }}!</h2>
+  <p style="margin: 0 0 24px 0; color: #30261D;">
+    Seu <strong>wrapped {{ year }}</strong> do clube <strong>{{ group_name }}</strong> está pronto!
+    Veja o resumo de tudo que você leu e conquistou ao longo do ano.
+  </p>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="border-radius: 8px; background-color: #c2410c;">
+        <a href="{{ wrapped_url }}"
+           style="display: inline-block; padding: 14px 28px; background-color: #c2410c; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 8px;">
+          Ver meu wrapped
+        </a>
+      </td>
+    </tr>
+  </table>
+{% endblock %}

@@ -21,6 +21,7 @@ from app.core.cookies import clear_auth_cookies
 from app.core.deps import CurrentUser, DBSession, OptionalUser  # noqa: TC001
 from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
+from app.schemas.notification import NotificationPreferencesUpdate  # noqa: TC001
 from app.schemas.onboarding import UsernameCheckResponse
 from app.schemas.privacy import DataExportResponse, DeleteAccountRequest
 from app.schemas.user import (
@@ -41,6 +42,10 @@ from app.services.user_profile import (
     get_public_profile,
     get_public_profile_by_username,
     update_user_profile,
+)
+from app.services.notification_preferences import (
+    get_notification_preferences as svc_get_notification_preferences,
+    update_notification_preferences as svc_update_notification_preferences,
 )
 from app.services.user_profile import delete_user_avatar as svc_delete_avatar
 from app.services.user_profile import upload_user_avatar as svc_upload_avatar
@@ -282,3 +287,35 @@ async def delete_account_endpoint(
     except AccountDeletionError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     clear_auth_cookies(response)
+
+
+# ── Notification preferences ───────────────────────────────────────────────────
+
+
+@router.get(
+    "/me/notifications",
+    summary="Preferências de notificação do usuário autenticado",
+)
+@limiter.limit("30/minute")
+async def get_notification_preferences(
+    request: Request,
+    user: CurrentUser,
+    db: DBSession,
+) -> dict[str, bool]:
+    """Retorna as preferências de notificação por e-mail do usuário."""
+    return await svc_get_notification_preferences(db=db, user_id=user.id)
+
+
+@router.patch(
+    "/me/notifications",
+    summary="Atualiza preferências de notificação",
+)
+@limiter.limit("10/minute")
+async def patch_notification_preferences(
+    request: Request,
+    body: NotificationPreferencesUpdate,
+    user: CurrentUser,
+    db: DBSession,
+) -> dict[str, bool]:
+    """Atualiza parcialmente as preferências de notificação. O campo 'auth' não pode ser desabilitado."""
+    return await svc_update_notification_preferences(db=db, user_id=user.id, payload=body)

@@ -149,6 +149,24 @@ async def create_message(
         },
     )
 
+    # Emit to notifications stream for digest worker
+    try:
+        from app.core.redis import get_redis as _get_redis  # noqa: PLC0415
+        _redis = _get_redis()
+        await _redis.xadd(
+            "bookclub:notifications",
+            {
+                "type": "new_message",
+                "group_id": str(group_id),
+                "user_id": str(user_id),
+                "message_id": str(msg.id),
+            },
+            maxlen=50000,
+            approximate=True,
+        )
+    except Exception:
+        logger.warning("notification_xadd_failed", message_id=str(msg.id))
+
     logger.info("chat_message_created", message_id=str(msg.id), group_id=str(group_id))
     return msg
 

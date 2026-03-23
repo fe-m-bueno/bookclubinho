@@ -1,0 +1,30 @@
+{% extends "emails/base.html" %}
+{% block preheader %}{{ reader_name }} está quase terminando o livro do clube!{% endblock %}
+{% block content %}
+  <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #30261D;">Olá, {{ display_name }}!</h2>
+  <p style="margin: 0 0 24px 0; color: #30261D;">
+    <strong>{{ reader_name }}</strong> está com <strong>{{ progress_percent }}%</strong> do livro do clube
+    <strong>{{ group_name }}</strong>. Corra para não ficar para trás!
+  </p>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 24px 0;">
+    <tr>
+      <td style="background-color: #e8d9c8; border-radius: 100px; height: 12px; padding: 0;">
+        <table role="presentation" width="{{ progress_percent }}%" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td style="background-color: #c2410c; border-radius: 100px; height: 12px; font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="border-radius: 8px; background-color: #c2410c;">
+        <a href="{{ group_url }}"
+           style="display: inline-block; padding: 14px 28px; background-color: #c2410c; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 8px;">
+          Ver progresso
+        </a>
+      </td>
+    </tr>
+  </table>
+{% endblock %}

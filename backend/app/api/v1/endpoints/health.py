@@ -56,6 +56,23 @@ async def _check_redis() -> tuple[CheckStatus, str | None]:
             await client.aclose()
 
 
+async def _check_notification_worker() -> tuple[CheckStatus, str | None]:
+    """Check if the notification worker heartbeat is fresh (< 90s old)."""
+    client: aioredis.Redis | None = None
+    try:
+        client = aioredis.from_url(settings.REDIS_URL, socket_connect_timeout=3)
+        val = await client.get("worker:notifications:heartbeat")
+        if val is None:
+            return "error", "heartbeat missing"
+        return "ok", None
+    except Exception as exc:
+        logger.warning("health_check_worker_failed", error=str(exc))
+        return "error", str(exc)
+    finally:
+        if client is not None:
+            await client.aclose()
+
+
 async def _check_s3() -> tuple[CheckStatus, str | None]:
     # S3/boto3 is sync — run in a thread to avoid blocking the event loop
     try:
@@ -103,17 +120,21 @@ async def health(detailed: bool = False) -> JSONResponse:
     Pass `?detailed=true` to include error messages in the response
     (disabled by default to avoid leaking internals in production).
     """
-    db_status, db_err = await _check_db()
-    redis_status, redis_err = await _check_redis()
-    s3_status, s3_err = await _check_s3()
+    (db_status, db_err), (redis_status, redis_err), (s3_status, s3_err), (worker_status, worker_err) = (
+        await asyncio.gather(
+            _check_db(), _check_redis(), _check_s3(), _check_notification_worker()
+        )
+    )
 
     all_ok = db_status == "ok" and redis_status == "ok" and s3_status == "ok"
+    # worker is optional — degraded state doesn't affect all_ok
     overall: Literal["healthy", "degraded"] = "healthy" if all_ok else "degraded"
 
     checks: dict[str, str] = {
         "db": db_status,
         "redis": redis_status,
         "s3": s3_status,
+        "notification_worker": worker_status,
     }
 
     if detailed and not all_ok:
@@ -123,6 +144,8 @@ async def health(detailed: bool = False) -> JSONResponse:
             checks["redis_error"] = redis_err
         if s3_err:
             checks["s3_error"] = s3_err
+    if detailed and worker_status != "ok" and worker_err:
+        checks["notification_worker_error"] = worker_err
 
     body = {
         "status": overall,

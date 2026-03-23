@@ -47,7 +47,7 @@ const mockUser: UserMe = {
   auth_provider: "local",
   preferred_genres: ["fantasia"],
   onboarding_completed: true,
-  email_notifications: {},
+  email_notifications: { meetings: true, invites: true, auth: true, approaching_end: true, all_updates: true },
   streak_current: 5,
   streak_longest: 10,
   streak_last_update: null,

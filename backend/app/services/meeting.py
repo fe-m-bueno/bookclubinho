@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.schemas.meeting import MeetingCreateRequest, MeetingUpdateRequest
 
 from app.core.exceptions import ServiceError
+from app.core.redis import get_redis
 from app.db.models.group import GroupMember, GroupRole
 from app.db.models.meeting import Meeting, MeetingRsvp, RsvpStatus
 from app.db.models.message import ContentType, GroupMessage
@@ -183,6 +184,21 @@ async def create_meeting(
 
     await db.flush()
 
+    # Schedule email reminders (24h and 1h before meeting)
+    try:
+        _redis = get_redis()
+        ts_24h = meeting.scheduled_at.timestamp() - 86400  # 24h before
+        ts_1h = meeting.scheduled_at.timestamp() - 3600    # 1h before
+        await _redis.zadd(
+            "meeting_reminders",
+            {
+                f"{meeting.id}:24h": ts_24h,
+                f"{meeting.id}:1h": ts_1h,
+            },
+        )
+    except Exception:
+        logger.warning("meeting_reminder_zadd_failed", meeting_id=str(meeting.id))
+
     # System message
     scheduled_str = data.scheduled_at.strftime("%d/%m/%Y às %H:%M")
     await _insert_system_message(
@@ -349,6 +365,13 @@ async def delete_meeting(
 
     await db.delete(meeting)
     await db.flush()
+
+    # Remove pending reminders
+    try:
+        _redis = get_redis()
+        await _redis.zrem("meeting_reminders", f"{meeting_id}:24h", f"{meeting_id}:1h")
+    except Exception:
+        logger.warning("meeting_reminder_zrem_failed", meeting_id=str(meeting_id))
 
     await _insert_system_message(
         db,
