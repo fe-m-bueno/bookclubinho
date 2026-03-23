@@ -214,7 +214,7 @@ async def upcoming_meetings_endpoint(
     request: Request,
     current_user: CurrentUser,
     db: DBSession,
-    limit: int = Query(default=3, ge=1, le=10),
+    limit: int = Query(default=3, ge=1, le=50),
 ) -> UpcomingMeetingsResponse:
     """Retorna próximos encontros de todos os grupos do usuário."""
     meetings = await list_upcoming_meetings(db, user_id=current_user.id, limit=limit)
