@@ -462,7 +462,7 @@ async def finish_round_endpoint(
 
     # Invalidate stats cache and refresh shelf cache
     await invalidate_group_stats(group_id)
-    background_tasks.add_task(populate_shelf_cache, db, group_id)
+    background_tasks.add_task(populate_shelf_cache, group_id)
 
     # Award book_finished badges for all group members
     badge_payload = {"group_id": str(group_id), "round_id": str(round_id)}

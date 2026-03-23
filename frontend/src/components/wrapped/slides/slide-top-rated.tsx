@@ -67,6 +67,7 @@ export function SlideTopRated({ data }: SlideTopRatedProps) {
               fill
               className="object-cover"
               sizes="144px"
+              unoptimized
             />
           </div>
         ) : (

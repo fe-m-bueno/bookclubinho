@@ -223,6 +223,40 @@ describe("StatsClient", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders wrapped banner in December", () => {
+    vi.useFakeTimers({ now: new Date("2026-12-01T12:00:00") });
+
+    mockUseGroupStats.mockReturnValue({
+      data: mockStats,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    setupShelf();
+
+    render(<StatsClient groupId="g1" />);
+
+    expect(screen.getByRole("link", { name: /ver agora/i })).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("hides wrapped banner outside December", () => {
+    vi.useFakeTimers({ now: new Date("2026-06-01T12:00:00") });
+
+    mockUseGroupStats.mockReturnValue({
+      data: mockStats,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    setupShelf();
+
+    render(<StatsClient groupId="g1" />);
+
+    expect(screen.queryByRole("link", { name: /ver agora/i })).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
   it("passes groupId to useGroupStats", () => {
     mockUseGroupStats.mockReturnValue({
       data: null,

@@ -59,18 +59,24 @@ async def get_public_shelf(group_id: uuid.UUID) -> dict[str, Any] | None:
 
 
 async def populate_shelf_cache(
-    db: AsyncSession,
     group_id: uuid.UUID,
 ) -> None:
-    """Build and cache the public shelf. Called after round finish."""
-    try:
-        group_result = await db.execute(select(Group).where(Group.id == group_id))
-        group = group_result.scalar_one_or_none()
-        if group is None:
-            return
+    """Build and cache the public shelf. Called after round finish.
 
-        shelf_data = await _build_shelf_data(db, group)
-        await _write_shelf_cache(group_id, shelf_data)
+    Opens its own DB session so it can safely run as a FastAPI BackgroundTask
+    (the request session is already closed by the time background tasks execute).
+    """
+    from app.db.engine import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as db:
+            group_result = await db.execute(select(Group).where(Group.id == group_id))
+            group = group_result.scalar_one_or_none()
+            if group is None:
+                return
+
+            shelf_data = await _build_shelf_data(db, group)
+            await _write_shelf_cache(group_id, shelf_data)
     except Exception:
         logger.exception("shelf_cache_populate_failed", group_id=str(group_id))
 

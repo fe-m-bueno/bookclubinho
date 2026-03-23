@@ -1,6 +1,35 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      // Local MinIO (dev)
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "9000",
+      },
+      // Cloudflare R2 public bucket (prod)
+      {
+        protocol: "https",
+        hostname: "**.r2.dev",
+      },
+      // Custom R2 public domain, se configurado
+      {
+        protocol: "https",
+        hostname: process.env.NEXT_PUBLIC_R2_PUBLIC_HOSTNAME || "cdn.bookclubinho.com",
+      },
+      // Hardcover book covers
+      {
+        protocol: "https",
+        hostname: "**.hardcover.app",
+      },
+      {
+        protocol: "https",
+        hostname: "**.cloudflare.com",
+      },
+    ],
+  },
   async rewrites() {
     return [
       {

@@ -57,6 +57,7 @@ export function SlideIntro({ data }: SlideIntroProps) {
                     width={44}
                     height={44}
                     className="object-cover w-full h-full"
+                    unoptimized
                   />
                 ) : (
                   <span className="text-lg font-bold text-muted-foreground">
