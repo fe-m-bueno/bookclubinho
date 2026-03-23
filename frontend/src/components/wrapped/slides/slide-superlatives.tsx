@@ -61,6 +61,7 @@ export function SlideSuperlatives({ data }: SlideSuperlativesProps) {
                     width={40}
                     height={40}
                     className="object-cover w-full h-full"
+                    unoptimized
                   />
                 ) : (
                   <span className="text-sm font-bold text-muted-foreground">

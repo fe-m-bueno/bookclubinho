@@ -70,6 +70,7 @@ export function SlideFunniestQuote({ data }: SlideFunniestQuoteProps) {
               width={36}
               height={36}
               className="object-cover w-full h-full"
+              unoptimized
             />
           ) : (
             <span className="text-sm font-bold text-muted-foreground">

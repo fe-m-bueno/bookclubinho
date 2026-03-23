@@ -107,9 +107,22 @@ export function WrappedStories({ data, groupId, year }: WrappedStoriesProps) {
     ? { duration: 0 }
     : { duration: 0.3, ease: [0.4, 0, 0.2, 1] as const };
 
+  // Force light-mode CSS variables so slides always render with dark text on
+  // the warm-cream background — regardless of the user's theme preference.
+  const lightVars = {
+    "--foreground": "oklch(0.20 0.015 80)",
+    "--muted-foreground": "oklch(0.48 0.025 80)",
+    "--muted": "oklch(0.94 0.012 78)",
+    "--primary": "oklch(0.52 0.08 152)",
+    "--primary-foreground": "oklch(0.99 0.005 152)",
+    "--border": "oklch(0.89 0.02 76)",
+    "--background": "oklch(0.96 0.015 78)",
+  } as React.CSSProperties;
+
   return (
     <div
       className="fixed inset-0 z-50 bg-background overflow-hidden select-none"
+      style={lightVars}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onClick={handleTap}

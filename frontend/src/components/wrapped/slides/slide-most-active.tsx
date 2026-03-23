@@ -53,6 +53,7 @@ export function SlideMostActive({ data }: SlideMostActiveProps) {
                 width={112}
                 height={112}
                 className="object-cover w-full h-full"
+                unoptimized
               />
             ) : (
               <span className="text-4xl font-black text-muted-foreground">
