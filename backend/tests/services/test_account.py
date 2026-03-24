@@ -31,8 +31,10 @@ class TestChangePassword:
         user = _make_local_user()
         db = mock_db_returning(None)
 
-        with patch("app.services.account.verify_password", side_effect=[True, False]) as mock_vp, \
-             patch("app.services.account.hash_password", return_value="$2b$12$newhash") as mock_hp:
+        with (
+            patch("app.services.account.verify_password", side_effect=[True, False]) as mock_vp,
+            patch("app.services.account.hash_password", return_value="$2b$12$newhash") as mock_hp,
+        ):
             await change_password(
                 db=db,
                 user=user,
@@ -119,9 +121,11 @@ class TestInitiateEmailChange:
         pipe.execute = AsyncMock(return_value=[1, True])
         redis.pipeline = MagicMock(return_value=pipe)
 
-        with patch("app.services.account.verify_password", return_value=True), \
-             patch("app.services.account.send_email_change_email") as mock_email, \
-             patch("app.services.account.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+        with (
+            patch("app.services.account.verify_password", return_value=True),
+            patch("app.services.account.send_email_change_email") as mock_email,
+            patch("app.services.account.asyncio.to_thread", new_callable=AsyncMock) as mock_thread,
+        ):
             mock_thread.side_effect = lambda fn, *args: fn(*args)
             await initiate_email_change(
                 redis=redis,

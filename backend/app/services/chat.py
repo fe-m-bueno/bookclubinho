@@ -104,7 +104,6 @@ async def emit_typing_event(
     )
 
 
-
 # ── Service functions ─────────────────────────────────────────────────────────
 
 
@@ -129,9 +128,7 @@ async def create_message(
     parent_id: uuid.UUID | None = None
     if data.parent_message_id:
         parent_id = uuid.UUID(data.parent_message_id)
-        parent_result = await db.execute(
-            select(GroupMessage).where(GroupMessage.id == parent_id)
-        )
+        parent_result = await db.execute(select(GroupMessage).where(GroupMessage.id == parent_id))
         parent = parent_result.scalar_one_or_none()
         if parent is None or parent.group_id != group_id:
             raise ChatError("Mensagem pai não encontrada neste grupo.", status_code=404)

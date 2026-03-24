@@ -38,9 +38,7 @@ class ReferenceType(StrEnum):
     QUOTE = "quote"
 
 
-_CONTENT_TYPES = (
-    "'text','image','gif','video_link','quote','chapter_marker','page_marker','system'"
-)
+_CONTENT_TYPES = "'text','image','gif','video_link','quote','chapter_marker','page_marker','system'"
 
 
 class GroupMessage(CreatedAtMixin, Base):

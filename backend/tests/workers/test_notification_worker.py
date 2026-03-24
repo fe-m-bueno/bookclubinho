@@ -44,9 +44,7 @@ async def test_process_event_routes_approaching_end() -> None:
         "percentage": "85.0",
     }
 
-    with patch(
-        "app.workers.notification._handle_approaching_end", new_callable=AsyncMock
-    ) as mock_handler:
+    with patch("app.workers.notification._handle_approaching_end", new_callable=AsyncMock) as mock_handler:
         await process_event(redis_mock, "1-0", data)
         mock_handler.assert_called_once_with(data)
 
@@ -62,9 +60,7 @@ async def test_process_event_routes_new_message() -> None:
         "message_id": str(uuid.uuid4()),
     }
 
-    with patch(
-        "app.workers.notification._handle_new_message", new_callable=AsyncMock
-    ) as mock_handler:
+    with patch("app.workers.notification._handle_new_message", new_callable=AsyncMock) as mock_handler:
         await process_event(redis_mock, "2-0", data)
         mock_handler.assert_called_once_with(redis_mock, data)
 

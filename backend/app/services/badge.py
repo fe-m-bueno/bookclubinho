@@ -205,9 +205,7 @@ async def _compute_badge_progress(
 ) -> int:
     """Compute current progress value for a badge."""
     if slug in ("bookworm", "reviewer"):
-        result = await db.execute(
-            select(func.count(BookReview.id)).where(BookReview.user_id == user_id)
-        )
+        result = await db.execute(select(func.count(BookReview.id)).where(BookReview.user_id == user_id))
         return int(result.scalar_one() or 0)
 
     if slug == "crybaby":
@@ -231,9 +229,7 @@ async def _compute_badge_progress(
     if slug == "variety":
         rounds_result = await db.execute(
             select(Round.book_genres).where(
-                Round.id.in_(
-                    select(BookReview.round_id).where(BookReview.user_id == user_id)
-                ),
+                Round.id.in_(select(BookReview.round_id).where(BookReview.user_id == user_id)),
                 Round.book_genres.isnot(None),
             )
         )
@@ -264,9 +260,7 @@ async def _compute_badge_progress(
 
     if slug == "marathon":
         result = await db.execute(
-            select(func.max(ReadingSession.duration_minutes)).where(
-                ReadingSession.user_id == user_id
-            )
+            select(func.max(ReadingSession.duration_minutes)).where(ReadingSession.user_id == user_id)
         )
         return int(result.scalar_one() or 0)
 
@@ -282,9 +276,7 @@ async def _compute_badge_progress(
 
     if slug == "founder":
         result = await db.execute(
-            select(func.count(Group.id)).where(
-                Group.created_by == user_id, Group.is_active.is_(True)
-            )
+            select(func.count(Group.id)).where(Group.created_by == user_id, Group.is_active.is_(True))
         )
         return int(result.scalar_one() or 0)
 

@@ -1,4 +1,5 @@
 """UserSession model — tracks active refresh token sessions."""
+
 import uuid
 from datetime import datetime
 

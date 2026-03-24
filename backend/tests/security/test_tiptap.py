@@ -74,9 +74,7 @@ class TestSanitizeTiptapJson:
                         {
                             "type": "text",
                             "text": "click",
-                            "marks": [
-                                {"type": "link", "attrs": {"href": "javascript:alert(1)"}}
-                            ],
+                            "marks": [{"type": "link", "attrs": {"href": "javascript:alert(1)"}}],
                         }
                     ],
                 }
@@ -98,9 +96,7 @@ class TestSanitizeTiptapJson:
                         {
                             "type": "text",
                             "text": "click",
-                            "marks": [
-                                {"type": "link", "attrs": {"href": "data:text/html,<h1>XSS</h1>"}}
-                            ],
+                            "marks": [{"type": "link", "attrs": {"href": "data:text/html,<h1>XSS</h1>"}}],
                         }
                     ],
                 }
@@ -121,9 +117,7 @@ class TestSanitizeTiptapJson:
                         {
                             "type": "text",
                             "text": "click",
-                            "marks": [
-                                {"type": "link", "attrs": {"href": "https://example.com"}}
-                            ],
+                            "marks": [{"type": "link", "attrs": {"href": "https://example.com"}}],
                         }
                     ],
                 }
@@ -188,7 +182,5 @@ class TestSanitizeTiptapJson:
             ],
         }
         result = sanitize_tiptap_json(doc)
-        item_text = (
-            result["content"][0]["content"][0]["content"][0]["content"][0]["text"]
-        )
+        item_text = result["content"][0]["content"][0]["content"][0]["content"][0]["text"]
         assert item_text == "Item 1"

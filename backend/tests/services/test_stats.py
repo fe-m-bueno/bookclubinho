@@ -63,6 +63,7 @@ def _make_emotional_row(
 def _make_rating_rows(raw_ratings: list[int]) -> list[MagicMock]:
     """Convert a flat list of star values to grouped (star_rating, cnt) rows."""
     from collections import Counter
+
     counts = Counter(raw_ratings)
     rows = []
     for star, cnt in sorted(counts.items()):

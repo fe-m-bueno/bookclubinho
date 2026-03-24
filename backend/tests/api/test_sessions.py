@@ -129,10 +129,13 @@ class TestRevokeSession:
 
     def test_revoke_session_success(self) -> None:
         session_id = uuid.uuid4()
-        with patch(
-            "app.api.v1.endpoints.auth.revoke_session",
-            new_callable=AsyncMock,
-        ) as mock_revoke, patch("app.api.v1.endpoints.auth.get_redis", return_value=AsyncMock()):
+        with (
+            patch(
+                "app.api.v1.endpoints.auth.revoke_session",
+                new_callable=AsyncMock,
+            ) as mock_revoke,
+            patch("app.api.v1.endpoints.auth.get_redis", return_value=AsyncMock()),
+        ):
             mock_revoke.return_value = None
             resp = self.client.delete(f"/api/v1/auth/sessions/{session_id}")
         assert resp.status_code == 200
@@ -140,13 +143,14 @@ class TestRevokeSession:
 
     def test_revoke_session_not_found(self) -> None:
         session_id = uuid.uuid4()
-        with patch(
-            "app.api.v1.endpoints.auth.revoke_session",
-            new_callable=AsyncMock,
-        ) as mock_revoke, patch("app.api.v1.endpoints.auth.get_redis", return_value=AsyncMock()):
-            mock_revoke.side_effect = SessionError(
-                "Sessão não encontrada.", status_code=404
-            )
+        with (
+            patch(
+                "app.api.v1.endpoints.auth.revoke_session",
+                new_callable=AsyncMock,
+            ) as mock_revoke,
+            patch("app.api.v1.endpoints.auth.get_redis", return_value=AsyncMock()),
+        ):
+            mock_revoke.side_effect = SessionError("Sessão não encontrada.", status_code=404)
             resp = self.client.delete(f"/api/v1/auth/sessions/{session_id}")
         assert resp.status_code == 404
         assert "não encontrada" in resp.json()["detail"]

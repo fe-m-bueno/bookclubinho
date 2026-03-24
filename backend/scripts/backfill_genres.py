@@ -35,13 +35,10 @@ async def _backfill(db: AsyncSession) -> None:
     client = HardcoverClient()
     try:
         # Busca rounds sem gênero que já têm um livro selecionado
-        stmt = (
-            select(Round.id, Round.book_id)
-            .where(
-                Round.book_genres.is_(None),
-                Round.book_id.isnot(None),
-                Round.status.in_(_ACTIVE_STATUSES),
-            )
+        stmt = select(Round.id, Round.book_id).where(
+            Round.book_genres.is_(None),
+            Round.book_id.isnot(None),
+            Round.status.in_(_ACTIVE_STATUSES),
         )
         result = await db.execute(stmt)
         round_rows = result.all()
@@ -86,16 +83,10 @@ async def _backfill(db: AsyncSession) -> None:
                     continue
 
                 if not detail or not detail.genres:
-                    logger.debug(
-                        "backfill_genres_no_genres", round_id=str(round_id), slug=slug
-                    )
+                    logger.debug("backfill_genres_no_genres", round_id=str(round_id), slug=slug)
                     continue
 
-                await db.execute(
-                    update(Round)
-                    .where(Round.id == round_id)
-                    .values(book_genres=detail.genres)
-                )
+                await db.execute(update(Round).where(Round.id == round_id).values(book_genres=detail.genres))
                 updated += 1
                 logger.info(
                     "backfill_genres_updated",

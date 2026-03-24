@@ -28,9 +28,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
                 # SET LOCAL does not support bind parameters ($1/:uid).
                 # Validate as UUID to prevent SQL injection, then interpolate.
                 _uid = str(uuid.UUID(user_id))
-                await session.execute(
-                    text(f"SET LOCAL app.current_user_id = '{_uid}'")
-                )
+                await session.execute(text(f"SET LOCAL app.current_user_id = '{_uid}'"))
             yield session
             await session.commit()
         except Exception:
@@ -125,9 +123,7 @@ CurrentUser = Annotated[User, Depends(get_current_active_user)]
 OptionalUser = Annotated[User | None, Depends(get_optional_user)]
 
 
-async def get_group_membership(
-    group_id: uuid.UUID, user: CurrentUser, db: DBSession
-) -> GroupMember:
+async def get_group_membership(group_id: uuid.UUID, user: CurrentUser, db: DBSession) -> GroupMember:
     """Resolve the authenticated user's membership in the given group.
 
     Returns 404 (not 403) to avoid leaking group existence.

@@ -146,9 +146,7 @@ async def check_username(
 
     Exclui o próprio usuário autenticado da verificação.
     """
-    available = await check_username_available(
-        db=db, username=username, exclude_user_id=user.id
-    )
+    available = await check_username_available(db=db, username=username, exclude_user_id=user.id)
     return UsernameCheckResponse(available=available)
 
 
@@ -193,9 +191,7 @@ async def get_profile_by_username(
     """
     viewer_id = viewer.id if viewer else None
     try:
-        profile = await get_public_profile_by_username(
-            db=db, username=username, viewer_id=viewer_id
-        )
+        profile = await get_public_profile_by_username(db=db, username=username, viewer_id=viewer_id)
     except ProfileError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return UserProfilePublicEnriched.model_validate(profile)
@@ -218,16 +214,12 @@ async def get_shared_groups_endpoint(
 
     from app.db.models.user import User
 
-    result = await db.execute(
-        select(User).where(func.lower(User.username) == username.lower())
-    )
+    result = await db.execute(select(User).where(func.lower(User.username) == username.lower()))
     target = result.scalar_one_or_none()
     if target is None or not target.is_active:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
 
-    groups = await get_shared_groups(
-        db=db, viewer_id=viewer.id, target_user_id=target.id
-    )
+    groups = await get_shared_groups(db=db, viewer_id=viewer.id, target_user_id=target.id)
     return [SharedGroupSummary.model_validate(g) for g in groups]
 
 

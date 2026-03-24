@@ -1,4 +1,5 @@
 """Hardcover integration service — connect, disconnect, status, auto-sync toggle."""
+
 from __future__ import annotations
 
 import base64
@@ -90,8 +91,6 @@ async def get_hardcover_status(db: AsyncSession, user: User) -> dict:
 async def toggle_auto_sync(db: AsyncSession, user: User, enabled: bool) -> None:
     """Toggle auto-sync. Requires Hardcover to be connected."""
     if enabled and not user.hardcover_token_encrypted:
-        raise IntegrationError(
-            "Conecte o Hardcover antes de ativar a sincronização.", status_code=400
-        )
+        raise IntegrationError("Conecte o Hardcover antes de ativar a sincronização.", status_code=400)
     user.auto_sync_hardcover = enabled
     logger.info("hardcover_auto_sync_toggled", user_id=str(user.id), enabled=enabled)

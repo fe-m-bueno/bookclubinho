@@ -99,9 +99,7 @@ class TestStartSession:
 
         with patch(
             "app.api.v1.endpoints.reading_sessions.start_session",
-            new=AsyncMock(
-                side_effect=ReadingSessionError("A rodada não está em fase de leitura.", status_code=409)
-            ),
+            new=AsyncMock(side_effect=ReadingSessionError("A rodada não está em fase de leitura.", status_code=409)),
         ):
             response = client.post(
                 "/api/v1/reading-sessions/start",

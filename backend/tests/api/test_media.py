@@ -106,9 +106,7 @@ def test_upload_invalid_returns_400() -> None:
 
     with patch(
         "app.api.v1.endpoints.media.upload_chat_media",
-        new=AsyncMock(
-            side_effect=MediaError("Arquivo não reconhecido como imagem válida.", status_code=400)
-        ),
+        new=AsyncMock(side_effect=MediaError("Arquivo não reconhecido como imagem válida.", status_code=400)),
     ):
         resp = client.post(
             f"/api/v1/groups/{FAKE_GROUP_ID}/media/upload",

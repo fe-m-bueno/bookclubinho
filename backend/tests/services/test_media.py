@@ -64,9 +64,12 @@ async def test_invalid_bytes_raises_400() -> None:
     data = _make_jpeg_bytes()
     group_id = uuid.uuid4()
 
-    with patch(
-        "app.services.media.process_media_upload",
-        side_effect=ValueError("Arquivo não reconhecido como imagem válida."),
-    ), pytest.raises(MediaError) as exc_info:
+    with (
+        patch(
+            "app.services.media.process_media_upload",
+            side_effect=ValueError("Arquivo não reconhecido como imagem válida."),
+        ),
+        pytest.raises(MediaError) as exc_info,
+    ):
         await upload_chat_media(data, "image/jpeg", group_id)
     assert exc_info.value.status_code == 400

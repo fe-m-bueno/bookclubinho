@@ -100,9 +100,7 @@ async def validate_code(code: str, db: DBSession) -> GroupValidateResponse:
     response_model=GroupJoinResponse,
     summary="Entrar em um grupo via codigo",
 )
-async def join_group_endpoint(
-    body: GroupJoinRequest, db: DBSession, user: CurrentUser
-) -> GroupJoinResponse:
+async def join_group_endpoint(body: GroupJoinRequest, db: DBSession, user: CurrentUser) -> GroupJoinResponse:
     """Adiciona o usuario autenticado a um grupo via codigo de convite."""
     try:
         group = await join_group(db=db, user=user, invite_code=body.invite_code)
@@ -205,19 +203,25 @@ async def list_groups_endpoint(
                     book_author=cr.book_author,
                     book_cover_url=cr.book_cover_url,
                     book_page_count=cr.book_page_count,
-                ) if cr else None,
+                )
+                if cr
+                else None,
                 my_reading_progress=MyReadingProgress(
                     current_page=rp.current_page,
                     total_pages=rp.total_pages,
                     percentage=rp.percentage,
-                ) if rp else None,
+                )
+                if rp
+                else None,
                 last_message_preview=LastMessagePreview(
                     sender_display_name=lm.user.display_name,
                     sender_avatar_url=lm.user.avatar_url,
                     content_text=lm.content_text,
                     content_type=lm.content_type,
                     created_at=lm.created_at,
-                ) if lm else None,
+                )
+                if lm
+                else None,
                 last_activity_at=e["last_activity_at"],
             )
         )

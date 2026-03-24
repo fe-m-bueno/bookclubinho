@@ -258,9 +258,7 @@ class TestResendVerificationEmail:
 
             await resend_verification_email(db=mock_db, email="first@example.com")
 
-        mock_redis.expire.assert_called_once_with(
-            "resend_verify_rate:first@example.com", 3600
-        )
+        mock_redis.expire.assert_called_once_with("resend_verify_rate:first@example.com", 3600)
 
 
 # ── Service: verify_email_token ────────────────────────────────────────────────
@@ -289,8 +287,11 @@ class TestVerifyEmailToken:
         import hmac as _hmac
 
         from app.core.config import settings
+
         expected = _hmac.new(
-            settings.JWT_SECRET.encode(), b"validtoken123", "sha256",
+            settings.JWT_SECRET.encode(),
+            b"validtoken123",
+            "sha256",
         ).hexdigest()
         expected_key = f"verify:{expected}"
         mock_redis.delete.assert_called_once_with(expected_key)
@@ -334,7 +335,7 @@ class TestVerifyEmailToken:
 def _mock_redis_unlocked() -> AsyncMock:
     """Redis mock sem lockout ativo e contador zerado."""
     redis = AsyncMock()
-    redis.get = AsyncMock(return_value=None)   # not locked
+    redis.get = AsyncMock(return_value=None)  # not locked
     redis.incr = AsyncMock(return_value=1)
     redis.expire = AsyncMock()
     redis.delete = AsyncMock()
@@ -363,9 +364,7 @@ class TestAuthenticateUser:
                 return_value=("access.tok", "refresh.tok"),
             ) as mtp,
         ):
-            access, refresh = await authenticate_user(
-                db=mock_db, email="user@example.com", password="pass"
-            )
+            access, refresh = await authenticate_user(db=mock_db, email="user@example.com", password="pass")
 
         assert access == "access.tok"
         assert refresh == "refresh.tok"
@@ -589,9 +588,7 @@ class TestConsumeMagicToken:
             mock_redis.get.return_value = str(user_id)
             mock_redis_factory.return_value = mock_redis
 
-            access, refresh, onboarding = await consume_magic_token(
-                db=mock_db, token="validtoken"
-            )
+            access, refresh, onboarding = await consume_magic_token(db=mock_db, token="validtoken")
 
         assert access == "acc.tok"
         assert refresh == "ref.tok"
@@ -807,8 +804,11 @@ class TestRotateRefreshToken:
 
         future_exp = int(datetime.now(UTC).timestamp()) + 3600
         payload = {
-            "sub": "user-42", "exp": future_exp, "type": "refresh",
-            "jti": "valid-jti", "onb": True,
+            "sub": "user-42",
+            "exp": future_exp,
+            "type": "refresh",
+            "jti": "valid-jti",
+            "onb": True,
         }
 
         with (
@@ -942,9 +942,7 @@ class TestRefreshEndpoint:
             new_callable=AsyncMock,
             return_value=("new.access", "new.refresh"),
         ):
-            result = await refresh(
-                request=mock_request, response=mock_response, refresh_token="valid.refresh.token"
-            )
+            result = await refresh(request=mock_request, response=mock_response, refresh_token="valid.refresh.token")
 
         assert isinstance(result, RefreshResponse)
         assert "renovados" in result.message
@@ -981,9 +979,7 @@ class TestRefreshEndpoint:
             ),
             pytest.raises(HTTPException) as exc_info,
         ):
-            await refresh(
-                request=mock_request, response=mock_response, refresh_token="invalid.token"
-            )
+            await refresh(request=mock_request, response=mock_response, refresh_token="invalid.token")
 
         assert exc_info.value.status_code == 401
 
@@ -1029,9 +1025,7 @@ class TestGoogleOAuthCallback:
             patch("app.services.auth.uuid.uuid4", return_value=user_id),
             patch("app.services.auth.create_token_pair", return_value=("acc", "ref")),
         ):
-            access, refresh, onboarding = await google_oauth_callback(
-                code="authcode", db=mock_db
-            )
+            access, refresh, onboarding = await google_oauth_callback(code="authcode", db=mock_db)
 
         assert access == "acc"
         assert refresh == "ref"
@@ -1187,9 +1181,7 @@ class TestGoogleOAuthEndpoints:
         mock_redis.get.return_value = None  # state não encontrado
 
         with patch("app.api.v1.endpoints.auth.get_redis", return_value=mock_redis):
-            response = await google_callback(
-                db=mock_db, code="somecode", state="invalidstate", error=None
-            )
+            response = await google_callback(db=mock_db, code="somecode", state="invalidstate", error=None)
 
         assert response.status_code == 303
         assert "login?error=oauth_failed" in response.headers["location"]
@@ -1210,9 +1202,7 @@ class TestGoogleOAuthEndpoints:
                 return_value=("acc.tok", "ref.tok", True),
             ),
         ):
-            response = await google_callback(
-                db=mock_db, code="validcode", state="validstate", error=None
-            )
+            response = await google_callback(db=mock_db, code="validcode", state="validstate", error=None)
 
         assert response.status_code == 303
         # redireciona para / quando onboarding_completed=True
@@ -1226,9 +1216,7 @@ class TestGoogleOAuthEndpoints:
 
         mock_db = AsyncMock()
 
-        response = await google_callback(
-            db=mock_db, code=None, state=None, error="access_denied"
-        )
+        response = await google_callback(db=mock_db, code=None, state=None, error="access_denied")
 
         assert response.status_code == 303
         assert "login?error=oauth_failed" in response.headers["location"]
@@ -1249,9 +1237,7 @@ class TestGoogleOAuthEndpoints:
                 side_effect=AuthError("Falha OAuth", status_code=400),
             ),
         ):
-            response = await google_callback(
-                db=mock_db, code="badcode", state="validstate", error=None
-            )
+            response = await google_callback(db=mock_db, code="badcode", state="validstate", error=None)
 
         assert response.status_code == 303
         assert "login?error=oauth_failed" in response.headers["location"]

@@ -42,17 +42,14 @@ async def upload_chat_media(
 
     if content_type not in _ALLOWED_CONTENT_TYPES:
         raise MediaError(
-            f"Tipo de arquivo não suportado: {content_type}. "
-            f"Permitidos: {', '.join(sorted(_ALLOWED_CONTENT_TYPES))}",
+            f"Tipo de arquivo não suportado: {content_type}. Permitidos: {', '.join(sorted(_ALLOWED_CONTENT_TYPES))}",
             status_code=415,
         )
 
     file_uuid = str(uuid.uuid4())
 
     try:
-        result: dict = await asyncio.to_thread(
-            process_media_upload, data, str(group_id), file_uuid
-        )
+        result: dict = await asyncio.to_thread(process_media_upload, data, str(group_id), file_uuid)
     except ValueError as exc:
         raise MediaError(str(exc), status_code=400) from exc
 

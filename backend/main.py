@@ -72,6 +72,7 @@ if settings.SENTRY_DSN:
 
 # ── DB startup probe with exponential backoff ─────────────────────────────────
 
+
 @retry(
     stop=stop_after_attempt(10),
     # 2^1=2s, 2^2=4s … 2^9=512s — capped at 60s per wait
@@ -86,6 +87,7 @@ async def _wait_for_db() -> None:
 
 
 # ── Application lifespan ──────────────────────────────────────────────────────
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -135,6 +137,7 @@ app.add_middleware(BodySizeLimitMiddleware)
 
 
 # ── Exception handlers ────────────────────────────────────────────────────────
+
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:

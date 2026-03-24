@@ -146,9 +146,7 @@ async def _emit_badge_event(
 # Each returns (condition_met: bool, context_for_award: dict)
 
 
-async def _check_first_blood(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_first_blood(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     round_id_str = ctx.get("round_id")
     if not round_id_str:
         return False, {}
@@ -186,9 +184,7 @@ async def _check_first_blood(
 
 def _make_review_count_checker(threshold: int) -> Any:
     async def _check(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
-        result = await db.execute(
-            select(func.count(BookReview.id)).where(BookReview.user_id == user_id)
-        )
+        result = await db.execute(select(func.count(BookReview.id)).where(BookReview.user_id == user_id))
         count = int(result.scalar_one() or 0)
         return count >= threshold, {}
 
@@ -198,9 +194,7 @@ def _make_review_count_checker(threshold: int) -> Any:
 _check_bookworm = _make_review_count_checker(5)
 
 
-async def _check_speed_reader(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_speed_reader(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     round_id_str = ctx.get("round_id")
     if not round_id_str:
         return False, {}
@@ -230,14 +224,10 @@ async def _check_speed_reader(
     return days_taken < 7, ctx
 
 
-async def _check_variety(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_variety(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     rounds_result = await db.execute(
         select(Round.book_genres).where(
-            Round.id.in_(
-                select(BookReview.round_id).where(BookReview.user_id == user_id)
-            ),
+            Round.id.in_(select(BookReview.round_id).where(BookReview.user_id == user_id)),
             Round.book_genres.isnot(None),
         )
     )
@@ -250,9 +240,7 @@ async def _check_variety(
 _check_reviewer = _make_review_count_checker(10)
 
 
-async def _check_crybaby(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_crybaby(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     result = await db.execute(
         select(func.count(BookReview.id)).where(
             BookReview.user_id == user_id,
@@ -263,9 +251,7 @@ async def _check_crybaby(
     return count >= 3, {}
 
 
-async def _check_hot_take(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_hot_take(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     round_id_str = ctx.get("round_id")
     group_id_str = ctx.get("group_id")
     if not round_id_str or not group_id_str:
@@ -297,9 +283,7 @@ async def _check_hot_take(
     return True, ctx
 
 
-async def _check_romantic(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_romantic(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     result = await db.execute(
         select(func.count(BookReview.id)).where(
             BookReview.user_id == user_id,
@@ -310,9 +294,7 @@ async def _check_romantic(
     return count >= 5, {}
 
 
-async def _check_social_butterfly(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_social_butterfly(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     group_id_str = ctx.get("group_id")
     if not group_id_str:
         return False, {}
@@ -343,25 +325,19 @@ _check_streak_30 = _make_streak_checker(30)
 _check_streak_100 = _make_streak_checker(100)
 
 
-async def _check_marathon(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_marathon(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     duration_str = ctx.get("duration_minutes")
     if duration_str and int(duration_str) >= 120:
         return True, ctx
     # Also check historical max
     result = await db.execute(
-        select(func.max(ReadingSession.duration_minutes)).where(
-            ReadingSession.user_id == user_id
-        )
+        select(func.max(ReadingSession.duration_minutes)).where(ReadingSession.user_id == user_id)
     )
     max_duration = result.scalar_one_or_none() or 0
     return max_duration >= 120, ctx
 
 
-async def _check_night_owl(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_night_owl(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     # Count sessions started between midnight and 5am (UTC, simplified)
     result = await db.execute(
         select(func.count(ReadingSession.id)).where(
@@ -374,9 +350,7 @@ async def _check_night_owl(
     return count >= 5, {}
 
 
-async def _check_founder(
-    db: Any, user_id: uuid.UUID, ctx: dict[str, str]
-) -> tuple[bool, dict]:
+async def _check_founder(db: Any, user_id: uuid.UUID, ctx: dict[str, str]) -> tuple[bool, dict]:
     result = await db.execute(
         select(func.count(Group.id)).where(
             Group.created_by == user_id,

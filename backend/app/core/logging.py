@@ -43,9 +43,7 @@ def _mask_email_addr(email: str) -> str:
     return f"u***@***.{tld}"
 
 
-def _pii_filter_processor(
-    logger: Any, method: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+def _pii_filter_processor(logger: Any, method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Structlog processor que mascara PII antes de emitir o log."""
     sanitized: dict[str, Any] = {}
     for key, value in event_dict.items():

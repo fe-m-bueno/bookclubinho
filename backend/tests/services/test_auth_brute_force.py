@@ -19,6 +19,7 @@ from tests.conftest import make_user
 
 # ── _hash_email ────────────────────────────────────────────────────────────────
 
+
 class TestHashEmail:
     def test_returns_64_char_hex(self) -> None:
         result = _hash_email("user@example.com")
@@ -33,6 +34,7 @@ class TestHashEmail:
 
 
 # ── Redis helpers ─────────────────────────────────────────────────────────────
+
 
 class TestBruteForceHelpers:
     @pytest.mark.asyncio
@@ -104,6 +106,7 @@ class TestBruteForceHelpers:
 
 # ── authenticate_user — brute force ─────────────────────────────────────────
 
+
 def _make_redis(*, locked: bool = False, fail_count: int = 0) -> AsyncMock:
     mock_redis = AsyncMock()
     # is_login_locked check
@@ -153,7 +156,8 @@ class TestAuthenticateUserBruteForce:
 
         with (
             patch("app.services.auth.get_redis", return_value=mock_redis),
-            patch("app.services.auth.verify_password", return_value=False),pytest.raises(AuthError)
+            patch("app.services.auth.verify_password", return_value=False),
+            pytest.raises(AuthError),
         ):
             await authenticate_user(db=db, email="user@example.com", password="wrong")
 
@@ -194,7 +198,8 @@ class TestAuthenticateUserBruteForce:
         with (
             patch("app.services.auth.get_redis", return_value=mock_redis),
             patch("app.services.auth.verify_password", return_value=False),
-            patch("app.services.auth.asyncio.create_task"),pytest.raises(AuthError)
+            patch("app.services.auth.asyncio.create_task"),
+            pytest.raises(AuthError),
         ):
             await authenticate_user(db=db, email="user@example.com", password="wrong")
 
@@ -237,7 +242,8 @@ class TestAuthenticateUserBruteForce:
         with (
             patch("app.services.auth.get_redis", return_value=mock_redis),
             patch("app.services.auth.verify_password", return_value=False),
-            patch("app.services.auth.asyncio.sleep", sleep_mock),pytest.raises(AuthError)
+            patch("app.services.auth.asyncio.sleep", sleep_mock),
+            pytest.raises(AuthError),
         ):
             await authenticate_user(db=db, email="user@example.com", password="wrong")
 
@@ -245,6 +251,7 @@ class TestAuthenticateUserBruteForce:
 
 
 # ── Cookie max_age ────────────────────────────────────────────────────────────
+
 
 class TestCookieMaxAge:
     def test_set_auth_cookies_includes_max_age(self) -> None:

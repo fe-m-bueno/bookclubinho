@@ -263,6 +263,7 @@ email_service = EmailService()
 
 # ── Backward-compatible sync wrappers (callers unchanged) ─────────────────────
 
+
 def send_verification_email(to_email: str, display_name: str, verify_url: str) -> None:
     """Send email verification link — sync wrapper for asyncio.to_thread callers."""
     html = email_service._render(

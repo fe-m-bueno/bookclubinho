@@ -22,9 +22,9 @@ from app.services.email import send_email_change_email
 
 logger = structlog.get_logger(__name__)
 
-_EMAIL_CHANGE_TTL = 3600          # 1 hour
-_EMAIL_CHANGE_RATE_MAX = 3        # max requests per 24h
-_EMAIL_CHANGE_RATE_TTL = 86400    # 24 hours
+_EMAIL_CHANGE_TTL = 3600  # 1 hour
+_EMAIL_CHANGE_RATE_MAX = 3  # max requests per 24h
+_EMAIL_CHANGE_RATE_TTL = 86400  # 24 hours
 
 
 class AccountError(ServiceError):
@@ -81,9 +81,7 @@ async def initiate_email_change(
     count_raw = await redis.get(rate_key)
     count = int(count_raw) if count_raw else 0
     if count >= _EMAIL_CHANGE_RATE_MAX:
-        raise AccountError(
-            "Muitas tentativas de troca de e-mail. Aguarde 24 horas.", status_code=429
-        )
+        raise AccountError("Muitas tentativas de troca de e-mail. Aguarde 24 horas.", status_code=429)
 
     # Generate and store token
     token = secrets.token_urlsafe(32)

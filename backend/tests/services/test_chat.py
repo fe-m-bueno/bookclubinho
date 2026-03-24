@@ -22,6 +22,7 @@ from app.services.chat import (
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(autouse=True)
 def mock_check_flood():
     """Bypass Redis flood check in all chat service unit tests."""
@@ -156,8 +157,10 @@ async def test_create_message_sanitizes_content_text() -> None:
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 
-    with patch("app.services.chat.sanitize", return_value="Hello") as mock_sanitize, \
-         patch("app.services.chat._emit_chat_event", new=AsyncMock()):
+    with (
+        patch("app.services.chat.sanitize", return_value="Hello") as mock_sanitize,
+        patch("app.services.chat._emit_chat_event", new=AsyncMock()),
+    ):
         await create_message(db, group_id=group_id, user_id=user_id, data=data)
 
     mock_sanitize.assert_called_once_with("<script>evil()</script>Hello")
@@ -207,8 +210,10 @@ async def test_edit_message_success_within_window() -> None:
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 
-    with patch("app.services.chat._emit_chat_event", new=AsyncMock()), \
-         patch("app.services.chat.sanitize", return_value="Updated text"):
+    with (
+        patch("app.services.chat._emit_chat_event", new=AsyncMock()),
+        patch("app.services.chat.sanitize", return_value="Updated text"),
+    ):
         result = await edit_message(db, message_id=msg.id, user_id=user_id, data=data)
 
     assert result is msg
@@ -378,9 +383,7 @@ async def test_list_messages_with_cursor() -> None:
     res_counts.__iter__ = MagicMock(return_value=iter([]))
     db.execute = AsyncMock(side_effect=[res_member, res_messages, res_counts])
 
-    result, _reply_counts, next_cursor = await list_messages(
-        db, group_id=group_id, user_id=user_id, limit=limit
-    )
+    result, _reply_counts, next_cursor = await list_messages(db, group_id=group_id, user_id=user_id, limit=limit)
 
     assert len(result) == 2
     assert next_cursor is not None
@@ -436,9 +439,7 @@ async def test_toggle_reaction_adds_new() -> None:
     db.flush = AsyncMock()
 
     with patch("app.services.chat._emit_chat_event", new=AsyncMock()):
-        added, returned_group_id = await toggle_reaction(
-            db, message_id=msg.id, user_id=user_id, emoji="👍"
-        )
+        added, returned_group_id = await toggle_reaction(db, message_id=msg.id, user_id=user_id, emoji="👍")
 
     assert added is True
     assert returned_group_id == group_id
@@ -465,9 +466,7 @@ async def test_toggle_reaction_removes_existing() -> None:
     db.flush = AsyncMock()
 
     with patch("app.services.chat._emit_chat_event", new=AsyncMock()):
-        added, returned_group_id = await toggle_reaction(
-            db, message_id=msg.id, user_id=user_id, emoji="👍"
-        )
+        added, returned_group_id = await toggle_reaction(db, message_id=msg.id, user_id=user_id, emoji="👍")
 
     assert added is False
     assert returned_group_id == group_id
@@ -553,6 +552,4 @@ async def test_emit_chat_event_uses_maxlen() -> None:
 
     mock_redis.xadd.assert_called_once()
     call_kwargs = mock_redis.xadd.call_args
-    assert call_kwargs.kwargs.get("maxlen") == 10000 or (
-        len(call_kwargs.args) > 2 and call_kwargs.args[2] == 10000
-    )
+    assert call_kwargs.kwargs.get("maxlen") == 10000 or (len(call_kwargs.args) > 2 and call_kwargs.args[2] == 10000)

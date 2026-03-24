@@ -107,9 +107,7 @@ class TestGetProfileByUsername:
             "app.api.v1.endpoints.users.get_public_profile_by_username",
             new_callable=AsyncMock,
         ) as mock_profile:
-            mock_profile.side_effect = ProfileError(
-                "Usuário não encontrado.", status_code=404
-            )
+            mock_profile.side_effect = ProfileError("Usuário não encontrado.", status_code=404)
             resp = self.client.get("/api/v1/users/by-username/ghostuser/profile")
         assert resp.status_code == 404
         assert "não encontrado" in resp.json()["detail"]

@@ -29,7 +29,7 @@ def run_migrations_offline() -> None:
     Useful for reviewing migrations or running them manually.
     """
     context.configure(
-        url=_build_url(),          # always uses the asyncpg-normalised URL
+        url=_build_url(),  # always uses the asyncpg-normalised URL
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

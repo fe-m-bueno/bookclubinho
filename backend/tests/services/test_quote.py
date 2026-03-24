@@ -283,12 +283,12 @@ async def test_list_quotes_returns_results() -> None:
     # Simula uma row de resultado com os campos acessados por índice
     row = MagicMock()
     row.__getitem__ = lambda self, i: [
-        quote,        # HallOfQuote
-        "leitora",    # username
-        "Leitora",    # display_name
-        None,         # avatar_url
-        0,            # vote_count
-        False,        # did_i_vote
+        quote,  # HallOfQuote
+        "leitora",  # username
+        "Leitora",  # display_name
+        None,  # avatar_url
+        0,  # vote_count
+        False,  # did_i_vote
     ][i]
 
     db = AsyncMock()
@@ -296,9 +296,7 @@ async def test_list_quotes_returns_results() -> None:
     res.all.return_value = [row]
     db.execute = AsyncMock(return_value=res)
 
-    quotes, next_cursor = await list_quotes(
-        db, group_id=group_id, user_id=user_id, limit=20
-    )
+    quotes, next_cursor = await list_quotes(db, group_id=group_id, user_id=user_id, limit=20)
 
     assert len(quotes) == 1
     assert next_cursor is None
@@ -314,9 +312,7 @@ async def test_list_quotes_pagination_cursor() -> None:
 
     def _make_row(quote: MagicMock) -> MagicMock:
         row = MagicMock()
-        row.__getitem__ = lambda self, i: [
-            quote, "user", "User", None, 0, False
-        ][i]
+        row.__getitem__ = lambda self, i: [quote, "user", "User", None, 0, False][i]
         return row
 
     quotes_list = [_make_quote(group_id=group_id) for _ in range(3)]
@@ -327,9 +323,7 @@ async def test_list_quotes_pagination_cursor() -> None:
     res.all.return_value = rows  # 3 rows retornadas para limit=2
     db.execute = AsyncMock(return_value=res)
 
-    result_quotes, next_cursor = await list_quotes(
-        db, group_id=group_id, user_id=user_id, limit=limit
-    )
+    result_quotes, next_cursor = await list_quotes(db, group_id=group_id, user_id=user_id, limit=limit)
 
     assert len(result_quotes) == limit
     assert next_cursor is not None

@@ -37,7 +37,7 @@ from app.core.config import settings
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-WEBP_QUALITY: Final = 85          # good balance of quality vs. file size
+WEBP_QUALITY: Final = 85  # good balance of quality vs. file size
 WEBP_CONTENT_TYPE: Final = "image/webp"
 GIF_CONTENT_TYPE: Final = "image/gif"
 
@@ -51,8 +51,8 @@ _PRESIGNED_GET_EXPIRY: Final = 3600  # 1 hour
 # (max_longest_side, square_crop)
 _RESIZE_RULES: Final[dict[str, tuple[int, bool]]] = {
     "avatars/": (256, True),
-    "groups/":  (512, True),
-    "media/":   (1200, False),
+    "groups/": (512, True),
+    "media/": (1200, False),
 }
 
 # Magic-byte signatures → human label (for error messages only)
@@ -69,6 +69,7 @@ _WEBP_MARKER: Final = b"WEBP"
 
 
 # ── Boto3 client factory ──────────────────────────────────────────────────────
+
 
 @functools.lru_cache(maxsize=1)
 def _client() -> boto3.client:  # type: ignore[name-defined]
@@ -88,6 +89,7 @@ def _client() -> boto3.client:  # type: ignore[name-defined]
 
 
 # ── Image validation ──────────────────────────────────────────────────────────
+
 
 def _is_image_content_type(content_type: str) -> bool:
     return content_type.startswith("image/")
@@ -110,6 +112,7 @@ def _validate_magic_bytes(data: bytes) -> None:
 
 
 # ── Image processing ──────────────────────────────────────────────────────────
+
 
 def _resize_rule(bucket_path: str) -> tuple[int, bool]:
     """Return (max_px, square_crop) for a given bucket path prefix."""
@@ -282,18 +285,22 @@ def _ensure_bucket() -> None:
 
     # Allow anonymous reads only for public prefixes (avatars/, groups/).
     # media/ and exports/ remain private — accessed via presigned GET URLs.
-    policy = json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": "*",
-            "Action": ["s3:GetObject"],
-            "Resource": [
-                f"arn:aws:s3:::{bucket}/avatars/*",
-                f"arn:aws:s3:::{bucket}/groups/*",
+    policy = json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": ["s3:GetObject"],
+                    "Resource": [
+                        f"arn:aws:s3:::{bucket}/avatars/*",
+                        f"arn:aws:s3:::{bucket}/groups/*",
+                    ],
+                }
             ],
-        }],
-    })
+        }
+    )
     client.put_bucket_policy(Bucket=bucket, Policy=policy)
     _bucket_ensured = True
 

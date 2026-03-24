@@ -22,10 +22,10 @@ def _build_url() -> str:
 engine = create_async_engine(
     _build_url(),
     echo=settings.DEBUG,
-    pool_pre_ping=True,   # reconnect after idle connection drop
+    pool_pre_ping=True,  # reconnect after idle connection drop
     pool_size=5,
     max_overflow=10,
-    pool_recycle=3600,    # recycle connections after 1h to avoid stale connections
+    pool_recycle=3600,  # recycle connections after 1h to avoid stale connections
     connect_args={
         "server_settings": {
             # Kill queries that run longer than 30s to prevent resource exhaustion

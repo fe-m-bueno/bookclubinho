@@ -153,15 +153,18 @@ async def fetch_link_preview(url: str) -> LinkPreviewData | None:
 
     # --- fetch ---
     try:
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=_REQUEST_TIMEOUT,
-            headers={
-                "User-Agent": "Bookclubinho/1.0 (+https://bookclubinho.com)",
-                "Accept": "text/html,application/xhtml+xml",
-                "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-            },
-        ) as client, client.stream("GET", url) as response:
+        async with (
+            httpx.AsyncClient(
+                follow_redirects=True,
+                timeout=_REQUEST_TIMEOUT,
+                headers={
+                    "User-Agent": "Bookclubinho/1.0 (+https://bookclubinho.com)",
+                    "Accept": "text/html,application/xhtml+xml",
+                    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+                },
+            ) as client,
+            client.stream("GET", url) as response,
+        ):
             if response.status_code >= 400:
                 return None
             content_type = response.headers.get("content-type", "")

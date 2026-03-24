@@ -290,9 +290,7 @@ async def test_list_my_sessions_pagination_cursor() -> None:
     db.execute = AsyncMock(side_effect=[res_update, res_sessions, res_agg])
     db.flush = AsyncMock()
 
-    result_sessions, total, next_cursor = await list_my_sessions(
-        db, user_id=user_id, limit=limit
-    )
+    result_sessions, total, next_cursor = await list_my_sessions(db, user_id=user_id, limit=limit)
 
     assert len(result_sessions) == 2
     assert next_cursor is not None

@@ -146,9 +146,7 @@ class TestCreateRound:
 
         with patch(
             "app.api.v1.endpoints.rounds.create_round",
-            new=AsyncMock(
-                side_effect=RoundError("Já existe uma rodada ativa neste clube.", status_code=409)
-            ),
+            new=AsyncMock(side_effect=RoundError("Já existe uma rodada ativa neste clube.", status_code=409)),
         ):
             response = client.post(
                 f"/api/v1/groups/{GROUP_ID}/rounds",
@@ -164,9 +162,7 @@ class TestCreateRound:
 
         with patch(
             "app.api.v1.endpoints.rounds.create_round",
-            new=AsyncMock(
-                side_effect=RoundError("O prazo deve ser uma data futura.", status_code=422)
-            ),
+            new=AsyncMock(side_effect=RoundError("O prazo deve ser uma data futura.", status_code=422)),
         ):
             response = client.post(
                 f"/api/v1/groups/{GROUP_ID}/rounds",
@@ -337,11 +333,7 @@ class TestUpdateRound:
             ),
             patch(
                 "app.api.v1.endpoints.rounds.update_round",
-                new=AsyncMock(
-                    side_effect=RoundError(
-                        "Informe ao menos um campo para atualizar.", status_code=422
-                    )
-                ),
+                new=AsyncMock(side_effect=RoundError("Informe ao menos um campo para atualizar.", status_code=422)),
             ),
         ):
             response = client.patch(
@@ -386,11 +378,7 @@ class TestUpdateRound:
 
         with patch(
             "app.api.v1.endpoints.rounds.verify_round_admin",
-            new=AsyncMock(
-                side_effect=RoundError(
-                    "Apenas administradores podem realizar esta ação.", status_code=403
-                )
-            ),
+            new=AsyncMock(side_effect=RoundError("Apenas administradores podem realizar esta ação.", status_code=403)),
         ):
             response = client.patch(
                 f"/api/v1/rounds/{round_id}",
@@ -406,9 +394,7 @@ class TestUpdateRound:
 
         with patch(
             "app.api.v1.endpoints.rounds.verify_round_admin",
-            new=AsyncMock(
-                side_effect=RoundError("Rodada não encontrada.", status_code=404)
-            ),
+            new=AsyncMock(side_effect=RoundError("Rodada não encontrada.", status_code=404)),
         ):
             response = client.patch(
                 f"/api/v1/rounds/{round_id}",
@@ -475,9 +461,7 @@ class TestDeleteRound:
 
         with patch(
             "app.api.v1.endpoints.rounds.verify_round_admin",
-            new=AsyncMock(
-                side_effect=RoundError("Rodada não encontrada.", status_code=404)
-            ),
+            new=AsyncMock(side_effect=RoundError("Rodada não encontrada.", status_code=404)),
         ):
             response = client.delete(f"/api/v1/rounds/{round_id}")
 

@@ -1,4 +1,5 @@
 """User session management — list, revoke, revoke-all-others."""
+
 from __future__ import annotations
 
 import asyncio
@@ -96,9 +97,7 @@ async def revoke_all_other_sessions(
         s.revoked_at = now
     # Blacklist all JTIs in parallel
     if sessions:
-        await asyncio.gather(
-            *[blacklist_jti(redis, s.refresh_token_jti) for s in sessions]
-        )
+        await asyncio.gather(*[blacklist_jti(redis, s.refresh_token_jti) for s in sessions])
     count = len(sessions)
     logger.info("sessions_revoked_all_others", user_id=str(user_id), count=count)
     return count

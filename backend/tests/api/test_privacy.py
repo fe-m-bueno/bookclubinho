@@ -71,10 +71,13 @@ class TestDataExport:
 
     def test_data_export_success(self) -> None:
         cooldown = datetime(2026, 3, 21, tzinfo=UTC)
-        with patch(
-            "app.api.v1.endpoints.users.request_data_export",
-            new_callable=AsyncMock,
-        ) as mock_export, patch("app.api.v1.endpoints.users.get_redis", return_value=MagicMock()):
+        with (
+            patch(
+                "app.api.v1.endpoints.users.request_data_export",
+                new_callable=AsyncMock,
+            ) as mock_export,
+            patch("app.api.v1.endpoints.users.get_redis", return_value=MagicMock()),
+        ):
             mock_export.return_value = {
                 "message": "Exportação solicitada. Você receberá um link por e-mail em breve.",
                 "cooldown_until": cooldown,
@@ -117,17 +120,18 @@ class TestDeleteAccount:
     def test_delete_account_success(self) -> None:
         import json as json_mod
 
-        with patch(
-            "app.api.v1.endpoints.users.delete_account",
-            new_callable=AsyncMock,
-        ) as mock_delete, patch("app.api.v1.endpoints.users.get_redis", return_value=MagicMock()):
+        with (
+            patch(
+                "app.api.v1.endpoints.users.delete_account",
+                new_callable=AsyncMock,
+            ) as mock_delete,
+            patch("app.api.v1.endpoints.users.get_redis", return_value=MagicMock()),
+        ):
             mock_delete.return_value = None
             resp = self.client.request(
                 "DELETE",
                 "/api/v1/users/me/account",
-                content=json_mod.dumps(
-                    {"confirmation": "EXCLUIR", "current_password": "mypassword123"}
-                ),
+                content=json_mod.dumps({"confirmation": "EXCLUIR", "current_password": "mypassword123"}),
                 headers={"Content-Type": "application/json"},
             )
         assert resp.status_code == 204
@@ -138,9 +142,7 @@ class TestDeleteAccount:
         resp = self.client.request(
             "DELETE",
             "/api/v1/users/me/account",
-            content=json_mod.dumps(
-                {"confirmation": "delete", "current_password": "mypassword123"}
-            ),
+            content=json_mod.dumps({"confirmation": "delete", "current_password": "mypassword123"}),
             headers={"Content-Type": "application/json"},
         )
         # Pydantic validator rejects invalid confirmation
@@ -149,19 +151,18 @@ class TestDeleteAccount:
     def test_delete_account_wrong_password(self) -> None:
         import json as json_mod
 
-        with patch(
-            "app.api.v1.endpoints.users.delete_account",
-            new_callable=AsyncMock,
-        ) as mock_delete, patch("app.api.v1.endpoints.users.get_redis", return_value=MagicMock()):
-            mock_delete.side_effect = AccountDeletionError(
-                "Senha incorreta.", status_code=400
-            )
+        with (
+            patch(
+                "app.api.v1.endpoints.users.delete_account",
+                new_callable=AsyncMock,
+            ) as mock_delete,
+            patch("app.api.v1.endpoints.users.get_redis", return_value=MagicMock()),
+        ):
+            mock_delete.side_effect = AccountDeletionError("Senha incorreta.", status_code=400)
             resp = self.client.request(
                 "DELETE",
                 "/api/v1/users/me/account",
-                content=json_mod.dumps(
-                    {"confirmation": "EXCLUIR", "current_password": "wrongpassword"}
-                ),
+                content=json_mod.dumps({"confirmation": "EXCLUIR", "current_password": "wrongpassword"}),
                 headers={"Content-Type": "application/json"},
             )
         assert resp.status_code == 400
@@ -170,10 +171,13 @@ class TestDeleteAccount:
     def test_delete_account_missing_password_local(self) -> None:
         import json as json_mod
 
-        with patch(
-            "app.api.v1.endpoints.users.delete_account",
-            new_callable=AsyncMock,
-        ) as mock_delete, patch("app.api.v1.endpoints.users.get_redis", return_value=MagicMock()):
+        with (
+            patch(
+                "app.api.v1.endpoints.users.delete_account",
+                new_callable=AsyncMock,
+            ) as mock_delete,
+            patch("app.api.v1.endpoints.users.get_redis", return_value=MagicMock()),
+        ):
             mock_delete.side_effect = AccountDeletionError(
                 "Informe sua senha para confirmar a exclusão.", status_code=400
             )

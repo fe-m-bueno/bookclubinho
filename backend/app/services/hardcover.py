@@ -205,11 +205,7 @@ class HardcoverClient:
                 return None
             book = books[0]
             cached_tags: dict = book.get("cached_tags") or {}
-            genres = [
-                entry["tag"]
-                for entry in (cached_tags.get("Genre") or [])
-                if entry.get("tag")
-            ]
+            genres = [entry["tag"] for entry in (cached_tags.get("Genre") or []) if entry.get("tag")]
             return BookDetail(
                 book_id=str(book["id"]),
                 title=book.get("title") or "",

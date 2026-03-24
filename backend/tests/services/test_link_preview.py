@@ -81,10 +81,7 @@ class TestOGParser:
         assert p.og["og:title"] == "Twitter Title"
 
     def test_og_takes_priority_over_twitter(self) -> None:
-        html = (
-            '<meta property="og:title" content="OG Title">'
-            '<meta name="twitter:title" content="Twitter Title">'
-        )
+        html = '<meta property="og:title" content="OG Title"><meta name="twitter:title" content="Twitter Title">'
         p = self._parse(html)
         assert p.og["og:title"] == "OG Title"
 
@@ -234,9 +231,7 @@ async def test_fetch_link_preview_returns_none_on_non_html() -> None:
         mock_client = AsyncMock()
         mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
-        mock_client.stream = MagicMock(
-            return_value=_make_mock_stream(b"binary", content_type="application/pdf")
-        )
+        mock_client.stream = MagicMock(return_value=_make_mock_stream(b"binary", content_type="application/pdf"))
 
         result = await fetch_link_preview("https://example.com/doc.pdf")
 

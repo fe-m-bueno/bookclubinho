@@ -36,12 +36,9 @@ def _tally_genres(genre_lists: list[list[str] | None]) -> list[dict]:
     """Count genre occurrences and return sorted list of {genre, count} dicts."""
     counts: dict[str, int] = {}
     for genres in genre_lists:
-        for genre in (genres or []):
+        for genre in genres or []:
             counts[genre] = counts.get(genre, 0) + 1
-    return [
-        {"genre": g, "count": c}
-        for g, c in sorted(counts.items(), key=lambda x: x[1], reverse=True)
-    ]
+    return [{"genre": g, "count": c} for g, c in sorted(counts.items(), key=lambda x: x[1], reverse=True)]
 
 
 def _bool_sum(col: object) -> object:
@@ -124,9 +121,7 @@ async def _compute_group_stats(
 
     # ── Member leaderboard ────────────────────────────────────────────────────
     members_result = await db.execute(
-        select(GroupMember, User)
-        .join(User, User.id == GroupMember.user_id)
-        .where(GroupMember.group_id == group_id)
+        select(GroupMember, User).join(User, User.id == GroupMember.user_id).where(GroupMember.group_id == group_id)
     )
     members_rows = members_result.all()
 
@@ -190,10 +185,7 @@ async def _compute_group_stats(
     for row in ratings_result.all():
         if row.star_rating in star_counts:
             star_counts[row.star_rating] = int(row.cnt)
-    rating_distribution = [
-        {"stars": star, "count": count}
-        for star, count in sorted(star_counts.items())
-    ]
+    rating_distribution = [{"stars": star, "count": count} for star, count in sorted(star_counts.items())]
 
     # ── Emotional stats ───────────────────────────────────────────────────────
     emotional_result = await db.execute(
@@ -234,9 +226,7 @@ async def get_round_stats(
     round_id: uuid.UUID,
 ) -> dict[str, Any]:
     """Return stats for a specific round."""
-    round_result = await db.execute(
-        select(Round).where(Round.id == round_id, Round.group_id == group_id)
-    )
+    round_result = await db.execute(select(Round).where(Round.id == round_id, Round.group_id == group_id))
     round_ = round_result.scalar_one_or_none()
     if round_ is None:
         raise StatsError("Rodada não encontrada.", status_code=404)
@@ -254,16 +244,12 @@ async def get_round_stats(
 
     # Total reading time for this round
     time_result = await db.execute(
-        select(func.coalesce(func.sum(ReadingSession.duration_minutes), 0)).where(
-            ReadingSession.round_id == round_id
-        )
+        select(func.coalesce(func.sum(ReadingSession.duration_minutes), 0)).where(ReadingSession.round_id == round_id)
     )
     total_time = int(time_result.scalar_one())
 
     # Members total in group
-    members_count_result = await db.execute(
-        select(func.count(GroupMember.id)).where(GroupMember.group_id == group_id)
-    )
+    members_count_result = await db.execute(select(func.count(GroupMember.id)).where(GroupMember.group_id == group_id))
     members_total = int(members_count_result.scalar_one() or 0)
 
     return {
@@ -290,16 +276,12 @@ async def get_user_stats(
         raise StatsError("Usuário não encontrado.", status_code=404)
 
     # Total books (reviews submitted = books completed)
-    total_books_result = await db.execute(
-        select(func.count(BookReview.id)).where(BookReview.user_id == user_id)
-    )
+    total_books_result = await db.execute(select(func.count(BookReview.id)).where(BookReview.user_id == user_id))
     total_books = int(total_books_result.scalar_one() or 0)
 
     # Total reading time
     total_time_result = await db.execute(
-        select(func.coalesce(func.sum(ReadingSession.duration_minutes), 0)).where(
-            ReadingSession.user_id == user_id
-        )
+        select(func.coalesce(func.sum(ReadingSession.duration_minutes), 0)).where(ReadingSession.user_id == user_id)
     )
     total_reading_time = int(total_time_result.scalar_one())
 
@@ -307,18 +289,14 @@ async def get_user_stats(
     # Get rounds where user has reviews
     rounds_result = await db.execute(
         select(Round.book_genres).where(
-            Round.id.in_(
-                select(BookReview.round_id).where(BookReview.user_id == user_id)
-            ),
+            Round.id.in_(select(BookReview.round_id).where(BookReview.user_id == user_id)),
             Round.book_genres.isnot(None),
         )
     )
     genres_read = _tally_genres([row[0] for row in rounds_result.all()])
 
     # Badges count
-    badges_count_result = await db.execute(
-        select(func.count(UserBadge.id)).where(UserBadge.user_id == user_id)
-    )
+    badges_count_result = await db.execute(select(func.count(UserBadge.id)).where(UserBadge.user_id == user_id))
     badges_count = int(badges_count_result.scalar_one() or 0)
 
     return {

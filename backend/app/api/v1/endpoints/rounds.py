@@ -471,9 +471,7 @@ async def finish_round_endpoint(
         "book_finished",
         badge_payload,
     )
-    members_result = await db.execute(
-        select(GroupMember.user_id).where(GroupMember.group_id == group_id)
-    )
+    members_result = await db.execute(select(GroupMember.user_id).where(GroupMember.group_id == group_id))
     for (member_id,) in members_result.all():
         if str(member_id) != str(current_user.id):
             background_tasks.add_task(

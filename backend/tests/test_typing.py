@@ -95,9 +95,7 @@ class TestTypingIndicator:
             "app.api.v1.endpoints.messages.emit_typing_event",
             new=AsyncMock(return_value=None),
         ):
-            response = client.post(
-                f"/api/v1/groups/{FAKE_GROUP_ID}/messages/typing"
-            )
+            response = client.post(f"/api/v1/groups/{FAKE_GROUP_ID}/messages/typing")
 
         assert response.status_code == 204
         assert response.content == b""
@@ -107,9 +105,7 @@ class TestTypingIndicator:
         app = _make_unauthenticated_app()
         client = TestClient(app)
 
-        response = client.post(
-            f"/api/v1/groups/{FAKE_GROUP_ID}/messages/typing"
-        )
+        response = client.post(f"/api/v1/groups/{FAKE_GROUP_ID}/messages/typing")
 
         assert response.status_code == 401
 
@@ -118,8 +114,6 @@ class TestTypingIndicator:
         app = _make_nonmember_app()
         client = TestClient(app)
 
-        response = client.post(
-            f"/api/v1/groups/{FAKE_GROUP_ID}/messages/typing"
-        )
+        response = client.post(f"/api/v1/groups/{FAKE_GROUP_ID}/messages/typing")
 
         assert response.status_code == 404

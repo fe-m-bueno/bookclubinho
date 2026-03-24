@@ -26,15 +26,17 @@ _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 # Paths exempt from CSRF validation:
 # - Auth endpoints where the client doesn't yet have a CSRF cookie
 # - OAuth/magic-link callbacks that are redirect-based
-_EXEMPT_PATHS = frozenset({
-    "/api/v1/auth/register",
-    "/api/v1/auth/login",
-    "/api/v1/auth/verify-email",
-    "/api/v1/auth/resend-verification",
-    "/api/v1/auth/magic-link",
-    "/api/v1/auth/google/callback",
-    "/api/v1/auth/magic/callback",
-})
+_EXEMPT_PATHS = frozenset(
+    {
+        "/api/v1/auth/register",
+        "/api/v1/auth/login",
+        "/api/v1/auth/verify-email",
+        "/api/v1/auth/resend-verification",
+        "/api/v1/auth/magic-link",
+        "/api/v1/auth/google/callback",
+        "/api/v1/auth/magic/callback",
+    }
+)
 
 _CSRF_COOKIE = "csrf_token"
 _CSRF_HEADER = "x-csrf-token"
@@ -44,9 +46,7 @@ _TOKEN_BYTES = 32
 class CSRFMiddleware(BaseHTTPMiddleware):
     """Enforce the double-submit cookie pattern on mutating requests."""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.method in _SAFE_METHODS:
             response = await call_next(request)
             _ensure_csrf_cookie(request, response)

@@ -1,4 +1,5 @@
 """Shared groups service — find groups two users have in common."""
+
 from __future__ import annotations
 
 import uuid

@@ -33,8 +33,7 @@ class UserUpdate(BaseModel):
         v = v.strip()
         if not USERNAME_REGEX.match(v):
             raise ValueError(
-                "Username deve começar com letra, ter 3-20 caracteres "
-                "e conter apenas letras, números e _."
+                "Username deve começar com letra, ter 3-20 caracteres e conter apenas letras, números e _."
             )
         return v
 

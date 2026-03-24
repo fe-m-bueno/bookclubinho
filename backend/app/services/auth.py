@@ -53,15 +53,18 @@ _RESEND_VERIFY_RATE_TTL = 3600  # 1 hora
 # ── Brute force protection ────────────────────────────────────────────────────
 _LOGIN_FAIL_KEY_PREFIX = "login_fail:"
 _LOGIN_LOCK_KEY_PREFIX = "login_lock:"
-_LOGIN_FAIL_TTL = 900      # 15 minutes sliding window
-_LOGIN_LOCK_TTL = 900      # 15 minutes lockout
-_LOGIN_MAX_FAILS = 10      # lock after 10 consecutive failures
+_LOGIN_FAIL_TTL = 900  # 15 minutes sliding window
+_LOGIN_LOCK_TTL = 900  # 15 minutes lockout
+_LOGIN_MAX_FAILS = 10  # lock after 10 consecutive failures
 # Valid bcrypt hash format — used as a constant-time dummy target when no real hash exists
 _DUMMY_BCRYPT_HASH = "$2b$12$notarealhashXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 
 async def _is_rate_limited(
-    key_prefix: str, identifier: str, limit: int, ttl: int,
+    key_prefix: str,
+    identifier: str,
+    limit: int,
+    ttl: int,
 ) -> bool:
     """Shared Redis INCR-based rate limiter. Returns True if over limit."""
     redis_client = get_redis()
@@ -227,9 +230,7 @@ async def register_user(
 
     # Generate verification token and store in Redis
     token = secrets.token_urlsafe(32)
-    verify_url = (
-        f"{settings.APP_URL.rstrip('/')}/auth/verify-email?token={token}"
-    )
+    verify_url = f"{settings.APP_URL.rstrip('/')}/auth/verify-email?token={token}"
 
     redis_client = get_redis()
     await redis_client.set(
@@ -262,8 +263,10 @@ async def resend_verification_email(db: AsyncSession, email: str) -> None:
     email_lower = email.lower().strip()
 
     if await _is_rate_limited(
-        _RESEND_VERIFY_RATE_KEY_PREFIX, email_lower,
-        _RESEND_VERIFY_RATE_LIMIT, _RESEND_VERIFY_RATE_TTL,
+        _RESEND_VERIFY_RATE_KEY_PREFIX,
+        email_lower,
+        _RESEND_VERIFY_RATE_LIMIT,
+        _RESEND_VERIFY_RATE_TTL,
     ):
         logger.info("resend_verification_rate_limited", email=email_lower)
         return
@@ -342,8 +345,10 @@ async def send_magic_link(db: AsyncSession, email: str) -> None:
     email_lower = email.lower().strip()
 
     if await _is_rate_limited(
-        _MAGIC_RATE_KEY_PREFIX, email_lower,
-        _MAGIC_RATE_LIMIT, _MAGIC_RATE_TTL,
+        _MAGIC_RATE_KEY_PREFIX,
+        email_lower,
+        _MAGIC_RATE_LIMIT,
+        _MAGIC_RATE_TTL,
     ):
         logger.info("magic_link_rate_limited", email=email_lower)
         return
@@ -421,7 +426,8 @@ async def consume_magic_token(
     user.last_login_at = datetime.now(UTC)
 
     access_token, refresh_token = create_token_pair(
-        str(user.id), onboarding_completed=user.onboarding_completed,
+        str(user.id),
+        onboarding_completed=user.onboarding_completed,
     )
 
     await _create_session(db, user.id, refresh_token, user_agent, client_ip)
@@ -512,7 +518,8 @@ async def google_oauth_callback(
     user.last_login_at = datetime.now(UTC)
 
     access_token, refresh_token = create_token_pair(
-        str(user.id), onboarding_completed=user.onboarding_completed,
+        str(user.id),
+        onboarding_completed=user.onboarding_completed,
     )
 
     await _create_session(db, user.id, refresh_token, user_agent, client_ip)
@@ -586,7 +593,8 @@ async def authenticate_user(
     user.last_login_at = datetime.now(UTC)
 
     access_token, refresh_token = create_token_pair(
-        str(user.id), onboarding_completed=user.onboarding_completed,
+        str(user.id),
+        onboarding_completed=user.onboarding_completed,
     )
 
     await _create_session(db, user.id, refresh_token, user_agent, client_ip)
@@ -658,12 +666,11 @@ async def rotate_refresh_token(
     if exp is not None:
         remaining_ttl = max(0, int(exp - datetime.now(UTC).timestamp()))
         if remaining_ttl > 0:
-            await redis_client.set(
-                f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl
-            )
+            await redis_client.set(f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl)
 
     new_access, new_refresh = create_token_pair(
-        user_id, onboarding_completed=payload.get("onb", False),
+        user_id,
+        onboarding_completed=payload.get("onb", False),
     )
 
     # Update session record if db is available (best-effort — no crash on failure)

@@ -89,9 +89,7 @@ class TestConnectHardcover:
             "app.api.v1.endpoints.integrations.connect_hardcover",
             new_callable=AsyncMock,
         ) as mock_connect:
-            mock_connect.side_effect = IntegrationError(
-                "Token Hardcover inválido.", status_code=400
-            )
+            mock_connect.side_effect = IntegrationError("Token Hardcover inválido.", status_code=400)
             resp = self.client.post(
                 "/api/v1/integrations/hardcover",
                 json={"token": "bad_token"},

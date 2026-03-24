@@ -33,7 +33,6 @@ def _make_gif_bytes(width: int = 100, height: int = 100) -> bytes:
     return buf.getvalue()
 
 
-
 # ── _is_gif ───────────────────────────────────────────────────────────────────
 
 
@@ -161,5 +160,3 @@ def test_process_media_upload_rejects_invalid_magic_bytes() -> None:
 
     with pytest.raises(ValueError, match="imagem válida"):
         process_media_upload(invalid_bytes, "group-123", "file-uuid-3")
-
-

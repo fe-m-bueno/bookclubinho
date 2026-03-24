@@ -497,9 +497,7 @@ async def test_add_nomination_sanitizes_pitch() -> None:
 # ── remove_nomination ─────────────────────────────────────────────────────────
 
 
-def _db_for_remove_nomination(
-    round_: MagicMock, member: MagicMock, nomination: MagicMock | None
-) -> AsyncMock:
+def _db_for_remove_nomination(round_: MagicMock, member: MagicMock, nomination: MagicMock | None) -> AsyncMock:
     db = AsyncMock()
     res_round = MagicMock()
     res_round.scalar_one_or_none.return_value = round_
@@ -614,9 +612,7 @@ async def test_start_voting_success() -> None:
 @pytest.mark.asyncio
 async def test_start_voting_wrong_status() -> None:
     user_id = uuid.uuid4()
-    round_ = _make_round(
-        status=RoundStatus.VOTING, nominations=[_make_nomination(), _make_nomination()]
-    )
+    round_ = _make_round(status=RoundStatus.VOTING, nominations=[_make_nomination(), _make_nomination()])
     member = _make_member(user_id=user_id, role="admin")
     db = _db_for_admin_action(round_, member)
 
@@ -776,9 +772,7 @@ async def test_finalize_round_no_votes() -> None:
 @pytest.mark.asyncio
 async def test_finalize_round_success_clear_winner() -> None:
     user_id = uuid.uuid4()
-    winner_nom = _make_nomination(
-        book_id="winner", book_title="O Vencedor", votes=[_make_vote(), _make_vote()]
-    )
+    winner_nom = _make_nomination(book_id="winner", book_title="O Vencedor", votes=[_make_vote(), _make_vote()])
     loser_nom = _make_nomination(book_id="loser", book_title="O Perdedor", votes=[_make_vote()])
     round_ = _make_round(status=RoundStatus.VOTING, nominations=[winner_nom, loser_nom])
     member = _make_member(user_id=user_id, role="admin")
@@ -805,8 +799,9 @@ async def test_finalize_round_tiebreak() -> None:
     member = _make_member(user_id=user_id, role="admin")
     db = _db_for_finalize(round_, member, vote_counts=[(nom_a.id, 1), (nom_b.id, 1)])
 
-    with patch("app.services.round.secrets.choice", return_value=nom_a), patch(
-        "app.services.round.get_redis", return_value=AsyncMock()
+    with (
+        patch("app.services.round.secrets.choice", return_value=nom_a),
+        patch("app.services.round.get_redis", return_value=AsyncMock()),
     ):
         result = await finalize_round(db, round_id=round_.id, user_id=user_id)
 
@@ -853,9 +848,7 @@ async def test_finalize_round_sets_deadline() -> None:
     future_date = date(2099, 12, 31)
 
     with patch("app.services.round.get_redis", return_value=AsyncMock()):
-        result = await finalize_round(
-            db, round_id=round_.id, user_id=user_id, deadline=future_date
-        )
+        result = await finalize_round(db, round_id=round_.id, user_id=user_id, deadline=future_date)
     assert result.deadline == future_date
 
 

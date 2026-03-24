@@ -29,8 +29,16 @@ class TestPreferencesRequest:
 
     def test_exceeds_max_raises(self) -> None:
         genres = [
-            "fantasia", "sci-fi", "romance", "misterio", "thriller",
-            "terror", "biografia", "autoajuda", "poesia", "historia",
+            "fantasia",
+            "sci-fi",
+            "romance",
+            "misterio",
+            "thriller",
+            "terror",
+            "biografia",
+            "autoajuda",
+            "poesia",
+            "historia",
             "filosofia",
         ]
         with pytest.raises(ValidationError, match="máximo 10"):
@@ -104,9 +112,7 @@ class TestUpdateProfile:
         mock_db = AsyncMock()
 
         with pytest.raises(OnboardingError, match="3-20 caracteres"):
-            await update_profile(
-                db=mock_db, user=user, username="ab", display_name="Test User"
-            )
+            await update_profile(db=mock_db, user=user, username="ab", display_name="Test User")
 
     @pytest.mark.asyncio
     async def test_username_starts_with_number(self) -> None:
@@ -116,9 +122,7 @@ class TestUpdateProfile:
         mock_db = AsyncMock()
 
         with pytest.raises(OnboardingError, match="começar com letra"):
-            await update_profile(
-                db=mock_db, user=user, username="1abc", display_name="Test User"
-            )
+            await update_profile(db=mock_db, user=user, username="1abc", display_name="Test User")
 
     @pytest.mark.asyncio
     async def test_username_invalid_chars(self) -> None:
@@ -128,9 +132,7 @@ class TestUpdateProfile:
         mock_db = AsyncMock()
 
         with pytest.raises(OnboardingError, match="começar com letra"):
-            await update_profile(
-                db=mock_db, user=user, username="user@name", display_name="Test"
-            )
+            await update_profile(db=mock_db, user=user, username="user@name", display_name="Test")
 
     @pytest.mark.asyncio
     async def test_username_duplicate(self) -> None:
@@ -141,9 +143,7 @@ class TestUpdateProfile:
         mock_db = mock_db_returning(existing)  # conflict found
 
         with pytest.raises(OnboardingError, match="já está em uso"):
-            await update_profile(
-                db=mock_db, user=user, username="taken", display_name="Test User"
-            )
+            await update_profile(db=mock_db, user=user, username="taken", display_name="Test User")
 
     @pytest.mark.asyncio
     async def test_resave_own_username(self) -> None:
@@ -153,9 +153,7 @@ class TestUpdateProfile:
         # Return None = no conflict (self is excluded in the query)
         mock_db = mock_db_returning(None)
 
-        await update_profile(
-            db=mock_db, user=user, username="myuser", display_name="My Name"
-        )
+        await update_profile(db=mock_db, user=user, username="myuser", display_name="My Name")
 
         assert user.username == "myuser"
 
@@ -167,9 +165,7 @@ class TestUpdateProfile:
         mock_db = mock_db_returning(None)  # no username conflict
 
         with pytest.raises(OnboardingError, match="pelo menos 2"):
-            await update_profile(
-                db=mock_db, user=user, username="validuser", display_name="A"
-            )
+            await update_profile(db=mock_db, user=user, username="validuser", display_name="A")
 
     @pytest.mark.asyncio
     async def test_display_name_too_long(self) -> None:
@@ -179,9 +175,7 @@ class TestUpdateProfile:
         mock_db = mock_db_returning(None)  # no username conflict
 
         with pytest.raises(OnboardingError, match="máximo 50"):
-            await update_profile(
-                db=mock_db, user=user, username="validuser", display_name="A" * 51
-            )
+            await update_profile(db=mock_db, user=user, username="validuser", display_name="A" * 51)
 
     @pytest.mark.asyncio
     async def test_status_text_too_long(self) -> None:
@@ -294,9 +288,7 @@ class TestUpdatePreferences:
         user = make_user()
         mock_db = AsyncMock()
 
-        await update_preferences(
-            db=mock_db, user=user, preferred_genres=["fantasia", "sci-fi"]
-        )
+        await update_preferences(db=mock_db, user=user, preferred_genres=["fantasia", "sci-fi"])
 
         assert user.preferred_genres == ["fantasia", "sci-fi"]
 
@@ -308,9 +300,7 @@ class TestUpdatePreferences:
         mock_db = AsyncMock()
 
         with pytest.raises(OnboardingError, match="inválidos"):
-            await update_preferences(
-                db=mock_db, user=user, preferred_genres=["fantasia", "bogus"]
-            )
+            await update_preferences(db=mock_db, user=user, preferred_genres=["fantasia", "bogus"])
 
 
 # ── Service: complete_onboarding ─────────────────────────────────────────────
@@ -449,9 +439,7 @@ class TestOnboardingPreferencesEndpoint:
             "app.api.v1.endpoints.onboarding.update_preferences",
             new_callable=AsyncMock,
         ):
-            result = await onboarding_preferences(
-                body=body, db=mock_db, user=mock_user
-            )
+            result = await onboarding_preferences(body=body, db=mock_db, user=mock_user)
 
         assert isinstance(result, PreferencesResponse)
         assert "sucesso" in result.message

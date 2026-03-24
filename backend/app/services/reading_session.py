@@ -91,9 +91,7 @@ async def stop_session(
 
     Updates user.total_reading_time_minutes accordingly.
     """
-    result = await db.execute(
-        select(ReadingSession).where(ReadingSession.id == session_id)
-    )
+    result = await db.execute(select(ReadingSession).where(ReadingSession.id == session_id))
     session = result.scalar_one_or_none()
 
     if session is None:
@@ -118,9 +116,7 @@ async def stop_session(
     session.duration_minutes = duration
 
     # Update user's total reading time (lock user row)
-    user_result = await db.execute(
-        select(User).where(User.id == user_id).with_for_update()
-    )
+    user_result = await db.execute(select(User).where(User.id == user_id).with_for_update())
     user = user_result.scalar_one_or_none()
     if user is not None:
         user.total_reading_time_minutes += duration
@@ -165,12 +161,7 @@ async def list_my_sessions(
         except ValueError:
             pass  # invalid cursor — ignore and return from start
 
-    stmt = (
-        select(ReadingSession)
-        .where(*list_filters)
-        .order_by(ReadingSession.created_at.desc())
-        .limit(limit + 1)
-    )
+    stmt = select(ReadingSession).where(*list_filters).order_by(ReadingSession.created_at.desc()).limit(limit + 1)
     result = await db.execute(stmt)
     sessions = list(result.scalars().all())
 
@@ -181,9 +172,7 @@ async def list_my_sessions(
 
     # Aggregate total duration (no cursor — counts all sessions, not just the current page)
     agg_result = await db.execute(
-        select(func.coalesce(func.sum(ReadingSession.duration_minutes), 0)).where(
-            *base_filters
-        )
+        select(func.coalesce(func.sum(ReadingSession.duration_minutes), 0)).where(*base_filters)
     )
     total_duration = int(agg_result.scalar() or 0)
 

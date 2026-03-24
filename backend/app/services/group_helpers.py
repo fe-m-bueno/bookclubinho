@@ -19,9 +19,7 @@ from app.db.models.group import GroupMember
 logger = structlog.get_logger(__name__)
 
 
-async def check_membership(
-    db: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID
-) -> GroupMember:
+async def check_membership(db: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID) -> GroupMember:
     """Return GroupMember or raise ServiceError 404."""
     result = await db.execute(
         select(GroupMember).where(
@@ -35,9 +33,7 @@ async def check_membership(
     return member
 
 
-async def validate_round_in_group(
-    db: AsyncSession, round_id_str: str, group_id: uuid.UUID
-) -> uuid.UUID:
+async def validate_round_in_group(db: AsyncSession, round_id_str: str, group_id: uuid.UUID) -> uuid.UUID:
     """Validate that round belongs to group. Returns parsed round UUID."""
     from app.db.models.round import Round
 

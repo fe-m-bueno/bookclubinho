@@ -158,10 +158,7 @@ async def list_group_messages(
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     return MessageListResponse(
-        messages=[
-            _message_to_response(m, current_user.id, reply_count=reply_counts.get(m.id, 0))
-            for m in messages
-        ],
+        messages=[_message_to_response(m, current_user.id, reply_count=reply_counts.get(m.id, 0)) for m in messages],
         next_cursor=next_cursor,
     )
 
@@ -281,9 +278,7 @@ async def toggle_reaction_endpoint(
 ) -> ChatMessageResponse:
     """Adiciona ou remove uma reaction (toggle). Retorna a mensagem atualizada."""
     try:
-        await toggle_reaction(
-            db, message_id=message_id, user_id=current_user.id, emoji=body.emoji
-        )
+        await toggle_reaction(db, message_id=message_id, user_id=current_user.id, emoji=body.emoji)
     except ChatError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -305,9 +300,7 @@ async def remove_reaction_endpoint(
 ) -> ChatMessageResponse:
     """Remove uma reaction específica do usuário."""
     try:
-        await remove_reaction(
-            db, message_id=message_id, user_id=current_user.id, emoji=emoji
-        )
+        await remove_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji)
     except ChatError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 

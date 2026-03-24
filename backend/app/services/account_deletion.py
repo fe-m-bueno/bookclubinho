@@ -1,4 +1,5 @@
 """Account deletion — anonymize + soft delete."""
+
 from __future__ import annotations
 
 import asyncio
@@ -42,12 +43,8 @@ async def delete_account(
 
     if user.auth_provider == "local":
         if not current_password:
-            raise AccountDeletionError(
-                "Informe sua senha para confirmar a exclusão.", status_code=400
-            )
-        if not user.hashed_password or not verify_password(
-            current_password, user.hashed_password
-        ):
+            raise AccountDeletionError("Informe sua senha para confirmar a exclusão.", status_code=400)
+        if not user.hashed_password or not verify_password(current_password, user.hashed_password):
             raise AccountDeletionError("Senha incorreta.", status_code=400)
 
     # Revoke all active sessions and blacklist JTIs in parallel

@@ -62,9 +62,12 @@ async def test_streak_cleanup_worker_main_runs() -> None:
 
     with (
         patch("app.workers.streak_cleanup.AsyncSessionLocal", mock_session_local),
-        patch("app.workers.streak_cleanup.cleanup_expired_streaks", new_callable=AsyncMock, return_value=2) as mock_cleanup,
+        patch(
+            "app.workers.streak_cleanup.cleanup_expired_streaks", new_callable=AsyncMock, return_value=2
+        ) as mock_cleanup,
     ):
         from app.workers.streak_cleanup import main
+
         await main()
 
     mock_cleanup.assert_called_once()

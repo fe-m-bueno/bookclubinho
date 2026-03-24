@@ -4,6 +4,7 @@ DELETE /api/v1/integrations/hardcover        — desconectar Hardcover
 GET    /api/v1/integrations/hardcover/status — status da conexão
 PATCH  /api/v1/integrations/hardcover/sync   — toggle auto-sync
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request

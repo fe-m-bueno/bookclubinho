@@ -9,10 +9,7 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class MessageCreateRequest(BaseModel):
-    content_type: Literal[
-        "text", "image", "gif", "video_link", "quote",
-        "chapter_marker", "page_marker", "system"
-    ]
+    content_type: Literal["text", "image", "gif", "video_link", "quote", "chapter_marker", "page_marker", "system"]
     content_text: str | None = Field(default=None, max_length=4000)
     content_rich_json: dict | None = None
     media_url: str | None = None

@@ -40,11 +40,11 @@ class Settings(BaseSettings):
     UPSTASH_REDIS_REST_TOKEN: str = ""
 
     # ── Storage (Cloudflare R2 — S3-compatible) ───────────────────────────────
-    S3_ENDPOINT: str = ""           # https://<account>.r2.cloudflarestorage.com
+    S3_ENDPOINT: str = ""  # https://<account>.r2.cloudflarestorage.com
     S3_ACCESS_KEY: str = ""
     S3_SECRET_KEY: str = ""
     S3_BUCKET_NAME: str = "bookclub-public"
-    S3_PUBLIC_URL: str = ""         # https://pub.youromain.com  (R2 custom domain)
+    S3_PUBLIC_URL: str = ""  # https://pub.youromain.com  (R2 custom domain)
 
     # ── JWT / Auth ────────────────────────────────────────────────────────────
     JWT_SECRET: str

@@ -52,24 +52,18 @@ class TestRoundNominationTableArgs:
         assert CheckConstraint in constraint_types
 
     def test_round_nomination_unique_constraint_columns(self) -> None:
-        unique = next(
-            c for c in RoundNomination.__table_args__ if isinstance(c, UniqueConstraint)
-        )
+        unique = next(c for c in RoundNomination.__table_args__ if isinstance(c, UniqueConstraint))
         col_names = [col.key for col in unique.columns]
         assert "round_id" in col_names
         assert "user_id" in col_names
         assert "book_id" in col_names
 
     def test_round_nomination_pitch_check_constraint_name(self) -> None:
-        check = next(
-            c for c in RoundNomination.__table_args__ if isinstance(c, CheckConstraint)
-        )
+        check = next(c for c in RoundNomination.__table_args__ if isinstance(c, CheckConstraint))
         assert check.name == "ck_round_nominations_pitch_length"
 
     def test_round_nomination_pitch_check_constraint_expr(self) -> None:
-        check = next(
-            c for c in RoundNomination.__table_args__ if isinstance(c, CheckConstraint)
-        )
+        check = next(c for c in RoundNomination.__table_args__ if isinstance(c, CheckConstraint))
         expr = str(check.sqltext)
         assert "280" in expr
 

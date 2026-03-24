@@ -44,9 +44,7 @@ def _make_meeting(**overrides: object) -> MagicMock:
     m.location = overrides.get("location", "Café Central")
     m.meeting_type = overrides.get("meeting_type", "in_person")
     m.virtual_link = overrides.get("virtual_link")
-    m.scheduled_at = overrides.get(
-        "scheduled_at", datetime.now(UTC) + timedelta(days=7)
-    )
+    m.scheduled_at = overrides.get("scheduled_at", datetime.now(UTC) + timedelta(days=7))
     m.duration_minutes = overrides.get("duration_minutes", 60)
     m.created_by = overrides.get("created_by", uuid.uuid4())
     m.created_at = overrides.get("created_at", datetime.now(UTC))
@@ -61,9 +59,7 @@ def _make_create_request(**overrides: object) -> MagicMock:
     req.location = overrides.get("location", "Café Central")
     req.meeting_type = overrides.get("meeting_type", "in_person")
     req.virtual_link = overrides.get("virtual_link")
-    req.scheduled_at = overrides.get(
-        "scheduled_at", datetime.now(UTC) + timedelta(days=7)
-    )
+    req.scheduled_at = overrides.get("scheduled_at", datetime.now(UTC) + timedelta(days=7))
     req.duration_minutes = overrides.get("duration_minutes", 60)
     req.round_id = overrides.get("round_id")
     return req
@@ -114,9 +110,7 @@ async def test_create_meeting_success() -> None:
     db.refresh = AsyncMock()
 
     with patch("app.services.meeting.emit_group_event", new=AsyncMock()):
-        meeting = await create_meeting(
-            db, group_id=group_id, user_id=user_id, data=data, creator_name="Test"
-        )
+        meeting = await create_meeting(db, group_id=group_id, user_id=user_id, data=data, creator_name="Test")
 
     # Meeting + creator RSVP + system message = at least 3 adds
     assert db.add.call_count >= 2
@@ -128,9 +122,7 @@ async def test_create_meeting_past_date_raises_422() -> None:
     user_id = uuid.uuid4()
     group_id = uuid.uuid4()
     member = _make_member(user_id=user_id, group_id=group_id)
-    data = _make_create_request(
-        scheduled_at=datetime.now(UTC) - timedelta(hours=1)
-    )
+    data = _make_create_request(scheduled_at=datetime.now(UTC) - timedelta(hours=1))
 
     db = AsyncMock()
     res_member = MagicMock()
@@ -138,9 +130,7 @@ async def test_create_meeting_past_date_raises_422() -> None:
     db.execute = AsyncMock(return_value=res_member)
 
     with pytest.raises(MeetingError) as exc_info:
-        await create_meeting(
-            db, group_id=group_id, user_id=user_id, data=data, creator_name="Test"
-        )
+        await create_meeting(db, group_id=group_id, user_id=user_id, data=data, creator_name="Test")
     assert exc_info.value.status_code == 422
 
 
@@ -173,9 +163,7 @@ async def test_update_meeting_by_creator() -> None:
     db.refresh = AsyncMock()
 
     with patch("app.services.meeting.sanitize", return_value="Novo Título"):
-        result = await update_meeting(
-            db, meeting_id=meeting.id, user_id=user_id, data=data
-        )
+        result = await update_meeting(db, meeting_id=meeting.id, user_id=user_id, data=data)
 
     assert meeting.title == "Novo Título"
 
@@ -202,9 +190,7 @@ async def test_update_meeting_by_admin() -> None:
     db.refresh = AsyncMock()
 
     with patch("app.services.meeting.sanitize", return_value="Admin Edit"):
-        result = await update_meeting(
-            db, meeting_id=meeting.id, user_id=admin_id, data=data
-        )
+        result = await update_meeting(db, meeting_id=meeting.id, user_id=admin_id, data=data)
 
     assert meeting.title == "Admin Edit"
 
@@ -227,9 +213,7 @@ async def test_update_meeting_by_regular_member_raises_403() -> None:
     db.flush = AsyncMock()
 
     with pytest.raises(MeetingError) as exc_info:
-        await update_meeting(
-            db, meeting_id=meeting.id, user_id=member_id, data=data
-        )
+        await update_meeting(db, meeting_id=meeting.id, user_id=member_id, data=data)
     assert exc_info.value.status_code == 403
 
 
@@ -255,9 +239,7 @@ async def test_delete_meeting_by_creator() -> None:
     db.refresh = AsyncMock()
 
     with patch("app.services.meeting.emit_group_event", new=AsyncMock()):
-        result = await delete_meeting(
-            db, meeting_id=meeting.id, user_id=user_id, user_name="Test"
-        )
+        result = await delete_meeting(db, meeting_id=meeting.id, user_id=user_id, user_name="Test")
 
     assert result == group_id
     db.delete.assert_called_once_with(meeting)
@@ -279,9 +261,7 @@ async def test_delete_meeting_by_regular_member_raises_403() -> None:
     db.execute = AsyncMock(side_effect=[res_meeting, res_member, res_member])
 
     with pytest.raises(MeetingError) as exc_info:
-        await delete_meeting(
-            db, meeting_id=meeting.id, user_id=member_id, user_name="Test"
-        )
+        await delete_meeting(db, meeting_id=meeting.id, user_id=member_id, user_name="Test")
     assert exc_info.value.status_code == 403
 
 
@@ -307,9 +287,7 @@ async def test_update_rsvp_existing() -> None:
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 
-    result = await update_rsvp(
-        db, meeting_id=meeting.id, user_id=user_id, status="going"
-    )
+    result = await update_rsvp(db, meeting_id=meeting.id, user_id=user_id, status="going")
 
     assert rsvp.status == "going"
     assert rsvp.responded_at is not None
@@ -334,9 +312,7 @@ async def test_update_rsvp_creates_new_if_missing() -> None:
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 
-    result = await update_rsvp(
-        db, meeting_id=meeting.id, user_id=user_id, status="maybe"
-    )
+    result = await update_rsvp(db, meeting_id=meeting.id, user_id=user_id, status="maybe")
 
     db.add.assert_called_once()
     added = db.add.call_args[0][0]
@@ -355,7 +331,5 @@ async def test_update_rsvp_not_member_raises_404() -> None:
     db.execute = AsyncMock(side_effect=[res_meeting, res_member])
 
     with pytest.raises(ServiceError) as exc_info:
-        await update_rsvp(
-            db, meeting_id=meeting.id, user_id=uuid.uuid4(), status="going"
-        )
+        await update_rsvp(db, meeting_id=meeting.id, user_id=uuid.uuid4(), status="going")
     assert exc_info.value.status_code == 404

@@ -72,19 +72,13 @@ async def report_message(
 
     # Count unique reporters for this message
     count_result = await db.execute(
-        select(func.count())
-        .select_from(MessageReport)
-        .where(MessageReport.message_id == message_id)
+        select(func.count()).select_from(MessageReport).where(MessageReport.message_id == message_id)
     )
     unique_reporters = count_result.scalar_one()
 
     # Auto-hide after threshold is reached
     if unique_reporters >= AUTO_HIDE_THRESHOLD and not msg.is_hidden:
-        await db.execute(
-            update(GroupMessage)
-            .where(GroupMessage.id == message_id)
-            .values(is_hidden=True)
-        )
+        await db.execute(update(GroupMessage).where(GroupMessage.id == message_id).values(is_hidden=True))
         logger.info(
             "message_auto_hidden",
             message_id=str(message_id),

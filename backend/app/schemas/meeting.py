@@ -21,13 +21,9 @@ class MeetingCreateRequest(BaseModel):
     @model_validator(mode="after")
     def validate_meeting_fields(self) -> MeetingCreateRequest:
         if self.meeting_type in ("virtual", "hybrid") and not self.virtual_link:
-            raise ValueError(
-                "Encontros virtuais ou híbridos precisam de um link."
-            )
+            raise ValueError("Encontros virtuais ou híbridos precisam de um link.")
         if self.meeting_type in ("in_person", "hybrid") and not self.location:
-            raise ValueError(
-                "Encontros presenciais ou híbridos precisam de um local."
-            )
+            raise ValueError("Encontros presenciais ou híbridos precisam de um local.")
         return self
 
 

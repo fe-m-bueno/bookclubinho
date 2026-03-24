@@ -69,12 +69,8 @@ class Meeting(TimestampMixin, Base):
     location: Mapped[str | None] = mapped_column(Text, nullable=True)
     meeting_type: Mapped[str] = mapped_column(Text, nullable=False)
     virtual_link: Mapped[str | None] = mapped_column(Text, nullable=True)
-    scheduled_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    duration_minutes: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("60"), default=60
-    )
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("60"), default=60)
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
@@ -96,9 +92,7 @@ class MeetingRsvp(Base):
 
     __tablename__ = "meeting_rsvps"
     __table_args__ = (
-        UniqueConstraint(
-            "meeting_id", "user_id", name="uq_meeting_rsvps_meeting_user"
-        ),
+        UniqueConstraint("meeting_id", "user_id", name="uq_meeting_rsvps_meeting_user"),
         CheckConstraint(
             f"status IN ({_RSVP_STATUSES})",
             name="ck_meeting_rsvps_status",
@@ -128,9 +122,7 @@ class MeetingRsvp(Base):
         server_default=RsvpStatus.PENDING,
         default=RsvpStatus.PENDING,
     )
-    responded_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     meeting: Mapped["Meeting"] = relationship(lazy="raise", back_populates="rsvps")
     user: Mapped["User"] = relationship(lazy="raise")  # noqa: F821
