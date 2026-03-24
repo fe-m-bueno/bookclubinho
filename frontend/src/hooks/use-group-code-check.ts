@@ -12,7 +12,7 @@ export interface ValidatedGroup {
   member_count: number;
 }
 
-export function useGroupCodeCheck(code: string) {
+export function useGroupCodeCheck(code: string, debounceMs = DEBOUNCE_MS) {
   const [status, setStatus] = useState<GroupCodeStatus>("idle");
   const [group, setGroup] = useState<ValidatedGroup | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -30,7 +30,7 @@ export function useGroupCodeCheck(code: string) {
 
     setStatus("checking");
 
-    timerRef.current = setTimeout(async () => {
+    const run = async () => {
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -59,13 +59,19 @@ export function useGroupCodeCheck(code: string) {
           setStatus("error");
         }
       }
-    }, DEBOUNCE_MS);
+    };
+
+    if (debounceMs > 0) {
+      timerRef.current = setTimeout(run, debounceMs);
+    } else {
+      run();
+    }
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (abortRef.current) abortRef.current.abort();
     };
-  }, [code]);
+  }, [code, debounceMs]);
 
   return { status, group };
 }
