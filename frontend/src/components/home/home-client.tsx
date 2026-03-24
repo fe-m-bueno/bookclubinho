@@ -37,6 +37,7 @@ export function HomeClient() {
   const { showSkeleton } = useSkeletonState(isLoading);
 
   if (showSkeleton) return <HomeSkeleton />;
+  if (isLoading) return null;
 
   const user = userQuery.data;
   const groups = groupsQuery.data?.groups ?? [];

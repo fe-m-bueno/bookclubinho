@@ -58,5 +58,5 @@ export function useSkeletonState(isLoading: boolean) {
     return clearTimers;
   }, [isLoading]);
 
-  return { showSkeleton };
+  return { showSkeleton, isLoading };
 }
