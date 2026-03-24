@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { HomeClient } from "../home-client";
 import type { UserMe } from "@/lib/types/user";
@@ -145,9 +145,12 @@ describe("HomeClient", () => {
   });
 
   it("shows skeleton while loading", () => {
+    vi.useFakeTimers();
     setMocks({ userLoading: true });
     render(<HomeClient />);
+    act(() => vi.advanceTimersByTime(250));
     expect(screen.getByTestId("skeleton")).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("shows empty state when no groups", () => {

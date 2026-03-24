@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useGroup } from "@/lib/contexts/group-context";
 import { useShelf } from "@/hooks/use-shelf";
 import { ShareButton } from "@/app/shelf/[id]/share-button";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { ShelfSkeleton } from "./shelf-skeleton";
 import { ShelfEmptyState } from "./shelf-empty-state";
 import { ShelfGrid } from "./shelf-grid";
@@ -12,7 +13,8 @@ export function ShelfClient() {
   const { group } = useGroup();
   const { data, loading, error, refetch } = useShelf(group.id);
 
-  if (loading) return <ShelfSkeleton />;
+  const { showSkeleton } = useSkeletonState(loading);
+  if (showSkeleton) return <ShelfSkeleton />;
 
   if (error) {
     return (

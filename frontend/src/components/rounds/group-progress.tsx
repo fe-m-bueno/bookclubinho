@@ -4,6 +4,7 @@ import { useState } from "react";
 import { differenceInDays, parseISO } from "date-fns";
 import { motion, useReducedMotion } from "framer-motion";
 import { BookOpen, CheckCircle2 } from "lucide-react";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,11 +54,12 @@ export function GroupProgress({
 }: GroupProgressProps) {
   const shouldReduce = useReducedMotion();
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const { showSkeleton } = useSkeletonState(loading);
 
   const myPercentage =
     progress?.find((p) => p.user_id === currentUserId)?.percentage ?? 0;
 
-  if (loading) {
+  if (showSkeleton) {
     return (
       <div className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">

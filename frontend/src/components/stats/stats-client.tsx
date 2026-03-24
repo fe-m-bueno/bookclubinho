@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGroupStats } from "@/hooks/use-group-stats";
 import { useShelf } from "@/hooks/use-shelf";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { StatsSkeleton } from "./stats-skeleton";
 import { StatsOverviewCards } from "./stats-overview-cards";
 import { RatingDistributionChart } from "./rating-distribution-chart";
@@ -61,7 +62,8 @@ export function StatsClient({ groupId }: StatsClientProps) {
   const currentYear = now.getFullYear();
   const isDecember = now.getMonth() === 11;
 
-  if (loading) {
+  const { showSkeleton } = useSkeletonState(loading);
+  if (showSkeleton) {
     return <StatsSkeleton />;
   }
 

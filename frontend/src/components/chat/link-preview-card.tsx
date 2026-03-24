@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import Image from "next/image";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LinkPreviewData {
@@ -46,7 +47,8 @@ export function LinkPreviewCard({ url }: LinkPreviewCardProps) {
     displayUrl = url;
   }
 
-  if (isLoading) {
+  const { showSkeleton } = useSkeletonState(isLoading);
+  if (showSkeleton) {
     return (
       <div className="flex gap-3 rounded-lg border border-border bg-muted p-3">
         <Skeleton className="size-4 shrink-0 self-center rounded" />

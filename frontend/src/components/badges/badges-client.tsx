@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeftIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useBadges } from "@/hooks/use-badges";
 import { BadgesSkeleton } from "./badges-skeleton";
 import { BadgeGrid } from "./badge-grid";
@@ -23,6 +24,7 @@ type TabValue = (typeof TABS)[number]["value"];
 
 export function BadgesClient() {
   const { myBadges, catalog, loading, error, refetch } = useBadges();
+  const { showSkeleton } = useSkeletonState(loading);
   const [activeTab, setActiveTab] = useState<TabValue>("all");
 
   const earnedMap = useMemo(() => {
@@ -74,16 +76,16 @@ export function BadgesClient() {
           <h1 className="text-2xl font-display font-bold tracking-tight md:text-3xl">
             Conquistas
           </h1>
-          {!loading && !error && (
+          {!loading && !showSkeleton && !error && (
             <p className="mt-1 text-sm text-muted-foreground">
               {earnedCount} de {totalCount} desbloqueadas
             </p>
           )}
         </header>
 
-        {loading && <BadgesSkeleton />}
+        {showSkeleton && <BadgesSkeleton />}
 
-        {!loading && error != null && (
+        {!loading && !showSkeleton && error != null && (
           <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
             <p className="text-muted-foreground">{error}</p>
             <Button type="button" onClick={refetch}>
@@ -92,7 +94,7 @@ export function BadgesClient() {
           </div>
         )}
 
-        {!loading && error == null && (
+        {!loading && !showSkeleton && error == null && (
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as TabValue)}

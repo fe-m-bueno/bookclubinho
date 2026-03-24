@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
 import { useMyReview, useReviews, useReviewStats } from "@/hooks/use-reviews";
 import { BookHero } from "./book-hero";
@@ -38,8 +39,9 @@ export function RoundReviewingPhase({
   const { review: myReview, loading: myReviewLoading, refetch: refetchMyReview } =
     useMyReview(round.id);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const { showSkeleton: showMyReviewSkeleton } = useSkeletonState(myReviewLoading);
 
-  if (myReviewLoading) {
+  if (showMyReviewSkeleton) {
     return (
       <div className="space-y-6 pb-24">
         <RoundStatusBadge round={round} />
@@ -109,8 +111,9 @@ export function RoundReviewingPhase({
 function AllReviewsSection({ roundId }: { roundId: string }) {
   const { reviews, loading: reviewsLoading, error } = useReviews(roundId);
   const { stats } = useReviewStats(roundId);
+  const { showSkeleton: showReviewsSkeleton } = useSkeletonState(reviewsLoading);
 
-  if (reviewsLoading) return <ReviewsListSkeleton />;
+  if (showReviewsSkeleton) return <ReviewsListSkeleton />;
   if (error) {
     return (
       <p className="text-sm text-muted-foreground text-center">{error}</p>

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { BadgeProgressBar } from "./badge-progress-bar";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { fetchBadgeProgress } from "@/hooks/use-badges";
 import { useWindowSize } from "@/hooks/use-window-size";
 import type { BadgeResponse, BadgeProgressResponse } from "@/lib/types/badge";
@@ -43,6 +44,7 @@ export function BadgeDetailDialog({
   const [showConfetti, setShowConfetti] = useState(false);
   const [progress, setProgress] = useState<BadgeProgressResponse | null>(null);
   const [progressLoading, setProgressLoading] = useState(false);
+  const { showSkeleton: showProgressSkeleton } = useSkeletonState(progressLoading);
   const [progressError, setProgressError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -155,19 +157,19 @@ export function BadgeDetailDialog({
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
                   Seu progresso
                 </p>
-                {progressLoading && (
+                {showProgressSkeleton && (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-2 w-full rounded-full" />
                     <Skeleton className="h-3 w-16 ml-auto" />
                   </div>
                 )}
-                {!progressLoading && progressError != null && (
+                {!progressLoading && !showProgressSkeleton && progressError != null && (
                   <p className="text-sm text-muted-foreground">
                     {progressError}
                   </p>
                 )}
-                {!progressLoading && progress != null && (
+                {!progressLoading && !showProgressSkeleton && progress != null && (
                   <BadgeProgressBar progress={progress} />
                 )}
               </div>

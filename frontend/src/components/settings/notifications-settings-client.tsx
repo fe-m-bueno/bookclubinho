@@ -4,6 +4,7 @@ import { Lock } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Switch } from "@/components/ui/switch";
 import { NotificationsSettingsSkeleton } from "./notifications-settings-skeleton";
@@ -43,7 +44,8 @@ export function NotificationsSettingsClient() {
   const { data: user, isLoading } = useCurrentUser();
   const queryClient = useQueryClient();
 
-  if (isLoading) return <NotificationsSettingsSkeleton />;
+  const { showSkeleton } = useSkeletonState(isLoading);
+  if (showSkeleton) return <NotificationsSettingsSkeleton />;
   if (!user) return null;
 
   const prefs = user.email_notifications;

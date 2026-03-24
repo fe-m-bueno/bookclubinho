@@ -5,6 +5,7 @@ import { Calendar, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useGroup } from "@/lib/contexts/group-context";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useMeetings } from "@/hooks/use-meetings";
 import { MeetingCard } from "./meeting-card";
 import { MeetingSkeleton } from "./meeting-skeleton";
@@ -17,6 +18,7 @@ export function MeetingsClient() {
 
   const { meetings, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useMeetings({ groupId: group.id, filter: activeTab });
+  const { showSkeleton } = useSkeletonState(isLoading);
 
   const currentMember = group.members.find(
     (m) => m.user_id === group.current_user_id,
@@ -51,9 +53,9 @@ export function MeetingsClient() {
       </div>
 
       {/* Content */}
-      {isLoading ? (
+      {showSkeleton ? (
         <MeetingSkeleton />
-      ) : meetings.length === 0 ? (
+      ) : !isLoading && meetings.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Calendar className="h-12 w-12 text-muted-foreground/50 mb-3" />
           <p className="text-muted-foreground text-sm">

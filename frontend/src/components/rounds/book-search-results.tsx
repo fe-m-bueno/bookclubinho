@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BookResult } from "@/lib/types/book";
 
@@ -60,7 +63,9 @@ export function BookSearchResults({
   onSelect,
   loading,
 }: BookSearchResultsProps) {
-  if (loading) {
+  const { showSkeleton } = useSkeletonState(loading);
+
+  if (showSkeleton) {
     return (
       <div
         className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"

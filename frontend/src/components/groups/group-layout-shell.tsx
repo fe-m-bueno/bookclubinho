@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FloatingTimerButton } from "@/components/rounds/floating-timer-button";
 import { GroupHeader } from "./group-header";
 import { GroupTabBar } from "./group-tab-bar";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { GroupLayoutSkeleton } from "./group-layout-skeleton";
 
 interface GroupLayoutShellProps {
@@ -35,7 +36,8 @@ export function GroupLayoutShell({ groupId, children }: GroupLayoutShellProps) {
     enabled: !!groupId,
   });
 
-  if (loading) {
+  const { showSkeleton } = useSkeletonState(loading);
+  if (showSkeleton) {
     return <GroupLayoutSkeleton />;
   }
 

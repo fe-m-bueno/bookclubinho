@@ -1,6 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import type { MemberProgressSummary } from "@/lib/types/round";
 import { GroupProgress } from "../group-progress";
 
@@ -45,10 +45,13 @@ describe("GroupProgress", () => {
   });
 
   it("shows skeleton rows while loading", () => {
+    vi.useFakeTimers();
     const { container } = render(
       <GroupProgress {...defaultProps} progress={null} loading={true} />,
     );
+    act(() => vi.advanceTimersByTime(250));
     expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    vi.useRealTimers();
   });
 
   it("renders display_name when available", () => {

@@ -27,6 +27,7 @@ import {
 } from "@/hooks/use-meeting-mutations";
 import type { RsvpStatus } from "@/lib/types/meeting";
 import { TYPE_BADGE, RSVP_OPTIONS, RSVP_LABELS, DATE_FORMATTER, DATE_ONLY_FORMATTER } from "./meeting-form-shared";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { MeetingDetailSkeleton } from "./meeting-skeleton";
 
 const RSVP_COLORS: Record<RsvpStatus, string> = {
@@ -49,9 +50,11 @@ export function MeetingDetailClient({ meetingId }: MeetingDetailClientProps) {
   const deleteMeeting = useDeleteMeetingStandalone();
   const downloadIcs = useDownloadIcs();
 
-  if (isLoading || !meeting) {
+  const { showSkeleton } = useSkeletonState(isLoading);
+  if (showSkeleton) {
     return <MeetingDetailSkeleton />;
   }
+  if (!meeting) return null;
 
   const typeBadge = TYPE_BADGE[meeting.meeting_type];
   const formattedDate = DATE_FORMATTER.format(new Date(meeting.scheduled_at));

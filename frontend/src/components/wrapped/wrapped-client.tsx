@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useWrapped } from "@/hooks/use-wrapped";
 import { useGenerateWrapped } from "@/hooks/use-generate-wrapped";
 import { WrappedStories } from "./wrapped-stories";
@@ -37,7 +38,8 @@ export function WrappedClient({ groupId, year }: WrappedClientProps) {
     }
   }
 
-  if (loading) {
+  const { showSkeleton } = useSkeletonState(loading);
+  if (showSkeleton) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-4">
         <Skeleton className="w-48 h-8 rounded-full" />

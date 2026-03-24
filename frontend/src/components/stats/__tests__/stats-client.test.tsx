@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { StatsClient } from "@/components/stats/stats-client";
 import type { GroupStatsResponse } from "@/lib/types/stats";
 import type { ShelfResponse } from "@/lib/types/shelf";
@@ -78,6 +78,7 @@ describe("StatsClient", () => {
   });
 
   it("shows skeleton while loading", () => {
+    vi.useFakeTimers();
     mockUseGroupStats.mockReturnValue({
       data: null,
       loading: true,
@@ -87,8 +88,10 @@ describe("StatsClient", () => {
     setupShelf();
 
     render(<StatsClient groupId="g1" />);
+    act(() => vi.advanceTimersByTime(250));
 
     expect(screen.getByTestId("stats-skeleton")).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("shows error state with retry button", () => {

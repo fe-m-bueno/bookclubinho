@@ -8,6 +8,7 @@ import { useCurrentRound } from "@/hooks/use-current-round";
 import { useBookSearch } from "@/hooks/use-book-search";
 import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
 import { Button } from "@/components/ui/button";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { RoundSkeleton } from "./round-skeleton";
 import { RoundStatusBadge } from "./round-status-badge";
 import { BookSearchBar } from "./book-search-bar";
@@ -37,7 +38,8 @@ export function RoundNominatingClient() {
     },
   });
 
-  if (loading) return <RoundSkeleton />;
+  const { showSkeleton } = useSkeletonState(loading);
+  if (showSkeleton) return <RoundSkeleton />;
 
   if (error) {
     return (
