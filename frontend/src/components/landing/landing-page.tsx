@@ -171,9 +171,10 @@ export function LandingPage() {
         {/* Subtitle */}
         <motion.p
           {...item(4)}
-          className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-sm mb-6 sm:mb-8"
+          className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xs sm:max-w-md mb-6 sm:mb-8"
         >
-          Aquele grupo de leitura que vocês sempre quiseram começar.
+          O jeito mais fácil de manter um clube do livro. Porque ler
+          sozinho é só metade da história.
         </motion.p>
 
         {/* Divider */}
