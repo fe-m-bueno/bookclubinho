@@ -64,7 +64,7 @@ def _make_nomination(**overrides: object) -> MagicMock:
     n.book_author = overrides.get("book_author", "Machado de Assis")
     n.book_cover_url = overrides.get("book_cover_url")
     n.book_page_count = overrides.get("book_page_count")
-    n.book_hardcover_slug = overrides.get("book_hardcover_slug", None)
+    n.book_hardcover_slug = overrides.get("book_hardcover_slug")
     n.votes = overrides.get("votes", [])
     return n
 

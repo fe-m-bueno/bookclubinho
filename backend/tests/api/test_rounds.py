@@ -40,7 +40,7 @@ def _make_round(**overrides: object) -> MagicMock:
     r.finished_at = overrides.get("finished_at")
     r.created_at = overrides.get("created_at", datetime(2026, 1, 1, tzinfo=UTC))
     r.nominations = overrides.get("nominations", [])
-    r.tiebreak_info = overrides.get("tiebreak_info", None)
+    r.tiebreak_info = overrides.get("tiebreak_info")
     return r
 
 
@@ -574,7 +574,7 @@ class TestLogReadingProgressBadges:
         p.percentage = overrides.get("percentage", 50.0)
         p.progress_type = overrides.get("progress_type", "page")
         p.total_pages = overrides.get("total_pages", 100)
-        p.note = overrides.get("note", None)
+        p.note = overrides.get("note")
         p.created_at = overrides.get("created_at", datetime(2026, 3, 1, tzinfo=UTC))
         return p
 

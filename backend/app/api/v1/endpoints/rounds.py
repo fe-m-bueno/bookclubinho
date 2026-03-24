@@ -26,6 +26,7 @@ from __future__ import annotations
 import uuid  # noqa: TC003 — required at runtime for FastAPI path-param resolution
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
+from sqlalchemy import select
 
 from app.core.deps import (  # noqa: TC001
     CurrentUser,
@@ -33,8 +34,6 @@ from app.core.deps import (  # noqa: TC001
     GroupAdminDep,
     GroupMemberDep,
 )
-from sqlalchemy import select
-
 from app.db.models.group import GroupMember  # noqa: TC001
 from app.db.models.reading_progress import ReadingProgress  # noqa: TC001
 from app.db.models.round import Round, RoundNomination  # noqa: TC001

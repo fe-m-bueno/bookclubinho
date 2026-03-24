@@ -63,7 +63,7 @@ def _hash_ip(ip: str | None) -> str | None:
     return hashlib.sha256(ip.encode()).hexdigest()[:16]
 
 
-def _extract_request_meta(request: "Request | None") -> tuple[str | None, str | None]:
+def _extract_request_meta(request: Request | None) -> tuple[str | None, str | None]:
     """Extrai ip_hash e user_agent truncado de um Request do FastAPI."""
     if request is None:
         return None, None
@@ -73,14 +73,14 @@ def _extract_request_meta(request: "Request | None") -> tuple[str | None, str | 
 
 
 async def log_event(
-    db: "AsyncSession",
+    db: AsyncSession,
     action: str,
     *,
     user_id: uuid.UUID | None = None,
     resource_type: str | None = None,
     resource_id: uuid.UUID | None = None,
     metadata: dict[str, Any] | None = None,
-    request: "Request | None" = None,
+    request: Request | None = None,
     ip_hash: str | None = None,
     user_agent: str | None = None,
 ) -> None:

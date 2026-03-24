@@ -8,12 +8,10 @@ import httpx
 import pytest
 
 from app.services.link_preview import (
-    LinkPreviewData,
-    _OGParser,
     _is_safe_url,
+    _OGParser,
     fetch_link_preview,
 )
-
 
 # ── _is_safe_url ──────────────────────────────────────────────────────────────
 

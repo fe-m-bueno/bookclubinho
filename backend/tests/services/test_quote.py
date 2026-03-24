@@ -11,7 +11,6 @@ import pytest
 from app.db.models.round import RoundStatus
 from app.services.quote import QuoteError, create_quote, delete_quote, list_quotes, toggle_vote
 
-
 # ── Mock factories ─────────────────────────────────────────────────────────────
 
 
@@ -32,7 +31,7 @@ def _make_quote(**overrides: object) -> MagicMock:
     q.group_id = overrides.get("group_id", uuid.uuid4())
     q.user_id = overrides.get("user_id", uuid.uuid4())
     q.quote_text = overrides.get("quote_text", "Ao vencedor as batatas.")
-    q.page_reference = overrides.get("page_reference", None)
+    q.page_reference = overrides.get("page_reference")
     q.book_title = overrides.get("book_title", "Memórias Póstumas")
     q.book_author = overrides.get("book_author", "Machado de Assis")
     q.round_id = overrides.get("round_id", uuid.uuid4())

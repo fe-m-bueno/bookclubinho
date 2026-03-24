@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -17,7 +16,6 @@ from app.services.auth import (
     authenticate_user,
 )
 from tests.conftest import make_user
-
 
 # ── _hash_email ────────────────────────────────────────────────────────────────
 
@@ -155,10 +153,9 @@ class TestAuthenticateUserBruteForce:
 
         with (
             patch("app.services.auth.get_redis", return_value=mock_redis),
-            patch("app.services.auth.verify_password", return_value=False),
+            patch("app.services.auth.verify_password", return_value=False),pytest.raises(AuthError)
         ):
-            with pytest.raises(AuthError):
-                await authenticate_user(db=db, email="user@example.com", password="wrong")
+            await authenticate_user(db=db, email="user@example.com", password="wrong")
 
         mock_redis.incr.assert_called_once()
 
@@ -197,10 +194,9 @@ class TestAuthenticateUserBruteForce:
         with (
             patch("app.services.auth.get_redis", return_value=mock_redis),
             patch("app.services.auth.verify_password", return_value=False),
-            patch("app.services.auth.asyncio.create_task"),
+            patch("app.services.auth.asyncio.create_task"),pytest.raises(AuthError)
         ):
-            with pytest.raises(AuthError):
-                await authenticate_user(db=db, email="user@example.com", password="wrong")
+            await authenticate_user(db=db, email="user@example.com", password="wrong")
 
         # Lock key should be set
         mock_redis.set.assert_called()
@@ -241,10 +237,9 @@ class TestAuthenticateUserBruteForce:
         with (
             patch("app.services.auth.get_redis", return_value=mock_redis),
             patch("app.services.auth.verify_password", return_value=False),
-            patch("app.services.auth.asyncio.sleep", sleep_mock),
+            patch("app.services.auth.asyncio.sleep", sleep_mock),pytest.raises(AuthError)
         ):
-            with pytest.raises(AuthError):
-                await authenticate_user(db=db, email="user@example.com", password="wrong")
+            await authenticate_user(db=db, email="user@example.com", password="wrong")
 
         sleep_mock.assert_called_once_with(2.0)
 
@@ -254,8 +249,9 @@ class TestAuthenticateUserBruteForce:
 class TestCookieMaxAge:
     def test_set_auth_cookies_includes_max_age(self) -> None:
         from unittest.mock import MagicMock
-        from app.core.cookies import set_auth_cookies
+
         from app.core.config import settings
+        from app.core.cookies import set_auth_cookies
 
         response = MagicMock()
         set_auth_cookies(response, "access_tok", "refresh_tok")

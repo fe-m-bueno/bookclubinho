@@ -34,7 +34,6 @@ from app.schemas.message import (
     ReactionRequest,
     ReactionSummary,
 )
-from app.db.models.report import ReportReason
 from app.schemas.report import MessageReportRequest, MessageReportResponse
 from app.security.rate_limit import limiter
 from app.services.badge_checker import check_and_award_badges

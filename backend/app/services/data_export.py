@@ -33,8 +33,8 @@ class DataExportError(ServiceError):
 
 
 async def request_data_export(
-    redis: "aioredis.Redis",
-    db: "AsyncSession",
+    redis: aioredis.Redis,
+    db: AsyncSession,
     user: User,
 ) -> dict:
     """Collect user data, upload to R2 (presigned), send email. Returns message + cooldown_until."""

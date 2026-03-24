@@ -11,12 +11,11 @@ from app.workers.notification import (
     CONSUMER_GROUP,
     CONSUMER_NAME,
     DIGEST_COOLDOWN_TTL,
-    HEARTBEAT_KEY,
     HEARTBEAT_INTERVAL,
+    HEARTBEAT_KEY,
     STREAM_KEY,
     process_event,
 )
-
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 

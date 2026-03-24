@@ -27,7 +27,6 @@ from app.core.cookies import clear_auth_cookies, set_auth_cookies
 from app.core.deps import CurrentRefreshJTI, CurrentUser, DBSession  # noqa: TC001
 from app.core.redis import get_redis
 from app.schemas.account import ChangeEmailRequest, ChangePasswordRequest, MessageResponse
-from app.schemas.session import SessionListResponse, SessionResponse
 from app.schemas.auth import (
     LoginResponse,
     LogoutResponse,
@@ -40,22 +39,22 @@ from app.schemas.auth import (
     ResendVerificationResponse,
     VerifyEmailResponse,
 )
+from app.schemas.session import SessionListResponse, SessionResponse
 from app.security.rate_limit import limiter
-from app.services.account import AccountError, change_password, confirm_email_change, initiate_email_change
+from app.services.account import (
+    AccountError,
+    change_password,
+    confirm_email_change,
+    initiate_email_change,
+)
 from app.services.audit import (
-    ACCOUNT_LOCKED,
-    DATA_EXPORTED,
     LOGIN_FAILED,
     LOGIN_SUCCESS,
-    LOGOUT,
     MAGIC_LINK_USED,
     OAUTH_LOGIN,
     PASSWORD_CHANGED,
-    REGISTER,
-    SESSION_REVOKED,
     log_event,
 )
-from app.services.session import SessionError, list_sessions, revoke_all_other_sessions, revoke_session
 from app.services.auth import (
     AuthError,
     authenticate_user,
@@ -67,6 +66,12 @@ from app.services.auth import (
     rotate_refresh_token,
     send_magic_link,
     verify_email_token,
+)
+from app.services.session import (
+    SessionError,
+    list_sessions,
+    revoke_all_other_sessions,
+    revoke_session,
 )
 
 router = APIRouter(tags=["auth"])

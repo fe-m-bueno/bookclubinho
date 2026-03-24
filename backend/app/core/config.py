@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     )
 
     # ── App ──────────────────────────────────────────────────────────────────
-    ENVIRONMENT: Literal["dev", "staging", "prod"] = "dev"
+    ENVIRONMENT: Literal["dev", "staging", "prod", "test"] = "dev"
     APP_URL: str = "http://localhost:3000"  # Vercel frontend — used in emails + CORS
     # Comma-separated string — pydantic-settings v2 JSON-parses list[str] fields
     # from env vars before validators run, so we keep it as str and split on demand.

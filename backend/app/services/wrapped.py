@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 from app.core.exceptions import ServiceError
 from app.db.models.book_review import BookReview
 from app.db.models.group import Group, GroupMember
-from app.db.models.hall_of_quote import HallOfQuote, QuoteVote
+from app.db.models.hall_of_quote import HallOfQuote
 from app.db.models.reading_progress import ReadingProgress
 from app.db.models.reading_session import ReadingSession
 from app.db.models.round import Round, RoundStatus

@@ -14,7 +14,7 @@ from app.db.models.group import Group, GroupMember
 
 
 async def get_shared_groups(
-    db: "AsyncSession",
+    db: AsyncSession,
     viewer_id: uuid.UUID,
     target_user_id: uuid.UUID,
 ) -> list[dict]:

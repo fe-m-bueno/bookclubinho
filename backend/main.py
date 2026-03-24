@@ -21,13 +21,13 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.redis import close_redis_pool
-from app.services.hardcover import close_hardcover_client
 from app.core.rls import RLSMiddleware
 from app.db.engine import engine
 from app.security.body_limit import BodySizeLimitMiddleware
 from app.security.csrf import CSRFMiddleware
 from app.security.headers import SecurityHeadersMiddleware
 from app.security.rate_limit import limiter
+from app.services.hardcover import close_hardcover_client
 
 configure_logging(debug=settings.DEBUG)
 logger = structlog.get_logger(__name__)

@@ -38,12 +38,12 @@ def _make_meeting(**overrides: object) -> MagicMock:
     m = MagicMock()
     m.id = overrides.get("id", uuid.uuid4())
     m.group_id = overrides.get("group_id", uuid.uuid4())
-    m.round_id = overrides.get("round_id", None)
+    m.round_id = overrides.get("round_id")
     m.title = overrides.get("title", "Encontro Teste")
-    m.description = overrides.get("description", None)
+    m.description = overrides.get("description")
     m.location = overrides.get("location", "Café Central")
     m.meeting_type = overrides.get("meeting_type", "in_person")
-    m.virtual_link = overrides.get("virtual_link", None)
+    m.virtual_link = overrides.get("virtual_link")
     m.scheduled_at = overrides.get(
         "scheduled_at", datetime.now(UTC) + timedelta(days=7)
     )
@@ -57,28 +57,28 @@ def _make_meeting(**overrides: object) -> MagicMock:
 def _make_create_request(**overrides: object) -> MagicMock:
     req = MagicMock()
     req.title = overrides.get("title", "Encontro Teste")
-    req.description = overrides.get("description", None)
+    req.description = overrides.get("description")
     req.location = overrides.get("location", "Café Central")
     req.meeting_type = overrides.get("meeting_type", "in_person")
-    req.virtual_link = overrides.get("virtual_link", None)
+    req.virtual_link = overrides.get("virtual_link")
     req.scheduled_at = overrides.get(
         "scheduled_at", datetime.now(UTC) + timedelta(days=7)
     )
     req.duration_minutes = overrides.get("duration_minutes", 60)
-    req.round_id = overrides.get("round_id", None)
+    req.round_id = overrides.get("round_id")
     return req
 
 
 def _make_update_request(**overrides: object) -> MagicMock:
     req = MagicMock()
-    req.title = overrides.get("title", None)
-    req.description = overrides.get("description", None)
-    req.location = overrides.get("location", None)
-    req.meeting_type = overrides.get("meeting_type", None)
-    req.virtual_link = overrides.get("virtual_link", None)
-    req.scheduled_at = overrides.get("scheduled_at", None)
-    req.duration_minutes = overrides.get("duration_minutes", None)
-    req.round_id = overrides.get("round_id", None)
+    req.title = overrides.get("title")
+    req.description = overrides.get("description")
+    req.location = overrides.get("location")
+    req.meeting_type = overrides.get("meeting_type")
+    req.virtual_link = overrides.get("virtual_link")
+    req.scheduled_at = overrides.get("scheduled_at")
+    req.duration_minutes = overrides.get("duration_minutes")
+    req.round_id = overrides.get("round_id")
     return req
 
 
@@ -88,7 +88,7 @@ def _make_rsvp(**overrides: object) -> MagicMock:
     r.meeting_id = overrides.get("meeting_id", uuid.uuid4())
     r.user_id = overrides.get("user_id", uuid.uuid4())
     r.status = overrides.get("status", "pending")
-    r.responded_at = overrides.get("responded_at", None)
+    r.responded_at = overrides.get("responded_at")
     return r
 
 

@@ -55,7 +55,7 @@ async def change_password(
 
 
 async def initiate_email_change(
-    redis: "aioredis.Redis",
+    redis: aioredis.Redis,
     db: AsyncSession,
     user: User,
     new_email: str,
@@ -104,7 +104,7 @@ async def initiate_email_change(
 
 
 async def confirm_email_change(
-    redis: "aioredis.Redis",
+    redis: aioredis.Redis,
     db: AsyncSession,
     token: str,
 ) -> None:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.security.tiptap import sanitize_tiptap_json
 
 

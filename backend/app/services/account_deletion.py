@@ -26,8 +26,8 @@ class AccountDeletionError(ServiceError):
 
 
 async def delete_account(
-    db: "AsyncSession",
-    redis: "aioredis.Redis",
+    db: AsyncSession,
+    redis: aioredis.Redis,
     user: User,
     confirmation: str,
     current_password: str | None = None,

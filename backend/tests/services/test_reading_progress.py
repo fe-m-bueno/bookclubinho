@@ -43,7 +43,7 @@ def _make_user(**overrides: object) -> MagicMock:
     u.id = overrides.get("id", uuid.uuid4())
     u.streak_current = overrides.get("streak_current", 0)
     u.streak_longest = overrides.get("streak_longest", 0)
-    u.streak_last_update = overrides.get("streak_last_update", None)
+    u.streak_last_update = overrides.get("streak_last_update")
     u.timezone = overrides.get("timezone", "America/Sao_Paulo")
     return u
 

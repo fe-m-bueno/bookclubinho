@@ -6,7 +6,6 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -35,7 +34,7 @@ def _make_user(**overrides: object) -> MagicMock:
     user.last_login_at = None
     user.created_at = datetime(2026, 1, 1, tzinfo=UTC)
     user.updated_at = datetime(2026, 1, 1, tzinfo=UTC)
-    user.hardcover_token_encrypted = overrides.get("hardcover_token_encrypted", None)
+    user.hardcover_token_encrypted = overrides.get("hardcover_token_encrypted")
     user.auto_sync_hardcover = False
     return user
 
@@ -133,10 +132,9 @@ class TestRevokeSession:
         with patch(
             "app.api.v1.endpoints.auth.revoke_session",
             new_callable=AsyncMock,
-        ) as mock_revoke:
-            with patch("app.api.v1.endpoints.auth.get_redis", return_value=AsyncMock()):
-                mock_revoke.return_value = None
-                resp = self.client.delete(f"/api/v1/auth/sessions/{session_id}")
+        ) as mock_revoke, patch("app.api.v1.endpoints.auth.get_redis", return_value=AsyncMock()):
+            mock_revoke.return_value = None
+            resp = self.client.delete(f"/api/v1/auth/sessions/{session_id}")
         assert resp.status_code == 200
         assert "revogada" in resp.json()["detail"]
 
@@ -145,12 +143,11 @@ class TestRevokeSession:
         with patch(
             "app.api.v1.endpoints.auth.revoke_session",
             new_callable=AsyncMock,
-        ) as mock_revoke:
-            with patch("app.api.v1.endpoints.auth.get_redis", return_value=AsyncMock()):
-                mock_revoke.side_effect = SessionError(
-                    "Sessão não encontrada.", status_code=404
-                )
-                resp = self.client.delete(f"/api/v1/auth/sessions/{session_id}")
+        ) as mock_revoke, patch("app.api.v1.endpoints.auth.get_redis", return_value=AsyncMock()):
+            mock_revoke.side_effect = SessionError(
+                "Sessão não encontrada.", status_code=404
+            )
+            resp = self.client.delete(f"/api/v1/auth/sessions/{session_id}")
         assert resp.status_code == 404
         assert "não encontrada" in resp.json()["detail"]
 

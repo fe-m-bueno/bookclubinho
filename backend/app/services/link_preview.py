@@ -161,18 +161,17 @@ async def fetch_link_preview(url: str) -> LinkPreviewData | None:
                 "Accept": "text/html,application/xhtml+xml",
                 "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
             },
-        ) as client:
-            async with client.stream("GET", url) as response:
-                if response.status_code >= 400:
-                    return None
-                content_type = response.headers.get("content-type", "")
-                if "text/html" not in content_type:
-                    return None
-                body = b""
-                async for chunk in response.aiter_bytes(chunk_size=4096):
-                    body += chunk
-                    if len(body) >= _MAX_BODY_BYTES:
-                        break
+        ) as client, client.stream("GET", url) as response:
+            if response.status_code >= 400:
+                return None
+            content_type = response.headers.get("content-type", "")
+            if "text/html" not in content_type:
+                return None
+            body = b""
+            async for chunk in response.aiter_bytes(chunk_size=4096):
+                body += chunk
+                if len(body) >= _MAX_BODY_BYTES:
+                    break
     except Exception as exc:
         logger.info("link_preview.fetch_error", url=url, error=str(exc))
         return None

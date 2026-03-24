@@ -1,0 +1,9 @@
+title = "Gitleaks config — Bookclubinho"
+
+[allowlist]
+description = "Ignore known test fixtures and example values"
+paths = [
+    "backend/tests/",
+    "docs/",
+    "infra/",
+]

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from app.security.body_limit import BodySizeLimitMiddleware, _DEFAULT_LIMIT_BYTES
+from app.security.body_limit import _DEFAULT_LIMIT_BYTES, BodySizeLimitMiddleware
 
 
 def _app() -> Starlette:

@@ -19,7 +19,6 @@ from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, sta
 
 from app.core.cookies import clear_auth_cookies
 from app.core.deps import CurrentUser, DBSession, OptionalUser  # noqa: TC001
-from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
 from app.schemas.notification import NotificationPreferencesUpdate  # noqa: TC001
 from app.schemas.onboarding import UsernameCheckResponse
@@ -35,6 +34,12 @@ from app.schemas.user import (
 from app.security.rate_limit import limiter
 from app.services.account_deletion import AccountDeletionError, delete_account
 from app.services.data_export import DataExportError, request_data_export
+from app.services.notification_preferences import (
+    get_notification_preferences as svc_get_notification_preferences,
+)
+from app.services.notification_preferences import (
+    update_notification_preferences as svc_update_notification_preferences,
+)
 from app.services.onboarding import check_username_available
 from app.services.shared_groups import get_shared_groups
 from app.services.user_profile import (
@@ -42,10 +47,6 @@ from app.services.user_profile import (
     get_public_profile,
     get_public_profile_by_username,
     update_user_profile,
-)
-from app.services.notification_preferences import (
-    get_notification_preferences as svc_get_notification_preferences,
-    update_notification_preferences as svc_update_notification_preferences,
 )
 from app.services.user_profile import delete_user_avatar as svc_delete_avatar
 from app.services.user_profile import upload_user_avatar as svc_upload_avatar

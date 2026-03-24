@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 from sqlalchemy import func, select
@@ -16,9 +16,8 @@ if TYPE_CHECKING:
 
     from app.schemas.message import MessageCreateRequest, MessageEditRequest
 
-from app.core.redis import get_redis
-
 from app.core.exceptions import ServiceError
+from app.core.redis import get_redis
 from app.db.models.group import GroupMember
 from app.db.models.hall_of_quote import HallOfQuote
 from app.db.models.message import ContentType, GroupMessage, MessageReaction

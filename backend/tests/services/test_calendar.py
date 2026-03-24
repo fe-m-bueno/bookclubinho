@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from app.services.calendar_service import generate_google_calendar_url, generate_ics
@@ -15,7 +15,7 @@ def _make_meeting(**overrides: object) -> MagicMock:
     m.title = overrides.get("title", "Discussão Cap 5")
     m.description = overrides.get("description", "Vamos discutir o capítulo 5")
     m.location = overrides.get("location", "Café Central")
-    m.virtual_link = overrides.get("virtual_link", None)
+    m.virtual_link = overrides.get("virtual_link")
     m.scheduled_at = overrides.get(
         "scheduled_at", datetime(2026, 4, 1, 19, 0, 0, tzinfo=UTC)
     )

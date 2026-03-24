@@ -7,7 +7,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import structlog
-from sqlalchemy import func, select, text as sa_text
+from sqlalchemy import func, select
 
 if TYPE_CHECKING:
     from fastapi import UploadFile
@@ -18,7 +18,7 @@ from app.db.models.badge import Badge, UserBadge
 from app.db.models.user import User
 from app.schemas.user import UserUpdate
 from app.security.sanitizer import sanitize
-from app.services.onboarding import OnboardingError, check_username_available
+from app.services.onboarding import check_username_available
 from app.storage.s3_storage import delete_file, upload_file
 
 logger = structlog.get_logger(__name__)
@@ -74,7 +74,7 @@ async def update_user_profile(
 async def upload_user_avatar(
     db: AsyncSession,
     user: User,
-    avatar: "UploadFile",
+    avatar: UploadFile,
 ) -> str:
     """Process and upload avatar; return new avatar_url."""
     data = await avatar.read()
@@ -148,7 +148,7 @@ async def get_public_profile(
 
 
 async def get_public_profile_by_username(
-    db: "AsyncSession",
+    db: AsyncSession,
     username: str,
     viewer_id: uuid.UUID | None = None,
 ) -> dict:

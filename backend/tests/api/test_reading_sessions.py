@@ -6,7 +6,6 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -35,8 +34,8 @@ def _make_session(**overrides: object) -> MagicMock:
     s.user_id = overrides.get("user_id", FAKE_USER.id)
     s.round_id = overrides.get("round_id", uuid.uuid4())
     s.started_at = overrides.get("started_at", datetime(2026, 3, 19, 10, 0, 0, tzinfo=UTC))
-    s.ended_at = overrides.get("ended_at", None)
-    s.duration_minutes = overrides.get("duration_minutes", None)
+    s.ended_at = overrides.get("ended_at")
+    s.duration_minutes = overrides.get("duration_minutes")
     s.created_at = overrides.get("created_at", datetime(2026, 3, 19, 10, 0, 0, tzinfo=UTC))
     return s
 

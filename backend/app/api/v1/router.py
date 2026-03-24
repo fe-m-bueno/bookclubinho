@@ -1,8 +1,6 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints.auth import router as auth_router
-from app.api.v1.endpoints.integrations import router as integrations_router
-from app.api.v1.endpoints.link_preview import router as link_preview_router
 from app.api.v1.endpoints.badges import (
     badges_catalog_router,
     badges_group_router,
@@ -13,6 +11,8 @@ from app.api.v1.endpoints.chat_stream import router as chat_stream_router
 from app.api.v1.endpoints.config import router as config_router
 from app.api.v1.endpoints.groups import router as groups_router
 from app.api.v1.endpoints.health import router as health_router
+from app.api.v1.endpoints.integrations import router as integrations_router
+from app.api.v1.endpoints.link_preview import router as link_preview_router
 from app.api.v1.endpoints.media import router as media_router
 from app.api.v1.endpoints.meetings import (
     group_meetings_router as group_meetings_router,

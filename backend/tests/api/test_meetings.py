@@ -6,7 +6,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -27,7 +26,7 @@ def _mock_user(**overrides: object) -> MagicMock:
     user.id = overrides.get("id", uuid.uuid4())
     user.username = overrides.get("username", "testuser")
     user.display_name = overrides.get("display_name", "Test User")
-    user.avatar_url = overrides.get("avatar_url", None)
+    user.avatar_url = overrides.get("avatar_url")
     user.is_active = True
     return user
 

@@ -20,7 +20,6 @@ from app.services.chat import (
     toggle_reaction,
 )
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture(autouse=True)
@@ -54,15 +53,15 @@ def _make_message(**overrides: object) -> MagicMock:
     msg.id = overrides.get("id", uuid.uuid4())
     msg.group_id = group_id
     msg.user_id = overrides.get("user_id", uuid.uuid4())
-    msg.round_id = overrides.get("round_id", None)
+    msg.round_id = overrides.get("round_id")
     msg.content_type = overrides.get("content_type", "text")
     msg.content_text = overrides.get("content_text", "Hello!")
-    msg.content_rich_json = overrides.get("content_rich_json", None)
-    msg.media_url = overrides.get("media_url", None)
+    msg.content_rich_json = overrides.get("content_rich_json")
+    msg.media_url = overrides.get("media_url")
     msg.is_spoiler = overrides.get("is_spoiler", False)
     msg.is_deleted = overrides.get("is_deleted", False)
     msg.created_at = overrides.get("created_at", datetime(2026, 3, 19, 10, 0, 0, tzinfo=UTC))
-    msg.updated_at = overrides.get("updated_at", None)
+    msg.updated_at = overrides.get("updated_at")
     msg.reactions = overrides.get("reactions", [])
     return msg
 
@@ -81,22 +80,22 @@ def _make_create_request(**overrides: object) -> MagicMock:
     req = MagicMock()
     req.content_type = overrides.get("content_type", "text")
     req.content_text = overrides.get("content_text", "Hello!")
-    req.content_rich_json = overrides.get("content_rich_json", None)
-    req.media_url = overrides.get("media_url", None)
-    req.thumbnail_url = overrides.get("thumbnail_url", None)
-    req.reference_type = overrides.get("reference_type", None)
-    req.reference_value = overrides.get("reference_value", None)
+    req.content_rich_json = overrides.get("content_rich_json")
+    req.media_url = overrides.get("media_url")
+    req.thumbnail_url = overrides.get("thumbnail_url")
+    req.reference_type = overrides.get("reference_type")
+    req.reference_value = overrides.get("reference_value")
     req.is_spoiler = overrides.get("is_spoiler", False)
-    req.spoiler_chapter = overrides.get("spoiler_chapter", None)
-    req.parent_message_id = overrides.get("parent_message_id", None)
-    req.round_id = overrides.get("round_id", None)
+    req.spoiler_chapter = overrides.get("spoiler_chapter")
+    req.parent_message_id = overrides.get("parent_message_id")
+    req.round_id = overrides.get("round_id")
     return req
 
 
 def _make_edit_request(**overrides: object) -> MagicMock:
     req = MagicMock()
     req.content_text = overrides.get("content_text", "Edited!")
-    req.content_rich_json = overrides.get("content_rich_json", None)
+    req.content_rich_json = overrides.get("content_rich_json")
     return req
 
 
