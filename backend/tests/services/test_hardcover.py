@@ -52,6 +52,7 @@ def _book_row(
     genres: list[str] | None = None,
 ) -> dict[str, Any]:
     resolved_genres = genres if genres is not None else ["Fiction"]
+    # O serviço lê géneros de cached_tags.Genre (formato atual da API Hardcover)
     return {
         "id": book_id,
         "title": title,
@@ -60,7 +61,7 @@ def _book_row(
         "pages": pages,
         "image": {"url": cover_url} if cover_url else None,
         "contributions": [{"author": {"name": author_name}}] if author_name else [],
-        "book_genres": [{"genre": {"name": g}} for g in resolved_genres],
+        "cached_tags": {"Genre": [{"tag": g} for g in resolved_genres]},
     }
 
 
