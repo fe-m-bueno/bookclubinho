@@ -1,16 +1,14 @@
 import asyncio
 from logging.config import fileConfig
-from collections.abc import Callable
 
 from alembic import context
 from sqlalchemy import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.core.config import settings
-from app.db.engine import Base, _build_url
-
 # ── Import every model module so Alembic sees all mapped tables ───────────────
 import app.db.models  # noqa: F401  — re-exports User, TimestampMixin, etc.
+from app.db.engine import Base, _build_url
+
 # Add future model modules here:
 # import app.db.models.group      # noqa: F401
 # import app.db.models.round      # noqa: F401
