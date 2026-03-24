@@ -171,7 +171,7 @@ async def _handle_new_message(redis: aioredis.Redis, data: dict[str, str]) -> No
             preview = preview[:80] + "..."
         group_url = f"{settings.APP_URL}/groups/{group_id}/chat"
 
-        for member, cooldown_val in zip(eligible, cooldown_vals):
+        for member, cooldown_val in zip(eligible, cooldown_vals, strict=False):
             if cooldown_val is not None:
                 continue
             try:
@@ -312,7 +312,7 @@ async def _poll_meeting_reminders(
 
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=REMINDER_POLL_INTERVAL)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
 
@@ -332,7 +332,7 @@ async def _publish_heartbeat(
 
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=HEARTBEAT_INTERVAL)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
 

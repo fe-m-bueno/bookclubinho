@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.core.logging import _mask_email, _pii_filter_processor
 
 
@@ -41,7 +39,7 @@ class TestPiiFilterProcessor:
         assert result["password"] == "[REDACTED]"
 
     def test_redacts_token_key(self) -> None:
-        result = self._process(token="eyJhbGciOiJIUzI1NiJ9.abc.xyz")
+        result = self._process(token="eyJhbGciOiJIUzI1NiJ9.abc.xyz")  # gitleaks:allow
         assert result["token"] == "[REDACTED]"
 
     def test_redacts_access_token(self) -> None:
@@ -49,7 +47,7 @@ class TestPiiFilterProcessor:
         assert result["access_token"] == "[REDACTED]"
 
     def test_redacts_api_key(self) -> None:
-        result = self._process(api_key="re_abc123xyz")
+        result = self._process(api_key="re_abc123xyz")  # gitleaks:allow
         assert result["api_key"] == "[REDACTED]"
 
     def test_masks_email_in_string_value(self) -> None:

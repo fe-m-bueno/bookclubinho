@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.constants import TOKEN_BLACKLIST_PREFIX as _TOKEN_BLACKLIST_PREFIX
 from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
 from app.core.security import (
@@ -57,8 +58,6 @@ _LOGIN_LOCK_TTL = 900      # 15 minutes lockout
 _LOGIN_MAX_FAILS = 10      # lock after 10 consecutive failures
 # Valid bcrypt hash format — used as a constant-time dummy target when no real hash exists
 _DUMMY_BCRYPT_HASH = "$2b$12$notarealhashXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-
-from app.core.constants import TOKEN_BLACKLIST_PREFIX as _TOKEN_BLACKLIST_PREFIX
 
 
 async def _is_rate_limited(
@@ -166,7 +165,7 @@ def _extract_jti_from_token(token: str) -> str | None:
 
 
 async def _create_session(
-    db: "AsyncSession",
+    db: AsyncSession,
     user_id: uuid.UUID,
     refresh_token: str,
     user_agent: str | None,
@@ -389,7 +388,7 @@ async def send_magic_link(db: AsyncSession, email: str) -> None:
 
 
 async def consume_magic_token(
-    db: "AsyncSession",
+    db: AsyncSession,
     token: str,
     user_agent: str | None = None,
     client_ip: str | None = None,
@@ -440,7 +439,7 @@ _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
 async def google_oauth_callback(
     code: str,
-    db: "AsyncSession",
+    db: AsyncSession,
     user_agent: str | None = None,
     client_ip: str | None = None,
 ) -> tuple[str, str, bool]:
@@ -526,7 +525,7 @@ async def google_oauth_callback(
 
 
 async def authenticate_user(
-    db: "AsyncSession",
+    db: AsyncSession,
     email: str,
     password: str,
     user_agent: str | None = None,
@@ -626,7 +625,7 @@ async def blacklist_refresh_token(token: str) -> None:
 
 async def rotate_refresh_token(
     token: str,
-    db: "AsyncSession | None" = None,
+    db: AsyncSession | None = None,
 ) -> tuple[str, str]:
     """Valida o refresh token, verifica blacklist e emite novo par access+refresh.
 
