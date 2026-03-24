@@ -110,6 +110,4 @@ const nextConfig: NextConfig = {
 export default withSentryConfig(nextConfig, {
   // Desabilita source map upload se SENTRY_AUTH_TOKEN não estiver configurado
   silent: !process.env.SENTRY_AUTH_TOKEN,
-  disableClientWebpackPlugin: !process.env.NEXT_PUBLIC_SENTRY_DSN,
-  disableServerWebpackPlugin: !process.env.NEXT_PUBLIC_SENTRY_DSN,
 });

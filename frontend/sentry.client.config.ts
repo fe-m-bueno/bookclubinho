@@ -10,8 +10,8 @@ Sentry.init({
 
   beforeSend(event) {
     // Strip token/code query params from URLs in breadcrumbs
-    if (event.breadcrumbs?.values) {
-      event.breadcrumbs.values = event.breadcrumbs.values.map((crumb) => {
+    if (event.breadcrumbs) {
+      event.breadcrumbs = event.breadcrumbs.map((crumb) => {
         if (crumb.data?.url && typeof crumb.data.url === "string") {
           crumb.data.url = crumb.data.url.replace(
             TOKEN_PARAM_RE,
