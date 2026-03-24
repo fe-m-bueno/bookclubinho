@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 
 interface Genre {
   slug: string;
@@ -39,6 +40,7 @@ export function GenreSelector({
     staleTime: 5 * 60 * 1000, // 5 min — genre list rarely changes
   });
   const shouldReduceMotion = useReducedMotion();
+  const { showSkeleton } = useSkeletonState(isLoading);
   const selectedSet = new Set(selected);
 
   function toggleGenre(slug: string) {
@@ -50,7 +52,7 @@ export function GenreSelector({
     }
   }
 
-  if (isLoading) {
+  if (showSkeleton) {
     return (
       <div className={GRID_CLASSES}>
         {SKELETON_ITEMS.map((_, i) => (

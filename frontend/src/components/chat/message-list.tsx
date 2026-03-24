@@ -12,6 +12,7 @@ import { differenceInMinutes, parseISO } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { useChatStore } from "@/stores/chat-store";
 import type { ChatMessage, TypingUser } from "@/lib/types/chat";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { ChatSkeleton } from "./chat-skeleton";
 import { MessageGroup } from "./message-group";
 import { TimestampSeparator } from "./timestamp-separator";
@@ -228,7 +229,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
 
     const items = useMemo(() => groupMessages(messages), [messages]);
 
-    if (isLoading) {
+    const { showSkeleton } = useSkeletonState(isLoading);
+    if (showSkeleton) {
       return (
         <div className="flex-1 overflow-y-auto">
           <ChatSkeleton />

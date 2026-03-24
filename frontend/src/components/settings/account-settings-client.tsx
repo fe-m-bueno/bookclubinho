@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { AccountSettingsSkeleton } from "./account-settings-skeleton";
 import { FormField } from "@/components/auth/form-field";
@@ -267,7 +268,9 @@ export function AccountSettingsClient() {
     }
   }, [searchParams]);
 
-  if (isLoading || !user) return <AccountSettingsSkeleton />;
+  const { showSkeleton } = useSkeletonState(isLoading);
+  if (showSkeleton) return <AccountSettingsSkeleton />;
+  if (!user) return null;
 
   return (
     <div className="space-y-4">

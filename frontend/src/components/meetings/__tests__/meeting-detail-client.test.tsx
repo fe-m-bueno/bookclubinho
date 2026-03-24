@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MeetingDetailClient } from "../meeting-detail-client";
@@ -111,6 +111,7 @@ describe("MeetingDetailClient", () => {
   });
 
   it("shows loading skeleton while fetching", async () => {
+    vi.useFakeTimers();
     const { useMeetingDetail } = await import("@/hooks/use-meeting-detail");
     (useMeetingDetail as any).mockReturnValue({
       data: null,
@@ -126,8 +127,10 @@ describe("MeetingDetailClient", () => {
         <MeetingDetailClient meetingId="m1" />
       </QueryClientProvider>,
     );
+    act(() => vi.advanceTimersByTime(250));
 
     expect(screen.getByLabelText("Carregando detalhes do encontro")).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("displays participants list", async () => {

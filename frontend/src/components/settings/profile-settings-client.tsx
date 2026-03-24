@@ -10,6 +10,7 @@ import { ptBR } from "date-fns/locale";
 import { Lock } from "lucide-react";
 import { toast } from "sonner";
 
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { USERNAME_REGEX } from "@/hooks/use-username-check";
 import { ProfileSettingsSkeleton } from "./profile-settings-skeleton";
@@ -164,7 +165,9 @@ export function ProfileSettingsClient() {
     }
   }
 
-  if (isLoading || !user) return <ProfileSettingsSkeleton />;
+  const { showSkeleton } = useSkeletonState(isLoading);
+  if (showSkeleton) return <ProfileSettingsSkeleton />;
+  if (!user) return null;
 
   const initials = getInitials(user.display_name, user.username, user.email);
 

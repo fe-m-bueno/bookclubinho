@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { Calendar } from "lucide-react";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useUpcomingMeetings } from "@/hooks/use-upcoming-meetings";
 import { UpcomingMeetingPill } from "@/components/home/upcoming-meeting-pill";
 import {
@@ -24,8 +25,9 @@ export function AllMeetingsClient() {
   const shouldReduce = useReducedMotion();
   const variants = shouldReduce ? STAGGER_VARIANTS_REDUCED : STAGGER_VARIANTS_NORMAL;
   const { data, isLoading } = useUpcomingMeetings(50);
+  const { showSkeleton } = useSkeletonState(isLoading);
 
-  if (isLoading) return <AllMeetingsSkeleton />;
+  if (showSkeleton) return <AllMeetingsSkeleton />;
 
   const meetings = data?.meetings ?? [];
 

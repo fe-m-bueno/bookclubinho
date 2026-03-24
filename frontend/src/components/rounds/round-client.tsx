@@ -7,6 +7,7 @@ import { useGroup } from "@/lib/contexts/group-context";
 import { useCurrentRound } from "@/hooks/use-current-round";
 import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
 import { Button } from "@/components/ui/button";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { RoundSkeleton } from "./round-skeleton";
 import { RoundStatusBadge } from "./round-status-badge";
 import { RoundNominatingPhase } from "./round-nominating-phase";
@@ -38,7 +39,8 @@ export function RoundClient() {
     },
   });
 
-  if (loading) return <RoundSkeleton />;
+  const { showSkeleton } = useSkeletonState(loading);
+  if (showSkeleton) return <RoundSkeleton />;
 
   if (error) {
     return (

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { GroupDetailResponse } from "@/lib/types/group";
@@ -104,6 +104,7 @@ describe("RoundClient", () => {
   });
 
   it("shows skeleton while loading", () => {
+    vi.useFakeTimers();
     mockedUseCurrentRound.mockReturnValue({
       round: null,
       loading: true,
@@ -112,7 +113,9 @@ describe("RoundClient", () => {
     });
 
     const { container } = renderWithProviders(<RoundClient />);
+    act(() => vi.advanceTimersByTime(250));
     expect(container.querySelector(".animate-pulse")).toBeTruthy();
+    vi.useRealTimers();
   });
 
   it("shows error with retry button", () => {

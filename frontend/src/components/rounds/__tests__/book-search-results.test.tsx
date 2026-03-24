@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import type { BookResult } from "@/lib/types/book";
@@ -52,12 +52,14 @@ describe("BookSearchResults", () => {
   });
 
   it("shows skeleton cards when loading", () => {
+    vi.useFakeTimers();
     const { container } = render(
       <BookSearchResults results={[]} onSelect={vi.fn()} loading={true} />,
     );
-
+    act(() => vi.advanceTimersByTime(250));
     // Skeletons render with animate-pulse
     expect(container.querySelector(".animate-pulse")).toBeTruthy();
+    vi.useRealTimers();
   });
 
   it("shows empty message when no results and not loading", () => {

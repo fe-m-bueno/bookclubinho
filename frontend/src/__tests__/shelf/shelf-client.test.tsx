@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { ShelfClient } from "@/components/shelf/shelf-client";
 import type { ShelfResponse } from "@/lib/types/shelf";
 
@@ -69,6 +69,7 @@ describe("ShelfClient", () => {
   });
 
   it("shows skeleton while loading", () => {
+    vi.useFakeTimers();
     mockUseShelf.mockReturnValue({
       data: null,
       loading: true,
@@ -76,7 +77,9 @@ describe("ShelfClient", () => {
       refetch: vi.fn(),
     });
     render(<ShelfClient />);
+    act(() => vi.advanceTimersByTime(250));
     expect(screen.getByTestId("shelf-skeleton")).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("shows error state and retry button", () => {

@@ -11,6 +11,7 @@ import {
   useRevokeSession,
   useRevokeAllOtherSessions,
 } from "@/hooks/use-sessions";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { SessionsSettingsSkeleton } from "./sessions-settings-skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -144,7 +145,8 @@ export function SessionsSettingsClient() {
   const revokeAllMutation = useRevokeAllOtherSessions();
   const [revokeAllOpen, setRevokeAllOpen] = useState(false);
 
-  if (isLoading) return <SessionsSettingsSkeleton />;
+  const { showSkeleton } = useSkeletonState(isLoading);
+  if (showSkeleton) return <SessionsSettingsSkeleton />;
 
   const sessions = data?.sessions ?? [];
   const hasOtherSessions = sessions.length > 1;

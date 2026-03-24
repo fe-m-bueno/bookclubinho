@@ -5,6 +5,7 @@ import { Plus, Quote, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGroup } from "@/lib/contexts/group-context";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useQuotes, useQuoteMutations } from "@/hooks/use-quotes";
 import { QuotesSkeleton } from "./quotes-skeleton";
 import { QuoteMasonryGrid } from "./quote-masonry-grid";
@@ -28,6 +29,7 @@ export function QuotesClient({ groupId }: QuotesClientProps) {
 
   const { quotes, loading, loadingMore, hasMore, error, loadMore, refetch } =
     useQuotes({ groupId, sort });
+  const { showSkeleton } = useSkeletonState(loading);
 
   const { toggleVote, deleteQuote } = useQuoteMutations(groupId);
 
@@ -102,9 +104,9 @@ export function QuotesClient({ groupId }: QuotesClientProps) {
       </div>
 
       {/* Content */}
-      {loading ? (
+      {showSkeleton ? (
         <QuotesSkeleton />
-      ) : error ? (
+      ) : !loading && error ? (
         <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
           <p className="text-muted-foreground text-sm">{error}</p>
           <Button type="button" variant="outline" size="sm" onClick={refetch}>

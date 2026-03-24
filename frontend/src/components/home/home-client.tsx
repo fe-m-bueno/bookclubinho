@@ -11,6 +11,7 @@ import {
   STAGGER_VARIANTS_NORMAL,
   STAGGER_VARIANTS_REDUCED,
 } from "@/lib/motion-variants";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { HomeSkeleton } from "./home-skeleton";
 import { HomeEmptyState } from "./home-empty-state";
 import { UserMenu } from "./user-menu";
@@ -33,8 +34,9 @@ export function HomeClient() {
   const badgesQuery = useRecentBadges(3);
 
   const isLoading = userQuery.isLoading || groupsQuery.isLoading;
+  const { showSkeleton } = useSkeletonState(isLoading);
 
-  if (isLoading) return <HomeSkeleton />;
+  if (showSkeleton) return <HomeSkeleton />;
 
   const user = userQuery.data;
   const groups = groupsQuery.data?.groups ?? [];

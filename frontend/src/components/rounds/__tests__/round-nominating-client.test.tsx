@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -87,6 +87,7 @@ describe("RoundNominatingClient", () => {
   });
 
   it("shows skeleton while loading", () => {
+    vi.useFakeTimers();
     mockedUseCurrentRound.mockReturnValue({
       round: null,
       loading: true,
@@ -95,8 +96,10 @@ describe("RoundNominatingClient", () => {
     });
 
     const { container } = renderWithProviders(<RoundNominatingClient />);
+    act(() => vi.advanceTimersByTime(250));
     // Skeleton renders with animate-pulse divs
     expect(container.querySelector(".animate-pulse")).toBeTruthy();
+    vi.useRealTimers();
   });
 
   it("shows error with retry button", () => {

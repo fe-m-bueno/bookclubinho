@@ -8,6 +8,7 @@ import { BookOpen, Flame, Home, Trophy, Users } from "lucide-react";
 import { usePublicProfile } from "@/hooks/use-public-profile";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { UserProfileSkeleton } from "./user-profile-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,8 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
   const { data: sharedGroups, isLoading: groupsLoading } = useSharedGroups(username);
   const { data: currentUser } = useCurrentUser();
 
-  if (profileLoading) return <UserProfileSkeleton />;
+  const { showSkeleton } = useSkeletonState(profileLoading);
+  if (showSkeleton) return <UserProfileSkeleton />;
 
   // 404 handling
   if (error || !profile) {

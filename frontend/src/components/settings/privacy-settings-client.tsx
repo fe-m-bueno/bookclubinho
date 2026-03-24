@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { useRequestDataExport, useDeleteAccount } from "@/hooks/use-data-export";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { PrivacySettingsSkeleton } from "./privacy-settings-skeleton";
 import { PasswordInput } from "@/components/auth/password-input";
@@ -334,7 +335,9 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
 export function PrivacySettingsClient() {
   const { data: user, isLoading } = useCurrentUser();
 
-  if (isLoading || !user) return <PrivacySettingsSkeleton />;
+  const { showSkeleton } = useSkeletonState(isLoading);
+  if (showSkeleton) return <PrivacySettingsSkeleton />;
+  if (!user) return null;
 
   return (
     <div className="space-y-4">

@@ -10,6 +10,7 @@ import {
   useDisconnectHardcover,
   useToggleHardcoverSync,
 } from "@/hooks/use-hardcover-status";
+import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { IntegrationsSettingsSkeleton } from "./integrations-settings-skeleton";
 import { Button } from "@/components/ui/button";
@@ -273,7 +274,8 @@ export function IntegrationsSettingsClient() {
   const { isLoading: statusLoading } = useHardcoverStatus();
   const { isLoading: userLoading } = useCurrentUser();
 
-  if (statusLoading || userLoading) return <IntegrationsSettingsSkeleton />;
+  const { showSkeleton } = useSkeletonState(statusLoading || userLoading);
+  if (showSkeleton) return <IntegrationsSettingsSkeleton />;
 
   return (
     <div className="space-y-4">
