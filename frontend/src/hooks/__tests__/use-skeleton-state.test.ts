@@ -14,6 +14,19 @@ describe("useSkeletonState", () => {
   it("começa com showSkeleton=false quando isLoading=false", () => {
     const { result } = renderHook(() => useSkeletonState(false));
     expect(result.current.showSkeleton).toBe(false);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it("expõe isLoading=true durante a janela anterior ao delay do skeleton", () => {
+    const { result } = renderHook(
+      ({ isLoading }) => useSkeletonState(isLoading),
+      { initialProps: { isLoading: true } },
+    );
+
+    // Antes do delay (250ms), showSkeleton ainda é false mas isLoading é true
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current.showSkeleton).toBe(false);
+    expect(result.current.isLoading).toBe(true);
   });
 
   it("não exibe skeleton em load rápido (< 250ms)", () => {

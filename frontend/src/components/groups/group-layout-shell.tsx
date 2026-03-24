@@ -40,6 +40,7 @@ export function GroupLayoutShell({ groupId, children }: GroupLayoutShellProps) {
   if (showSkeleton) {
     return <GroupLayoutSkeleton />;
   }
+  if (loading) return null;
 
   if (error || !group) {
     return (

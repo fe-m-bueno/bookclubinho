@@ -41,6 +41,7 @@ export function RoundClient() {
 
   const { showSkeleton } = useSkeletonState(loading);
   if (showSkeleton) return <RoundSkeleton />;
+  if (loading) return null;
 
   if (error) {
     return (
