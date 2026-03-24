@@ -143,6 +143,11 @@ async def create_group_endpoint(
     except GroupError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
+    # Commit antes de agendar o BackgroundTask: o badge checker abre sua própria
+    # sessão e não consegue ver dados não-commitados de outras transações.
+    # Sem isso, _check_founder encontra 0 grupos e a badge nunca é concedida.
+    await db.commit()
+
     background_tasks.add_task(
         check_and_award_badges,
         str(user.id),

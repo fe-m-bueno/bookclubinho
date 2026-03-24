@@ -40,6 +40,8 @@ def _make_full_user(**overrides: object) -> MagicMock:
     user.last_login_at = overrides.get("last_login_at", None)
     user.created_at = overrides.get("created_at", datetime(2026, 1, 1, tzinfo=UTC))
     user.updated_at = overrides.get("updated_at", datetime(2026, 1, 1, tzinfo=UTC))
+    user.auto_sync_hardcover = overrides.get("auto_sync_hardcover", False)
+    user.hardcover_token_encrypted = overrides.get("hardcover_token_encrypted", None)
     return user
 
 

@@ -102,17 +102,25 @@ async def test_get_my_badges_no_badges() -> None:
 @pytest.mark.asyncio
 async def test_get_my_badges_groups_by_category() -> None:
     """Badges agrupados por categoria no resultado."""
+    from datetime import UTC, datetime
+
     user_id = uuid.uuid4()
-    user_badge = _make_user_badge(user_id=user_id)
-    badge = _make_badge(slug="bookworm", category="reading")
-    group = MagicMock()
-    group.name = "Clube A"
-    round_ = MagicMock()
-    round_.book_title = "O Hobbit"
+
+    # O serviço usa colunas escalares (Badge.slug, Badge.name, ...), não joins ORM.
+    # O resultado é um Row com atributos nomeados.
+    row = MagicMock()
+    row.slug = "bookworm"
+    row.name = "Rato de Biblioteca"
+    row.description = "Finalizou 5 livros com o clube"
+    row.emoji = "🐛"
+    row.category = "reading"
+    row.earned_at = datetime(2026, 1, 1, tzinfo=UTC)
+    row.group_name = "Clube A"
+    row.book_title = "O Hobbit"
 
     db = AsyncMock()
     res = MagicMock()
-    res.all.return_value = [(user_badge, badge, group, round_)]
+    res.all.return_value = [row]
     db.execute = AsyncMock(return_value=res)
 
     result = await get_my_badges(db, user_id=user_id)
