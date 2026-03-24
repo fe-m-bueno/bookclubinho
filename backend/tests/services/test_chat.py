@@ -21,6 +21,15 @@ from app.services.chat import (
 )
 
 
+# ── Fixtures ──────────────────────────────────────────────────────────────────
+
+@pytest.fixture(autouse=True)
+def mock_check_flood():
+    """Bypass Redis flood check in all chat service unit tests."""
+    with patch("app.services.chat._check_flood", new=AsyncMock()):
+        yield
+
+
 # ── Mock factories ─────────────────────────────────────────────────────────────
 
 

@@ -42,6 +42,19 @@ from app.schemas.auth import (
 )
 from app.security.rate_limit import limiter
 from app.services.account import AccountError, change_password, confirm_email_change, initiate_email_change
+from app.services.audit import (
+    ACCOUNT_LOCKED,
+    DATA_EXPORTED,
+    LOGIN_FAILED,
+    LOGIN_SUCCESS,
+    LOGOUT,
+    MAGIC_LINK_USED,
+    OAUTH_LOGIN,
+    PASSWORD_CHANGED,
+    REGISTER,
+    SESSION_REVOKED,
+    log_event,
+)
 from app.services.session import SessionError, list_sessions, revoke_all_other_sessions, revoke_session
 from app.services.auth import (
     AuthError,
@@ -84,10 +97,16 @@ async def csrf_seed() -> None:
     response_model=RegisterResponse,
     summary="Criar conta",
 )
-async def register(body: RegisterRequest, db: DBSession) -> RegisterResponse:  # noqa: TC001
+@limiter.limit("5/hour")
+async def register(
+    request: Request,
+    body: RegisterRequest,
+    db: DBSession,  # noqa: TC001
+) -> RegisterResponse:
     """Cria um novo usuário e envia e-mail de verificação.
 
     Retorna sempre 201 independentemente de o e-mail já existir (anti-enumeration).
+    Rate limit: 5 requisições por hora por IP.
     """
     await register_user(
         db=db,
@@ -169,11 +188,15 @@ async def login(
             db=db,
             email=form_data.username,
             password=form_data.password,
+            user_agent=request.headers.get("User-Agent"),
+            client_ip=request.client.host if request.client else None,
         )
     except AuthError as exc:
+        await log_event(db, LOGIN_FAILED, request=request)
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     set_auth_cookies(response, access_token, refresh_token)
+    await log_event(db, LOGIN_SUCCESS, request=request)
 
     return LoginResponse(message="Login realizado com sucesso.")
 
@@ -182,11 +205,16 @@ async def login(
 
 
 @router.post("/magic-link", status_code=200, response_model=MagicLinkResponse)
-async def request_magic_link(body: MagicLinkRequest, db: DBSession) -> MagicLinkResponse:  # noqa: TC001
+@limiter.limit("10/hour")
+async def request_magic_link(
+    request: Request,
+    body: MagicLinkRequest,
+    db: DBSession,  # noqa: TC001
+) -> MagicLinkResponse:
     """Solicita magic link por e-mail.
 
     Retorna sempre 200 independentemente de o e-mail já existir (anti-enumeration).
-    Rate limit por e-mail é gerenciado no service layer.
+    Rate limit: 10 por hora por IP (complementa rate limit por e-mail no service layer).
     """
     await send_magic_link(db=db, email=body.email)
     return MagicLinkResponse(
@@ -195,7 +223,11 @@ async def request_magic_link(body: MagicLinkRequest, db: DBSession) -> MagicLink
 
 
 @router.get("/magic/callback", response_class=RedirectResponse)
-async def magic_link_callback(token: str, db: DBSession) -> RedirectResponse:  # noqa: TC001
+async def magic_link_callback(
+    request: Request,
+    token: str,
+    db: DBSession,  # noqa: TC001
+) -> RedirectResponse:
     """Valida magic token, autentica o usuário e redireciona."""
     try:
         access_token, refresh_token, onboarding_completed = await consume_magic_token(
@@ -203,6 +235,8 @@ async def magic_link_callback(token: str, db: DBSession) -> RedirectResponse:  #
         )
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    await log_event(db, MAGIC_LINK_USED, request=request)
 
     base_url = settings.APP_URL.rstrip("/")
     redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
@@ -305,6 +339,8 @@ async def google_callback(
     except AuthError:
         return error_redirect
 
+    await log_event(db, OAUTH_LOGIN, request=None)  # sem request disponível em redirect
+
     redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
     response = RedirectResponse(url=redirect_url, status_code=303)
     set_auth_cookies(response, access_token, refresh_token)
@@ -336,6 +372,7 @@ async def update_password(
         )
     except AccountError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    await log_event(db, PASSWORD_CHANGED, user_id=user.id, request=request)
     return MessageResponse(message="Senha alterada com sucesso.")
 
 

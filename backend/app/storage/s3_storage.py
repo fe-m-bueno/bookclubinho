@@ -5,6 +5,11 @@ Public surface:
     upload_file(bucket_path, data, content_type) -> str
     delete_file(bucket_path) -> None
     generate_presigned_upload_url(bucket_path, content_type, expires) -> str
+    generate_presigned_get_url(bucket_path, expires) -> str
+
+Access model:
+    avatars/*, groups/* — public read (CDN-accessible via S3_PUBLIC_URL)
+    media/*, exports/*  — private; access via presigned GET URLs (1h expiry)
 
 All image uploads are validated by magic bytes, stripped of EXIF, converted to
 WebP, and resized before hitting the bucket.  Non-image content types are
@@ -37,6 +42,11 @@ WEBP_CONTENT_TYPE: Final = "image/webp"
 GIF_CONTENT_TYPE: Final = "image/gif"
 
 _THUMBNAIL_MAX_PX: Final = 300
+
+# Prefixes that are publicly readable (served via S3_PUBLIC_URL / CDN).
+# Everything else (media/, exports/) requires presigned GET URLs.
+_PUBLIC_PREFIXES: Final = ("avatars/", "groups/")
+_PRESIGNED_GET_EXPIRY: Final = 3600  # 1 hour
 
 # (max_longest_side, square_crop)
 _RESIZE_RULES: Final[dict[str, tuple[int, bool]]] = {
@@ -270,23 +280,50 @@ def _ensure_bucket() -> None:
     except client.exceptions.ClientError:
         client.create_bucket(Bucket=bucket)
 
-    # Allow anonymous reads so public URLs resolve without presigning.
+    # Allow anonymous reads only for public prefixes (avatars/, groups/).
+    # media/ and exports/ remain private — accessed via presigned GET URLs.
     policy = json.dumps({
         "Version": "2012-10-17",
         "Statement": [{
             "Effect": "Allow",
             "Principal": "*",
             "Action": ["s3:GetObject"],
-            "Resource": [f"arn:aws:s3:::{bucket}/*"],
+            "Resource": [
+                f"arn:aws:s3:::{bucket}/avatars/*",
+                f"arn:aws:s3:::{bucket}/groups/*",
+            ],
         }],
     })
     client.put_bucket_policy(Bucket=bucket, Policy=policy)
     _bucket_ensured = True
 
 
+def generate_presigned_get_url(bucket_path: str, expires: int = _PRESIGNED_GET_EXPIRY) -> str:
+    """Return a presigned GET URL for a private bucket path.
+
+    Use for media/ and exports/ paths that should not be publicly accessible.
+    The URL expires after *expires* seconds (default: 1 hour).
+    """
+    url: str = _client().generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": settings.S3_BUCKET_NAME,
+            "Key": bucket_path,
+        },
+        ExpiresIn=expires,
+    )
+    return url
+
+
 def get_public_url(bucket_path: str) -> str:
-    """Return the public URL for a given bucket path."""
-    return f"{settings.S3_PUBLIC_URL.rstrip('/')}/{bucket_path}"
+    """Return the URL for a given bucket path.
+
+    For public prefixes (avatars/, groups/) returns a plain CDN URL.
+    For private prefixes (media/, exports/) returns a presigned GET URL.
+    """
+    if any(bucket_path.startswith(prefix) for prefix in _PUBLIC_PREFIXES):
+        return f"{settings.S3_PUBLIC_URL.rstrip('/')}/{bucket_path}"
+    return generate_presigned_get_url(bucket_path)
 
 
 def upload_file(bucket_path: str, data: bytes, content_type: str) -> str:

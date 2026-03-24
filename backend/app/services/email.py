@@ -109,6 +109,16 @@ class EmailService:
         )
         await self._send(to, "Bookclub — confirme seu novo e-mail", html)
 
+    async def send_account_locked_warning(self, to: str, display_name: str) -> None:
+        """Send account lockout security warning after repeated failed logins."""
+        settings_url = f"{_frontend_url()}/settings/account"
+        html = self._render(
+            "emails/account_locked.html",
+            display_name=display_name,
+            settings_url=settings_url,
+        )
+        await self._send(to, "Bookclub — alerta de segurança: conta bloqueada temporariamente", html)
+
     async def send_data_export(self, to: str, display_name: str, download_url: str) -> None:
         """Send data export download link."""
         html = self._render(

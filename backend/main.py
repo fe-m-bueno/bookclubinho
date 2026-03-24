@@ -1,6 +1,8 @@
+import re
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,11 +24,50 @@ from app.core.redis import close_redis_pool
 from app.services.hardcover import close_hardcover_client
 from app.core.rls import RLSMiddleware
 from app.db.engine import engine
+from app.security.body_limit import BodySizeLimitMiddleware
 from app.security.csrf import CSRFMiddleware
+from app.security.headers import SecurityHeadersMiddleware
 from app.security.rate_limit import limiter
 
 configure_logging(debug=settings.DEBUG)
 logger = structlog.get_logger(__name__)
+
+_TOKEN_RE = re.compile(r"[?&](token|code|access_token)=[^&\s]+")
+
+
+def _sentry_before_send(event: dict, hint: dict) -> dict | None:
+    """Strip PII from Sentry events before sending."""
+    request = event.get("request", {})
+
+    if "/auth/" in request.get("url", ""):
+        request["data"] = "[FILTERED]"
+
+    if "url" in request:
+        request["url"] = _TOKEN_RE.sub(r"?\1=[FILTERED]", request["url"])
+
+    if "cookies" in request:
+        request["cookies"] = {k: "[FILTERED]" for k in request["cookies"]}
+
+    headers = request.get("headers", {})
+    if "Authorization" in headers:
+        headers["Authorization"] = "[FILTERED]"
+
+    user_ctx = event.get("user", {})
+    if "email" in user_ctx:
+        user_ctx["email"] = "[FILTERED]"
+
+    return event
+
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+        before_send=_sentry_before_send,
+    )
+    logger.info("sentry_initialized", environment=settings.ENVIRONMENT)
 
 
 # ── DB startup probe with exponential backoff ─────────────────────────────────
@@ -79,7 +120,7 @@ app = FastAPI(
 app.state.limiter = limiter
 
 # Middleware order: Starlette is LIFO — last added runs outermost (first).
-# Execution order: CORS → CSRF → RLS → route handler
+# Execution order: SecurityHeaders → CORS → CSRF → RLS → route handler
 app.add_middleware(RLSMiddleware)
 app.add_middleware(CSRFMiddleware)
 app.add_middleware(
@@ -89,6 +130,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-CSRF-Token"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(BodySizeLimitMiddleware)
 
 
 # ── Exception handlers ────────────────────────────────────────────────────────

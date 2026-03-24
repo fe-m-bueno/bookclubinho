@@ -111,6 +111,13 @@ class GroupMessage(CreatedAtMixin, Base):
         server_default=text("false"),
         default=False,
     )
+    # Auto-hidden after AUTO_HIDE_THRESHOLD unique reports; admins can un-hide
+    is_hidden: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
 
     group: Mapped["Group"] = relationship(lazy="raise")  # noqa: F821
     user: Mapped["User"] = relationship(lazy="raise", foreign_keys=[user_id])  # noqa: F821

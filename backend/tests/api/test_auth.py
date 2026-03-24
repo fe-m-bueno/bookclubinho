@@ -331,6 +331,17 @@ class TestVerifyEmailToken:
 # ── Service: authenticate_user ─────────────────────────────────────────────────
 
 
+def _mock_redis_unlocked() -> AsyncMock:
+    """Redis mock sem lockout ativo e contador zerado."""
+    redis = AsyncMock()
+    redis.get = AsyncMock(return_value=None)   # not locked
+    redis.incr = AsyncMock(return_value=1)
+    redis.expire = AsyncMock()
+    redis.delete = AsyncMock()
+    redis.set = AsyncMock()
+    return redis
+
+
 class TestAuthenticateUser:
     @pytest.mark.asyncio
     async def test_valid_credentials_return_tokens(self) -> None:
@@ -345,6 +356,7 @@ class TestAuthenticateUser:
         mock_db = mock_db_returning(mock_user)
 
         with (
+            patch("app.services.auth.get_redis", return_value=_mock_redis_unlocked()),
             patch("app.services.auth.verify_password", return_value=True),
             patch(
                 "app.services.auth.create_token_pair",
@@ -371,6 +383,7 @@ class TestAuthenticateUser:
         mock_db = mock_db_returning(mock_user)
 
         with (
+            patch("app.services.auth.get_redis", return_value=_mock_redis_unlocked()),
             patch("app.services.auth.verify_password", return_value=False),
             pytest.raises(AuthError) as exc_info,
         ):
@@ -385,6 +398,7 @@ class TestAuthenticateUser:
         mock_db = mock_db_returning(None)
 
         with (
+            patch("app.services.auth.get_redis", return_value=_mock_redis_unlocked()),
             patch("app.services.auth.verify_password", return_value=False),
             pytest.raises(AuthError) as exc_info,
         ):
@@ -393,7 +407,12 @@ class TestAuthenticateUser:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_unverified_email_raises_403(self) -> None:
+    async def test_unverified_email_raises_401_generic_message(self) -> None:
+        """Unverified email deve retornar 401 com mensagem genérica (anti-enumeration).
+
+        Anteriormente retornava 403 com mensagem distinta — isso vazava que o email
+        existia no sistema. O comportamento correto é 401 com a mesma mensagem genérica.
+        """
         from app.services.auth import authenticate_user
 
         mock_user = MagicMock()
@@ -403,12 +422,14 @@ class TestAuthenticateUser:
         mock_db = mock_db_returning(mock_user)
 
         with (
+            patch("app.services.auth.get_redis", return_value=_mock_redis_unlocked()),
             patch("app.services.auth.verify_password", return_value=True),
             pytest.raises(AuthError) as exc_info,
         ):
             await authenticate_user(db=mock_db, email="u@e.com", password="pass")
 
-        assert exc_info.value.status_code == 403
+        assert exc_info.value.status_code == 401
+        assert "Credenciais inválidas" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_inactive_user_raises_401(self) -> None:
@@ -421,6 +442,7 @@ class TestAuthenticateUser:
         mock_db = mock_db_returning(mock_user)
 
         with (
+            patch("app.services.auth.get_redis", return_value=_mock_redis_unlocked()),
             patch("app.services.auth.verify_password", return_value=True),
             pytest.raises(AuthError) as exc_info,
         ):

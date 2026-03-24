@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -15,16 +16,24 @@ if TYPE_CHECKING:
 
     from app.schemas.message import MessageCreateRequest, MessageEditRequest
 
+from app.core.redis import get_redis
+
 from app.core.exceptions import ServiceError
 from app.db.models.group import GroupMember
 from app.db.models.hall_of_quote import HallOfQuote
 from app.db.models.message import ContentType, GroupMessage, MessageReaction
-from app.security.sanitizer import sanitize, sanitize_rich
+from app.security.sanitizer import sanitize
+from app.security.tiptap import sanitize_tiptap_json
 from app.services.group_helpers import emit_group_event
 
 logger = structlog.get_logger(__name__)
 
 _EDIT_WINDOW_MINUTES = 15
+_FLOOD_KEY_PREFIX = "chat_flood:"
+_FLOOD_WINDOW_SECONDS = 60
+_FLOOD_MAX_MESSAGES = 10
+_DEDUP_KEY_PREFIX = "chat_dedup:"
+_DEDUP_TTL_SECONDS = 30
 
 
 class ChatError(ServiceError):
@@ -32,6 +41,33 @@ class ChatError(ServiceError):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+async def _check_flood(user_id: uuid.UUID, group_id: uuid.UUID, content_hash: str) -> None:
+    """Raise ChatError if the user is flooding the chat or sending duplicate messages.
+
+    Two checks:
+      1. Rate limit — max 10 messages per 60-second sliding window per user/group.
+      2. Dedup — reject if the same content hash was sent in the last 30 seconds.
+    """
+    redis = get_redis()
+    flood_key = f"{_FLOOD_KEY_PREFIX}{user_id}:{group_id}"
+    dedup_key = f"{_DEDUP_KEY_PREFIX}{user_id}:{group_id}:{content_hash}"
+
+    # Duplicate check
+    is_dup = await redis.set(dedup_key, "1", ex=_DEDUP_TTL_SECONDS, nx=True)
+    if is_dup is None:
+        raise ChatError("Mensagem duplicada. Aguarde antes de reenviar.", status_code=429)
+
+    # Flood check (INCR + EXPIRE pattern)
+    count = await redis.incr(flood_key)
+    if count == 1:
+        await redis.expire(flood_key, _FLOOD_WINDOW_SECONDS)
+    if count > _FLOOD_MAX_MESSAGES:
+        raise ChatError(
+            "Muitas mensagens em pouco tempo. Aguarde um momento.",
+            status_code=429,
+        )
 
 
 async def _check_membership(db: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID) -> None:
@@ -69,16 +105,6 @@ async def emit_typing_event(
     )
 
 
-def _sanitize_tiptap_json(data: Any) -> Any:
-    """Walk Tiptap JSON recursively and sanitize text node content."""
-    if isinstance(data, dict):
-        if data.get("type") == "text" and isinstance(data.get("text"), str):
-            return {**data, "text": sanitize_rich(data["text"])}
-        return {k: _sanitize_tiptap_json(v) for k, v in data.items()}
-    if isinstance(data, list):
-        return [_sanitize_tiptap_json(item) for item in data]
-    return data
-
 
 # ── Service functions ─────────────────────────────────────────────────────────
 
@@ -92,8 +118,13 @@ async def create_message(
     """Create a new chat message. Validates membership and sanitizes content."""
     await _check_membership(db, group_id, user_id)
 
+    # Flood + dedup protection (hash content early, before sanitize, to be consistent)
+    _raw_content = (data.content_text or "") + str(data.content_rich_json or "")
+    _content_hash = hashlib.sha256(_raw_content.encode()).hexdigest()[:16]
+    await _check_flood(user_id, group_id, _content_hash)
+
     clean_text = sanitize(data.content_text) if data.content_text else None
-    clean_rich = _sanitize_tiptap_json(data.content_rich_json) if data.content_rich_json else None
+    clean_rich = sanitize_tiptap_json(data.content_rich_json) if data.content_rich_json else None
 
     # Validate parent_message_id belongs to same group
     parent_id: uuid.UUID | None = None
@@ -151,8 +182,7 @@ async def create_message(
 
     # Emit to notifications stream for digest worker
     try:
-        from app.core.redis import get_redis as _get_redis  # noqa: PLC0415
-        _redis = _get_redis()
+        _redis = get_redis()
         await _redis.xadd(
             "bookclub:notifications",
             {
@@ -239,7 +269,7 @@ async def edit_message(
     if data.content_text is not None:
         msg.content_text = sanitize(data.content_text)
     if data.content_rich_json is not None:
-        msg.content_rich_json = _sanitize_tiptap_json(data.content_rich_json)
+        msg.content_rich_json = sanitize_tiptap_json(data.content_rich_json)
     msg.updated_at = datetime.now(UTC)
 
     await db.flush()
