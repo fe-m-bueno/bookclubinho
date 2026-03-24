@@ -39,10 +39,10 @@ export function TypingIndicator({ users }: TypingIndicatorProps) {
     <AnimatePresence>
       {users.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.15 }}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 4 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="flex items-center gap-2 px-4 py-1"
         >
           <div className="flex -space-x-1">

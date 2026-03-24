@@ -182,11 +182,10 @@ function ChangeEmailCard({
         {expanded && (
           <motion.div
             key="email-form"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
               <FormField label="Novo e-mail" htmlFor="new_email" error={errors.new_email?.message}>
