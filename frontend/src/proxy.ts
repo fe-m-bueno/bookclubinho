@@ -46,7 +46,7 @@ function redirectTo(request: NextRequest, pathname: string): NextResponse {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (isSkippedRoute(pathname) || isPublicRoute(pathname)) {
+  if (isSkippedRoute(pathname) || isPublicRoute(pathname) || pathname === "/") {
     return NextResponse.next();
   }
 
