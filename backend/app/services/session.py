@@ -1,4 +1,5 @@
 """User session management — list, revoke, revoke-all-others."""
+
 from __future__ import annotations
 
 import asyncio
@@ -24,13 +25,13 @@ class SessionError(ServiceError):
     pass
 
 
-async def blacklist_jti(redis: "aioredis.Redis", jti: str) -> None:
+async def blacklist_jti(redis: aioredis.Redis, jti: str) -> None:
     """Blacklist a refresh token JTI in Redis for the standard TTL."""
     await redis.set(f"{TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=REFRESH_TOKEN_BLACKLIST_TTL)
 
 
 async def list_sessions(
-    db: "AsyncSession",
+    db: AsyncSession,
     user_id: uuid.UUID,
     current_jti: str | None,
 ) -> list[dict]:
@@ -55,8 +56,8 @@ async def list_sessions(
 
 
 async def revoke_session(
-    db: "AsyncSession",
-    redis: "aioredis.Redis",
+    db: AsyncSession,
+    redis: aioredis.Redis,
     user_id: uuid.UUID,
     session_id: uuid.UUID,
 ) -> None:
@@ -77,8 +78,8 @@ async def revoke_session(
 
 
 async def revoke_all_other_sessions(
-    db: "AsyncSession",
-    redis: "aioredis.Redis",
+    db: AsyncSession,
+    redis: aioredis.Redis,
     user_id: uuid.UUID,
     current_jti: str,
 ) -> int:
@@ -96,9 +97,7 @@ async def revoke_all_other_sessions(
         s.revoked_at = now
     # Blacklist all JTIs in parallel
     if sessions:
-        await asyncio.gather(
-            *[blacklist_jti(redis, s.refresh_token_jti) for s in sessions]
-        )
+        await asyncio.gather(*[blacklist_jti(redis, s.refresh_token_jti) for s in sessions])
     count = len(sessions)
     logger.info("sessions_revoked_all_others", user_id=str(user_id), count=count)
     return count

@@ -27,7 +27,6 @@ from app.core.cookies import clear_auth_cookies, set_auth_cookies
 from app.core.deps import CurrentRefreshJTI, CurrentUser, DBSession  # noqa: TC001
 from app.core.redis import get_redis
 from app.schemas.account import ChangeEmailRequest, ChangePasswordRequest, MessageResponse
-from app.schemas.session import SessionListResponse, SessionResponse
 from app.schemas.auth import (
     LoginResponse,
     LogoutResponse,
@@ -40,9 +39,22 @@ from app.schemas.auth import (
     ResendVerificationResponse,
     VerifyEmailResponse,
 )
+from app.schemas.session import SessionListResponse, SessionResponse
 from app.security.rate_limit import limiter
-from app.services.account import AccountError, change_password, confirm_email_change, initiate_email_change
-from app.services.session import SessionError, list_sessions, revoke_all_other_sessions, revoke_session
+from app.services.account import (
+    AccountError,
+    change_password,
+    confirm_email_change,
+    initiate_email_change,
+)
+from app.services.audit import (
+    LOGIN_FAILED,
+    LOGIN_SUCCESS,
+    MAGIC_LINK_USED,
+    OAUTH_LOGIN,
+    PASSWORD_CHANGED,
+    log_event,
+)
 from app.services.auth import (
     AuthError,
     authenticate_user,
@@ -55,6 +67,12 @@ from app.services.auth import (
     send_magic_link,
     verify_email_token,
 )
+from app.services.session import (
+    SessionError,
+    list_sessions,
+    revoke_all_other_sessions,
+    revoke_session,
+)
 
 router = APIRouter(tags=["auth"])
 
@@ -65,6 +83,7 @@ _OAUTH_STATE_TTL = 600  # 10 minutos
 
 
 # ── CSRF seed ────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/csrf",
@@ -84,10 +103,16 @@ async def csrf_seed() -> None:
     response_model=RegisterResponse,
     summary="Criar conta",
 )
-async def register(body: RegisterRequest, db: DBSession) -> RegisterResponse:  # noqa: TC001
+@limiter.limit("5/hour")
+async def register(
+    request: Request,
+    body: RegisterRequest,
+    db: DBSession,  # noqa: TC001
+) -> RegisterResponse:
     """Cria um novo usuário e envia e-mail de verificação.
 
     Retorna sempre 201 independentemente de o e-mail já existir (anti-enumeration).
+    Rate limit: 5 requisições por hora por IP.
     """
     await register_user(
         db=db,
@@ -95,9 +120,7 @@ async def register(body: RegisterRequest, db: DBSession) -> RegisterResponse:  #
         password=body.password,
         display_name=body.display_name,
     )
-    return RegisterResponse(
-        message="Conta criada. Verifique seu e-mail para ativar o acesso."
-    )
+    return RegisterResponse(message="Conta criada. Verifique seu e-mail para ativar o acesso.")
 
 
 # ── Verify email ──────────────────────────────────────────────────────────────
@@ -140,9 +163,7 @@ async def resend_verification(
     Rate limit: 5 requisições por hora por IP.
     """
     await resend_verification_email(db=db, email=body.email)
-    return ResendVerificationResponse(
-        message="Se o e-mail estiver cadastrado, enviaremos um novo link de verificação."
-    )
+    return ResendVerificationResponse(message="Se o e-mail estiver cadastrado, enviaremos um novo link de verificação.")
 
 
 # ── Login ─────────────────────────────────────────────────────────────────────
@@ -169,11 +190,15 @@ async def login(
             db=db,
             email=form_data.username,
             password=form_data.password,
+            user_agent=request.headers.get("User-Agent"),
+            client_ip=request.client.host if request.client else None,
         )
     except AuthError as exc:
+        await log_event(db, LOGIN_FAILED, request=request)
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     set_auth_cookies(response, access_token, refresh_token)
+    await log_event(db, LOGIN_SUCCESS, request=request)
 
     return LoginResponse(message="Login realizado com sucesso.")
 
@@ -182,27 +207,34 @@ async def login(
 
 
 @router.post("/magic-link", status_code=200, response_model=MagicLinkResponse)
-async def request_magic_link(body: MagicLinkRequest, db: DBSession) -> MagicLinkResponse:  # noqa: TC001
+@limiter.limit("10/hour")
+async def request_magic_link(
+    request: Request,
+    body: MagicLinkRequest,
+    db: DBSession,  # noqa: TC001
+) -> MagicLinkResponse:
     """Solicita magic link por e-mail.
 
     Retorna sempre 200 independentemente de o e-mail já existir (anti-enumeration).
-    Rate limit por e-mail é gerenciado no service layer.
+    Rate limit: 10 por hora por IP (complementa rate limit por e-mail no service layer).
     """
     await send_magic_link(db=db, email=body.email)
-    return MagicLinkResponse(
-        message="Se o e-mail estiver cadastrado, você receberá um link em breve."
-    )
+    return MagicLinkResponse(message="Se o e-mail estiver cadastrado, você receberá um link em breve.")
 
 
 @router.get("/magic/callback", response_class=RedirectResponse)
-async def magic_link_callback(token: str, db: DBSession) -> RedirectResponse:  # noqa: TC001
+async def magic_link_callback(
+    request: Request,
+    token: str,
+    db: DBSession,  # noqa: TC001
+) -> RedirectResponse:
     """Valida magic token, autentica o usuário e redireciona."""
     try:
-        access_token, refresh_token, onboarding_completed = await consume_magic_token(
-            db=db, token=token
-        )
+        access_token, refresh_token, onboarding_completed = await consume_magic_token(db=db, token=token)
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    await log_event(db, MAGIC_LINK_USED, request=request)
 
     base_url = settings.APP_URL.rstrip("/")
     redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
@@ -285,9 +317,7 @@ async def google_callback(
 ) -> RedirectResponse:
     """Recebe o authorization code do Google, autentica e redireciona."""
     base_url = settings.APP_URL.rstrip("/")
-    error_redirect = RedirectResponse(
-        url=f"{base_url}/login?error=oauth_failed", status_code=303
-    )
+    error_redirect = RedirectResponse(url=f"{base_url}/login?error=oauth_failed", status_code=303)
 
     if error or not code or not state:
         return error_redirect
@@ -299,11 +329,11 @@ async def google_callback(
     await redis.delete(f"oauth_state:{state}")
 
     try:
-        access_token, refresh_token, onboarding_completed = await google_oauth_callback(
-            code=code, db=db
-        )
+        access_token, refresh_token, onboarding_completed = await google_oauth_callback(code=code, db=db)
     except AuthError:
         return error_redirect
+
+    await log_event(db, OAUTH_LOGIN, request=None)  # sem request disponível em redirect
 
     redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
     response = RedirectResponse(url=redirect_url, status_code=303)
@@ -336,6 +366,7 @@ async def update_password(
         )
     except AccountError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    await log_event(db, PASSWORD_CHANGED, user_id=user.id, request=request)
     return MessageResponse(message="Senha alterada com sucesso.")
 
 
@@ -366,9 +397,7 @@ async def update_email(
         )
     except AccountError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-    return MessageResponse(
-        message=f"E-mail de confirmação enviado para {body.new_email}."
-    )
+    return MessageResponse(message=f"E-mail de confirmação enviado para {body.new_email}.")
 
 
 @router.get(
@@ -386,12 +415,8 @@ async def confirm_email(
         redis = get_redis()
         await confirm_email_change(redis=redis, db=db, token=token)
     except AccountError:
-        return RedirectResponse(
-            url=f"{base_url}/settings/account?email_error=true", status_code=303
-        )
-    return RedirectResponse(
-        url=f"{base_url}/settings/account?email_changed=true", status_code=303
-    )
+        return RedirectResponse(url=f"{base_url}/settings/account?email_error=true", status_code=303)
+    return RedirectResponse(url=f"{base_url}/settings/account?email_changed=true", status_code=303)
 
 
 # ── Session management ────────────────────────────────────────────────────────
@@ -414,9 +439,7 @@ async def list_active_sessions(
     A sessão atual é marcada com is_current=True.
     """
     sessions = await list_sessions(db=db, user_id=user.id, current_jti=current_jti)
-    return SessionListResponse(
-        sessions=[SessionResponse.model_validate(s) for s in sessions]
-    )
+    return SessionListResponse(sessions=[SessionResponse.model_validate(s) for s in sessions])
 
 
 @router.delete(
@@ -462,7 +485,5 @@ async def revoke_other_sessions(
             detail="Cookie de refresh token ausente.",
         )
     redis = get_redis()
-    count = await revoke_all_other_sessions(
-        db=db, redis=redis, user_id=user.id, current_jti=current_jti
-    )
+    count = await revoke_all_other_sessions(db=db, redis=redis, user_id=user.id, current_jti=current_jti)
     return {"detail": f"{count} sessão(ões) revogada(s) com sucesso.", "count": count}

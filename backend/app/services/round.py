@@ -56,9 +56,7 @@ async def _fetch_round_and_member(
     """
     stmt = select(Round).where(Round.id == round_id)
     if load_nominations_and_votes:
-        stmt = stmt.options(
-            selectinload(Round.nominations).selectinload(RoundNomination.votes)
-        )
+        stmt = stmt.options(selectinload(Round.nominations).selectinload(RoundNomination.votes))
     result = await db.execute(stmt)
     round_ = result.scalar_one_or_none()
     if round_ is None:
@@ -80,9 +78,7 @@ async def _fetch_round_and_member(
     return round_, member
 
 
-async def _fetch_round_with_nominations_and_votes(
-    db: AsyncSession, round_id: uuid.UUID
-) -> Round:
+async def _fetch_round_with_nominations_and_votes(db: AsyncSession, round_id: uuid.UUID) -> Round:
     """Re-fetch a round with nominations+votes after a flush. No membership check."""
     result = await db.execute(
         select(Round)
@@ -120,9 +116,7 @@ async def verify_round_admin(
         db, round_id, user_id, load_nominations_and_votes=load_nominations_and_votes
     )
     if member.role != GroupRole.ADMIN:
-        raise RoundError(
-            "Apenas administradores podem realizar esta ação.", status_code=403
-        )
+        raise RoundError("Apenas administradores podem realizar esta ação.", status_code=403)
     return round_
 
 
@@ -166,9 +160,7 @@ async def create_round(
     if deadline is not None and deadline <= date.today():
         raise RoundError("O prazo deve ser uma data futura.", status_code=422)
 
-    max_result = await db.execute(
-        select(func.max(Round.round_number)).where(Round.group_id == group_id)
-    )
+    max_result = await db.execute(select(func.max(Round.round_number)).where(Round.group_id == group_id))
     max_number: int | None = max_result.scalar_one_or_none()
     next_number = (max_number or 0) + 1
 
@@ -219,9 +211,7 @@ async def get_current_round(db: AsyncSession, group_id: uuid.UUID) -> Round | No
     result = await db.execute(
         select(Round)
         .where(Round.group_id == group_id, Round.status != RoundStatus.FINISHED)
-        .options(
-            selectinload(Round.nominations).selectinload(RoundNomination.votes)
-        )
+        .options(selectinload(Round.nominations).selectinload(RoundNomination.votes))
     )
     return result.scalar_one_or_none()
 
@@ -264,9 +254,7 @@ async def update_round(
 async def delete_round(db: AsyncSession, round_: Round) -> None:
     """Hard-delete a round. Only allowed when status is NOMINATING."""
     if round_.status != RoundStatus.NOMINATING:
-        raise RoundError(
-            "Apenas rodadas em fase de indicação podem ser removidas.", status_code=409
-        )
+        raise RoundError("Apenas rodadas em fase de indicação podem ser removidas.", status_code=409)
 
     await db.delete(round_)
     logger.info("round_deleted", round_id=str(round_.id))
@@ -285,9 +273,7 @@ async def add_nomination(
 
     Returns (nomination, refreshed_round) so callers avoid a redundant re-fetch.
     """
-    round_ = await verify_round_member(
-        db, round_id, user_id, load_nominations_and_votes=True
-    )
+    round_ = await verify_round_member(db, round_id, user_id, load_nominations_and_votes=True)
     _require_status(round_, RoundStatus.NOMINATING, "indicação")
 
     # Single-pass: count user's nominations and check for duplicate book
@@ -349,9 +335,7 @@ async def remove_nomination(
         raise RoundError("Indicação não encontrada.", status_code=404)
 
     if nomination.user_id != user_id:
-        raise RoundError(
-            "Você só pode remover suas próprias indicações.", status_code=403
-        )
+        raise RoundError("Você só pode remover suas próprias indicações.", status_code=403)
 
     await db.delete(nomination)
     logger.info(
@@ -371,9 +355,7 @@ async def start_voting(
     user_id: uuid.UUID,
 ) -> Round:
     """Transition round from NOMINATING to VOTING. Requires at least 2 nominations."""
-    round_ = await verify_round_admin(
-        db, round_id, user_id, load_nominations_and_votes=True
-    )
+    round_ = await verify_round_admin(db, round_id, user_id, load_nominations_and_votes=True)
     _require_status(round_, RoundStatus.NOMINATING, "indicação")
 
     if len(round_.nominations) < 2:
@@ -399,9 +381,7 @@ async def cast_vote(
 
     Returns (vote, refreshed_round) so callers avoid a redundant re-fetch.
     """
-    round_ = await verify_round_member(
-        db, round_id, user_id, load_nominations_and_votes=True
-    )
+    round_ = await verify_round_member(db, round_id, user_id, load_nominations_and_votes=True)
     _require_status(round_, RoundStatus.VOTING, "votação")
 
     valid_nom_ids = {n.id for n in round_.nominations}
@@ -448,9 +428,7 @@ async def finalize_round(
     deadline: date | None = None,
 ) -> Round:
     """Count votes, resolve ties, set book fields, transition to READING."""
-    round_ = await verify_round_admin(
-        db, round_id, user_id, load_nominations_and_votes=True
-    )
+    round_ = await verify_round_admin(db, round_id, user_id, load_nominations_and_votes=True)
     _require_status(round_, RoundStatus.VOTING, "votação")
 
     if not round_.nominations:
@@ -478,10 +456,7 @@ async def finalize_round(
 
     round_.tiebreak_info = {
         "was_tiebreak": was_tiebreak,
-        "tied_nominations": [
-            {"id": str(n.id), "title": n.book_title, "votes": vote_counts.get(n.id, 0)}
-            for n in tied
-        ],
+        "tied_nominations": [{"id": str(n.id), "title": n.book_title, "votes": vote_counts.get(n.id, 0)} for n in tied],
         "winner_id": str(winner.id),
         **({"method": "random"} if was_tiebreak else {}),
     }
@@ -543,9 +518,7 @@ async def start_review(
     user_id: uuid.UUID,
 ) -> Round:
     """Transition round from READING to REVIEWING."""
-    round_ = await verify_round_admin(
-        db, round_id, user_id, load_nominations_and_votes=True
-    )
+    round_ = await verify_round_admin(db, round_id, user_id, load_nominations_and_votes=True)
     _require_status(round_, RoundStatus.READING, "leitura")
 
     round_.status = RoundStatus.REVIEWING
@@ -560,15 +533,11 @@ async def finish_round(
     user_id: uuid.UUID,
 ) -> Round:
     """Transition round to FINISHED. Requires at least 1 submitted review."""
-    round_ = await verify_round_admin(
-        db, round_id, user_id, load_nominations_and_votes=True
-    )
+    round_ = await verify_round_admin(db, round_id, user_id, load_nominations_and_votes=True)
     _require_status(round_, RoundStatus.REVIEWING, "reviews")
 
     review_count_result = await db.execute(
-        select(func.count()).select_from(BookReview).where(
-            BookReview.round_id == round_id
-        )
+        select(func.count()).select_from(BookReview).where(BookReview.round_id == round_id)
     )
     review_count: int = review_count_result.scalar_one()
     if review_count == 0:

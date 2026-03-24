@@ -14,9 +14,7 @@ if TYPE_CHECKING:
     from starlette.requests import Request
     from starlette.responses import Response
 
-_current_user_id: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "current_user_id", default=""
-)
+_current_user_id: contextvars.ContextVar[str] = contextvars.ContextVar("current_user_id", default="")
 
 
 def get_rls_user_id() -> str:
@@ -32,9 +30,7 @@ class RLSMiddleware(BaseHTTPMiddleware):
     policies can reference ``current_setting('app.current_user_id', true)``.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         user_id = ""
         token = request.cookies.get(ACCESS_TOKEN_COOKIE)
         if token:

@@ -34,6 +34,7 @@ from app.schemas.message import (
     ReactionRequest,
     ReactionSummary,
 )
+from app.schemas.report import MessageReportRequest, MessageReportResponse
 from app.security.rate_limit import limiter
 from app.services.badge_checker import check_and_award_badges
 from app.services.chat import (
@@ -47,6 +48,7 @@ from app.services.chat import (
     remove_reaction,
     toggle_reaction,
 )
+from app.services.report import ReportError, report_message
 
 group_messages_router = APIRouter(tags=["chat"])
 messages_router = APIRouter(tags=["chat"])
@@ -156,10 +158,7 @@ async def list_group_messages(
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     return MessageListResponse(
-        messages=[
-            _message_to_response(m, current_user.id, reply_count=reply_counts.get(m.id, 0))
-            for m in messages
-        ],
+        messages=[_message_to_response(m, current_user.id, reply_count=reply_counts.get(m.id, 0)) for m in messages],
         next_cursor=next_cursor,
     )
 
@@ -279,9 +278,7 @@ async def toggle_reaction_endpoint(
 ) -> ChatMessageResponse:
     """Adiciona ou remove uma reaction (toggle). Retorna a mensagem atualizada."""
     try:
-        await toggle_reaction(
-            db, message_id=message_id, user_id=current_user.id, emoji=body.emoji
-        )
+        await toggle_reaction(db, message_id=message_id, user_id=current_user.id, emoji=body.emoji)
     except ChatError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -303,9 +300,7 @@ async def remove_reaction_endpoint(
 ) -> ChatMessageResponse:
     """Remove uma reaction específica do usuário."""
     try:
-        await remove_reaction(
-            db, message_id=message_id, user_id=current_user.id, emoji=emoji
-        )
+        await remove_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji)
     except ChatError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -342,4 +337,43 @@ async def list_reactions_endpoint(
             )
             for r in reactions
         ]
+    )
+
+
+# ── Report endpoint ───────────────────────────────────────────────────────────
+
+
+@messages_router.post(
+    "/{message_id}/report",
+    status_code=status.HTTP_201_CREATED,
+    response_model=MessageReportResponse,
+    summary="Denunciar mensagem",
+)
+@limiter.limit("10/hour")
+async def report_message_endpoint(
+    request: Request,
+    message_id: uuid.UUID,
+    body: MessageReportRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> MessageReportResponse:
+    """Denuncia uma mensagem. Após 3 denúncias únicas a mensagem é auto-ocultada."""
+    try:
+        report = await report_message(
+            db,
+            message_id=message_id,
+            group_id=body.group_id,
+            reporter_id=current_user.id,
+            reason=body.reason,
+        )
+        await db.commit()
+    except ReportError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return MessageReportResponse(
+        id=str(report.id),
+        message_id=str(report.message_id),
+        reason=report.reason,
+        status=report.status,
+        created_at=report.created_at,
     )

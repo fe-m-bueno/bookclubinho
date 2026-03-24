@@ -1,4 +1,5 @@
 """Hardcover integration service — connect, disconnect, status, auto-sync toggle."""
+
 from __future__ import annotations
 
 import base64
@@ -33,7 +34,7 @@ def _get_fernet():
     return Fernet(base64.urlsafe_b64encode(key_bytes))
 
 
-async def connect_hardcover(db: "AsyncSession", user: User, token: str) -> str:
+async def connect_hardcover(db: AsyncSession, user: User, token: str) -> str:
     """Validate Hardcover token, encrypt and store it. Returns hardcover username."""
     async with httpx.AsyncClient() as client:
         resp = await client.post(
@@ -56,14 +57,14 @@ async def connect_hardcover(db: "AsyncSession", user: User, token: str) -> str:
     return hardcover_username
 
 
-async def disconnect_hardcover(db: "AsyncSession", user: User) -> None:
+async def disconnect_hardcover(db: AsyncSession, user: User) -> None:
     """Remove Hardcover token and disable auto-sync."""
     user.hardcover_token_encrypted = None
     user.auto_sync_hardcover = False
     logger.info("hardcover_disconnected", user_id=str(user.id))
 
 
-async def get_hardcover_status(db: "AsyncSession", user: User) -> dict:
+async def get_hardcover_status(db: AsyncSession, user: User) -> dict:
     """Return connection status and username if connected."""
     if not user.hardcover_token_encrypted:
         return {"connected": False, "hardcover_username": None}
@@ -87,11 +88,9 @@ async def get_hardcover_status(db: "AsyncSession", user: User) -> dict:
     return {"connected": True, "hardcover_username": me_data.get("username")}
 
 
-async def toggle_auto_sync(db: "AsyncSession", user: User, enabled: bool) -> None:
+async def toggle_auto_sync(db: AsyncSession, user: User, enabled: bool) -> None:
     """Toggle auto-sync. Requires Hardcover to be connected."""
     if enabled and not user.hardcover_token_encrypted:
-        raise IntegrationError(
-            "Conecte o Hardcover antes de ativar a sincronização.", status_code=400
-        )
+        raise IntegrationError("Conecte o Hardcover antes de ativar a sincronização.", status_code=400)
     user.auto_sync_hardcover = enabled
     logger.info("hardcover_auto_sync_toggled", user_id=str(user.id), enabled=enabled)

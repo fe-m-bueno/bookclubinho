@@ -51,9 +51,7 @@ class HallOfQuote(CreatedAtMixin, Base):
 
 class QuoteVote(CreatedAtMixin, Base):
     __tablename__ = "quote_votes"
-    __table_args__ = (
-        UniqueConstraint("quote_id", "user_id", name="uq_quote_votes_quote_user"),
-    )
+    __table_args__ = (UniqueConstraint("quote_id", "user_id", name="uq_quote_votes_quote_user"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

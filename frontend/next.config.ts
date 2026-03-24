@@ -1,4 +1,60 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
+
+const apiUrl =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const r2Hostname =
+  process.env.NEXT_PUBLIC_R2_PUBLIC_HOSTNAME || "cdn.bookclubinho.com";
+
+// Content-Security-Policy
+// Iniciando em Report-Only para monitorar violações antes de enforçar.
+// Mudar para "Content-Security-Policy" após validar no Sentry por 1-2 semanas.
+const cspDirectives = [
+  "default-src 'self'",
+  // Next.js precisa de unsafe-inline para hidratação; unsafe-eval para dev HMR
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: https://*.r2.dev https://${r2Hostname} https://*.hardcover.app https://hardcover.app https://*.cloudflare.com`,
+  `connect-src 'self' ${apiUrl} wss://${apiUrl.replace(/^https?:\/\//, "")} https://api.hardcover.app`,
+  "font-src 'self'",
+  `media-src 'self' https://*.r2.dev https://${r2Hostname}`,
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https://accounts.google.com",
+  "frame-ancestors 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+
+const securityHeaders = [
+  // CSP em modo Report-Only — remover "-Report-Only" após validação
+  {
+    key: "Content-Security-Policy-Report-Only",
+    value: cspDirectives,
+  },
+  {
+    key: "X-Content-Type-Options",
+    value: "nosniff",
+  },
+  {
+    key: "X-Frame-Options",
+    value: "DENY",
+  },
+  {
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
+  },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  },
+  // X-XSS-Protection desabilitado intencionalmente — CSP é a proteção correta
+  {
+    key: "X-XSS-Protection",
+    value: "0",
+  },
+];
 
 const nextConfig: NextConfig = {
   images: {
@@ -20,7 +76,7 @@ const nextConfig: NextConfig = {
       // Custom R2 public domain, se configurado
       {
         protocol: "https",
-        hostname: process.env.NEXT_PUBLIC_R2_PUBLIC_HOSTNAME || "cdn.bookclubinho.com",
+        hostname: r2Hostname,
       },
       // Hardcover book covers
       {
@@ -33,14 +89,25 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: securityHeaders,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
         source: "/api/v1/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/:path*`,
+        destination: `${apiUrl}/api/v1/:path*`,
       },
     ];
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Desabilita source map upload se SENTRY_AUTH_TOKEN não estiver configurado
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+});

@@ -60,9 +60,7 @@ async def generate_wrapped_endpoint(
     """Gera ou regenera o wrapped anual do grupo."""
     _validate_year(year)
     try:
-        result = await generate_wrapped(
-            db, group_id=group_id, year=year, user_id=current_user.id
-        )
+        result = await generate_wrapped(db, group_id=group_id, year=year, user_id=current_user.id)
     except WrappedError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return WrappedResponse(**result)

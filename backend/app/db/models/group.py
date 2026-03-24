@@ -35,19 +35,11 @@ class Group(TimestampMixin, SoftDeleteMixin, Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    invite_code: Mapped[str] = mapped_column(
-        Text, unique=True, nullable=False, index=True
-    )
-    max_members: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("8"), default=8
-    )
-    created_by: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
+    invite_code: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
+    max_members: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("8"), default=8)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
-    members: Mapped[list["GroupMember"]] = relationship(
-        back_populates="group", lazy="raise"
-    )
+    members: Mapped[list["GroupMember"]] = relationship(back_populates="group", lazy="raise")
     rounds: Mapped[list["Round"]] = relationship(back_populates="group", lazy="raise")  # noqa: F821
     creator: Mapped["User"] = relationship(  # noqa: F821
         lazy="raise", foreign_keys=[created_by]

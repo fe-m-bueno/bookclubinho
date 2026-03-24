@@ -6,7 +6,6 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -120,9 +119,7 @@ class TestListMessages:
             "app.api.v1.endpoints.messages.list_messages",
             new=AsyncMock(return_value=([], {}, None)),
         ):
-            response = client.get(
-                f"/api/v1/groups/{FAKE_GROUP_ID}/messages?cursor={cursor}"
-            )
+            response = client.get(f"/api/v1/groups/{FAKE_GROUP_ID}/messages?cursor={cursor}")
 
         assert response.status_code == 200
 
@@ -152,10 +149,13 @@ class TestSendMessage:
         mock_result = MagicMock()
         mock_result.scalar_one.return_value = msg
 
-        with patch(
-            "app.api.v1.endpoints.messages.create_message",
-            new=AsyncMock(return_value=msg),
-        ), patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)):
+        with (
+            patch(
+                "app.api.v1.endpoints.messages.create_message",
+                new=AsyncMock(return_value=msg),
+            ),
+            patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)),
+        ):
             response = client.post(
                 f"/api/v1/groups/{FAKE_GROUP_ID}/messages",
                 json={"content_type": "text", "content_text": "Hello!"},
@@ -205,10 +205,13 @@ class TestEditMessage:
         mock_result = MagicMock()
         mock_result.scalar_one.return_value = msg
 
-        with patch(
-            "app.api.v1.endpoints.messages.edit_message",
-            new=AsyncMock(return_value=msg),
-        ), patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)):
+        with (
+            patch(
+                "app.api.v1.endpoints.messages.edit_message",
+                new=AsyncMock(return_value=msg),
+            ),
+            patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)),
+        ):
             response = client.patch(
                 f"/api/v1/messages/{message_id}",
                 json={"content_text": "Updated!"},
@@ -223,9 +226,7 @@ class TestEditMessage:
 
         with patch(
             "app.api.v1.endpoints.messages.edit_message",
-            new=AsyncMock(
-                side_effect=ChatError("A janela de edição de 15 minutos expirou.", status_code=409)
-            ),
+            new=AsyncMock(side_effect=ChatError("A janela de edição de 15 minutos expirou.", status_code=409)),
         ):
             response = client.patch(
                 f"/api/v1/messages/{message_id}",
@@ -247,10 +248,13 @@ class TestDeleteMessage:
         mock_result = MagicMock()
         mock_result.scalar_one.return_value = msg
 
-        with patch(
-            "app.api.v1.endpoints.messages.delete_message",
-            new=AsyncMock(return_value=msg),
-        ), patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)):
+        with (
+            patch(
+                "app.api.v1.endpoints.messages.delete_message",
+                new=AsyncMock(return_value=msg),
+            ),
+            patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)),
+        ):
             response = client.delete(f"/api/v1/messages/{message_id}")
 
         assert response.status_code == 200
@@ -283,10 +287,13 @@ class TestToggleReaction:
         mock_result = MagicMock()
         mock_result.scalar_one.return_value = msg
 
-        with patch(
-            "app.api.v1.endpoints.messages.toggle_reaction",
-            new=AsyncMock(return_value=(True, FAKE_GROUP_ID)),
-        ), patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)):
+        with (
+            patch(
+                "app.api.v1.endpoints.messages.toggle_reaction",
+                new=AsyncMock(return_value=(True, FAKE_GROUP_ID)),
+            ),
+            patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)),
+        ):
             response = client.post(
                 f"/api/v1/messages/{message_id}/reactions",
                 json={"emoji": "👍"},

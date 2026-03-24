@@ -38,9 +38,7 @@ class ReferenceType(StrEnum):
     QUOTE = "quote"
 
 
-_CONTENT_TYPES = (
-    "'text','image','gif','video_link','quote','chapter_marker','page_marker','system'"
-)
+_CONTENT_TYPES = "'text','image','gif','video_link','quote','chapter_marker','page_marker','system'"
 
 
 class GroupMessage(CreatedAtMixin, Base):
@@ -106,6 +104,13 @@ class GroupMessage(CreatedAtMixin, Base):
     )
     # is_deleted instead of is_active — don't use SoftDeleteMixin
     is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+        default=False,
+    )
+    # Auto-hidden after AUTO_HIDE_THRESHOLD unique reports; admins can un-hide
+    is_hidden: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         server_default=text("false"),

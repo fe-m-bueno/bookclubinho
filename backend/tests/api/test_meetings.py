@@ -6,7 +6,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -16,9 +15,7 @@ from app.db.models.group import GroupMember, GroupRole
 # ── App setup ──────────────────────────────────────────────────────────────────
 
 app = FastAPI()
-app.include_router(
-    group_meetings_router, prefix="/api/v1/groups/{group_id}/meetings"
-)
+app.include_router(group_meetings_router, prefix="/api/v1/groups/{group_id}/meetings")
 app.include_router(meetings_router, prefix="/api/v1/meetings")
 
 
@@ -27,7 +24,7 @@ def _mock_user(**overrides: object) -> MagicMock:
     user.id = overrides.get("id", uuid.uuid4())
     user.username = overrides.get("username", "testuser")
     user.display_name = overrides.get("display_name", "Test User")
-    user.avatar_url = overrides.get("avatar_url", None)
+    user.avatar_url = overrides.get("avatar_url")
     user.is_active = True
     return user
 
@@ -50,9 +47,7 @@ def _mock_meeting(**overrides: object) -> MagicMock:
     m.location = "Café"
     m.meeting_type = "in_person"
     m.virtual_link = None
-    m.scheduled_at = overrides.get(
-        "scheduled_at", datetime.now(UTC) + timedelta(days=7)
-    )
+    m.scheduled_at = overrides.get("scheduled_at", datetime.now(UTC) + timedelta(days=7))
     m.duration_minutes = 60
     m.created_by = overrides.get("created_by", uuid.uuid4())
     m.created_at = datetime.now(UTC)
@@ -96,9 +91,7 @@ class TestCreateMeeting:
 
     @patch("app.api.v1.endpoints.meetings.get_meeting")
     @patch("app.api.v1.endpoints.meetings.create_meeting")
-    def test_create_success(
-        self, mock_create: MagicMock, mock_get: MagicMock
-    ) -> None:
+    def test_create_success(self, mock_create: MagicMock, mock_get: MagicMock) -> None:
         meeting = _mock_meeting(created_by=self.user.id)
         mock_create.return_value = meeting
         mock_get.return_value = meeting
@@ -121,9 +114,7 @@ class TestCreateMeeting:
     def test_create_past_date_returns_422(self, mock_create: MagicMock) -> None:
         from app.services.meeting import MeetingError
 
-        mock_create.side_effect = MeetingError(
-            "A data do encontro deve ser no futuro.", status_code=422
-        )
+        mock_create.side_effect = MeetingError("A data do encontro deve ser no futuro.", status_code=422)
 
         group_id = uuid.uuid4()
         res = self.client.post(
@@ -156,9 +147,7 @@ class TestListMeetings:
         mock_list.return_value = ([meeting], None)
 
         group_id = uuid.uuid4()
-        res = self.client.get(
-            f"/api/v1/groups/{group_id}/meetings?filter=upcoming"
-        )
+        res = self.client.get(f"/api/v1/groups/{group_id}/meetings?filter=upcoming")
 
         assert res.status_code == 200
         body = res.json()
@@ -170,9 +159,7 @@ class TestListMeetings:
         mock_list.return_value = ([], None)
 
         group_id = uuid.uuid4()
-        res = self.client.get(
-            f"/api/v1/groups/{group_id}/meetings?filter=past"
-        )
+        res = self.client.get(f"/api/v1/groups/{group_id}/meetings?filter=past")
 
         assert res.status_code == 200
         assert res.json()["meetings"] == []
@@ -202,9 +189,7 @@ class TestGetMeeting:
     def test_get_not_found(self, mock_get: MagicMock) -> None:
         from app.services.meeting import MeetingError
 
-        mock_get.side_effect = MeetingError(
-            "Encontro não encontrado.", status_code=404
-        )
+        mock_get.side_effect = MeetingError("Encontro não encontrado.", status_code=404)
 
         res = self.client.get(f"/api/v1/meetings/{uuid.uuid4()}")
         assert res.status_code == 404
@@ -282,9 +267,7 @@ class TestCalendarEndpoints:
 
     @patch("app.api.v1.endpoints.meetings.generate_ics")
     @patch("app.api.v1.endpoints.meetings.get_meeting")
-    def test_download_ics_content_type(
-        self, mock_get: MagicMock, mock_ics: MagicMock
-    ) -> None:
+    def test_download_ics_content_type(self, mock_get: MagicMock, mock_ics: MagicMock) -> None:
         meeting = _mock_meeting()
         mock_get.return_value = meeting
         mock_ics.return_value = "BEGIN:VCALENDAR\r\nEND:VCALENDAR"
@@ -296,16 +279,12 @@ class TestCalendarEndpoints:
 
     @patch("app.api.v1.endpoints.meetings.generate_google_calendar_url")
     @patch("app.api.v1.endpoints.meetings.get_meeting")
-    def test_google_calendar_url(
-        self, mock_get: MagicMock, mock_url: MagicMock
-    ) -> None:
+    def test_google_calendar_url(self, mock_get: MagicMock, mock_url: MagicMock) -> None:
         meeting = _mock_meeting()
         mock_get.return_value = meeting
         mock_url.return_value = "https://calendar.google.com/calendar/r/eventedit?text=Test"
 
-        res = self.client.get(
-            f"/api/v1/meetings/{meeting.id}/google-calendar-url"
-        )
+        res = self.client.get(f"/api/v1/meetings/{meeting.id}/google-calendar-url")
 
         assert res.status_code == 200
         assert "url" in res.json()

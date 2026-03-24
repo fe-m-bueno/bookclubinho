@@ -142,9 +142,7 @@ class TestJoinGroup:
         from app.services.group import join_group
 
         user = make_user()
-        other_members = [
-            _make_member(user_id=uuid.uuid4(), group_id=uuid.uuid4()) for _ in range(8)
-        ]
+        other_members = [_make_member(user_id=uuid.uuid4(), group_id=uuid.uuid4()) for _ in range(8)]
         group = _make_group(invite_code="ABCD2345", members=other_members, max_members=8)
         mock_db = mock_db_returning(group)
 
@@ -312,9 +310,7 @@ class TestCreateGroup:
         no_collision_result = MagicMock()
         no_collision_result.scalar_one_or_none.return_value = None
 
-        mock_db.execute = AsyncMock(
-            side_effect=[collision_result, collision_result, no_collision_result]
-        )
+        mock_db.execute = AsyncMock(side_effect=[collision_result, collision_result, no_collision_result])
 
         group = await create_group(db=mock_db, user=user, name="Retry Clube")
         assert group.name == "Retry Clube"
@@ -660,9 +656,7 @@ class TestCreateGroupEndpoint:
         ):
             from fastapi import BackgroundTasks
 
-            await create_group_endpoint(
-                db=mock_db, user=mock_user, name="A", background_tasks=BackgroundTasks()
-            )
+            await create_group_endpoint(db=mock_db, user=mock_user, name="A", background_tasks=BackgroundTasks())
 
         assert exc_info.value.status_code == 422
 
@@ -710,9 +704,7 @@ class TestCreateGroupEndpoint:
                 await task()
 
         mock_db.commit.assert_awaited_once()
-        assert call_order == ["commit", "badge"], (
-            "db.commit() deve ser chamado antes do badge check"
-        )
+        assert call_order == ["commit", "badge"], "db.commit() deve ser chamado antes do badge check"
 
 
 # ── Endpoint: GET /groups/ (list) ────────────────────────────────────────────
@@ -976,9 +968,7 @@ class TestUpdateGroupEndpoint:
             new_callable=AsyncMock,
             return_value=group,
         ):
-            result = await update_group_endpoint(
-                db=mock_db, user=user, admin=admin_mock, name="Updated"
-            )
+            result = await update_group_endpoint(db=mock_db, user=user, admin=admin_mock, name="Updated")
 
         assert isinstance(result, MessageResponse)
         assert result.message == "Clube atualizado com sucesso!"
@@ -1096,9 +1086,7 @@ class TestLeaveGroup:
             role="member",
             joined_at=datetime(2026, 6, 1, tzinfo=UTC),
         )
-        group = _make_group(
-            id=group_id, members=[admin_member, older_member, newer_member]
-        )
+        group = _make_group(id=group_id, members=[admin_member, older_member, newer_member])
         mock_db = mock_db_returning(group)
         mock_db.delete = AsyncMock()
 
@@ -1182,9 +1170,7 @@ class TestLeaveGroupEndpoint:
             "app.api.v1.endpoints.groups.leave_group",
             new_callable=AsyncMock,
         ):
-            result = await leave_group_endpoint(
-                db=mock_db, user=user, member=member_mock
-            )
+            result = await leave_group_endpoint(db=mock_db, user=user, member=member_mock)
 
         assert isinstance(result, MessageResponse)
         assert result.message == "Você saiu do clube."
@@ -1258,9 +1244,7 @@ class TestRegenerateInviteCode:
         no_collision = MagicMock()
         no_collision.scalar_one_or_none.return_value = None
 
-        mock_db.execute = AsyncMock(
-            side_effect=[group_result, collision, collision, no_collision]
-        )
+        mock_db.execute = AsyncMock(side_effect=[group_result, collision, collision, no_collision])
 
         with patch(
             "app.services.group._upload_qr_code",
@@ -1285,9 +1269,7 @@ class TestRegenerateInviteCode:
         collision = MagicMock()
         collision.scalar_one_or_none.return_value = uuid.uuid4()
 
-        mock_db.execute = AsyncMock(
-            side_effect=[group_result] + [collision] * 5
-        )
+        mock_db.execute = AsyncMock(side_effect=[group_result] + [collision] * 5)
 
         with pytest.raises(GroupError, match="código único") as exc_info:
             await regenerate_invite_code(db=mock_db, group_id=group_id)
@@ -1339,9 +1321,7 @@ class TestRegenerateCodeEndpoint:
             new_callable=AsyncMock,
             return_value=("NEWCODE1", "https://cdn.example.com/qrcodes/test.webp"),
         ):
-            result = await regenerate_code_endpoint(
-                db=mock_db, user=user, admin=admin_mock
-            )
+            result = await regenerate_code_endpoint(db=mock_db, user=user, admin=admin_mock)
 
         assert isinstance(result, RegenerateCodeResponse)
         assert result.invite_code == "NEWCODE1"
@@ -1598,9 +1578,7 @@ class TestUpdateMemberRoleEndpoint:
             ),
             pytest.raises(HTTPException) as exc_info,
         ):
-            await update_member_role_endpoint(
-                user_id=uuid.uuid4(), body=body, db=mock_db, user=user, admin=admin_mock
-            )
+            await update_member_role_endpoint(user_id=uuid.uuid4(), body=body, db=mock_db, user=user, admin=admin_mock)
         assert exc_info.value.status_code == 404
 
 
@@ -1623,9 +1601,7 @@ class TestRemoveGroupMemberEndpoint:
             "app.api.v1.endpoints.groups.remove_group_member",
             new_callable=AsyncMock,
         ):
-            result = await remove_member_endpoint(
-                user_id=target_id, db=mock_db, user=user, admin=admin_mock
-            )
+            result = await remove_member_endpoint(user_id=target_id, db=mock_db, user=user, admin=admin_mock)
 
         assert isinstance(result, MessageResponse)
         assert result.message == "Membro removido com sucesso!"

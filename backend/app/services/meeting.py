@@ -37,9 +37,7 @@ class MeetingError(ServiceError):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-async def _verify_owner_or_admin(
-    db: AsyncSession, meeting: Meeting, user_id: uuid.UUID
-) -> None:
+async def _verify_owner_or_admin(db: AsyncSession, meeting: Meeting, user_id: uuid.UUID) -> None:
     """Raise 403 if user is not the creator or a group admin."""
     if meeting.created_by == user_id:
         return
@@ -58,9 +56,7 @@ async def _verify_owner_or_admin(
         )
 
 
-async def _get_meeting_or_404(
-    db: AsyncSession, meeting_id: uuid.UUID
-) -> Meeting:
+async def _get_meeting_or_404(db: AsyncSession, meeting_id: uuid.UUID) -> Meeting:
     """Load meeting or raise 404."""
     result = await db.execute(select(Meeting).where(Meeting.id == meeting_id))
     meeting = result.scalar_one_or_none()
@@ -144,9 +140,7 @@ async def create_meeting(
         data.scheduled_at = data.scheduled_at.replace(tzinfo=UTC)
 
     if data.scheduled_at <= datetime.now(UTC):
-        raise MeetingError(
-            "A data do encontro deve ser no futuro.", status_code=422
-        )
+        raise MeetingError("A data do encontro deve ser no futuro.", status_code=422)
 
     round_id: uuid.UUID | None = None
     if data.round_id:
@@ -168,9 +162,7 @@ async def create_meeting(
     await db.flush()
 
     # Auto-insert RSVPs for all group members
-    members_result = await db.execute(
-        select(GroupMember.user_id).where(GroupMember.group_id == group_id)
-    )
+    members_result = await db.execute(select(GroupMember.user_id).where(GroupMember.group_id == group_id))
     member_ids = list(members_result.scalars().all())
 
     for member_id in member_ids:
@@ -188,7 +180,7 @@ async def create_meeting(
     try:
         _redis = get_redis()
         ts_24h = meeting.scheduled_at.timestamp() - 86400  # 24h before
-        ts_1h = meeting.scheduled_at.timestamp() - 3600    # 1h before
+        ts_1h = meeting.scheduled_at.timestamp() - 3600  # 1h before
         await _redis.zadd(
             "meeting_reminders",
             {
@@ -208,9 +200,7 @@ async def create_meeting(
         f"📅 {creator_name} marcou um encontro: {meeting.title} — {scheduled_str}",
     )
 
-    logger.info(
-        "meeting_created", meeting_id=str(meeting.id), group_id=str(group_id)
-    )
+    logger.info("meeting_created", meeting_id=str(meeting.id), group_id=str(group_id))
     return meeting
 
 
@@ -268,13 +258,7 @@ async def list_meetings(
             except ValueError:
                 pass
 
-    stmt = (
-        select(Meeting)
-        .options(*_load_meeting_with_relations())
-        .where(*filters)
-        .order_by(order)
-        .limit(limit + 1)
-    )
+    stmt = select(Meeting).options(*_load_meeting_with_relations()).where(*filters).order_by(order).limit(limit + 1)
     result = await db.execute(stmt)
     meetings = list(result.scalars().all())
 
@@ -292,11 +276,7 @@ async def get_meeting(
     user_id: uuid.UUID,
 ) -> Meeting:
     """Get meeting detail with RSVPs. Verifies membership."""
-    result = await db.execute(
-        select(Meeting)
-        .options(*_load_meeting_with_relations())
-        .where(Meeting.id == meeting_id)
-    )
+    result = await db.execute(select(Meeting).options(*_load_meeting_with_relations()).where(Meeting.id == meeting_id))
     meeting = result.scalar_one_or_none()
     if meeting is None:
         raise MeetingError("Encontro não encontrado.", status_code=404)
@@ -331,16 +311,12 @@ async def update_meeting(
         if scheduled.tzinfo is None:
             scheduled = scheduled.replace(tzinfo=UTC)
         if scheduled <= datetime.now(UTC):
-            raise MeetingError(
-                "A data do encontro deve ser no futuro.", status_code=422
-            )
+            raise MeetingError("A data do encontro deve ser no futuro.", status_code=422)
         meeting.scheduled_at = scheduled
     if data.duration_minutes is not None:
         meeting.duration_minutes = data.duration_minutes
     if data.round_id is not None:
-        meeting.round_id = await validate_round_in_group(
-            db, data.round_id, meeting.group_id
-        )
+        meeting.round_id = await validate_round_in_group(db, data.round_id, meeting.group_id)
 
     await db.flush()
     await db.refresh(meeting)

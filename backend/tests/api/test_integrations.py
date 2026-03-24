@@ -6,13 +6,11 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.v1.endpoints.integrations import router as integrations_router
 from app.services.integration import IntegrationError
-from tests.conftest import make_user
 
 
 def _make_full_user(**overrides: object) -> MagicMock:
@@ -21,22 +19,22 @@ def _make_full_user(**overrides: object) -> MagicMock:
     user.email = overrides.get("email", "user@test.com")
     user.username = overrides.get("username", "testuser")
     user.display_name = overrides.get("display_name", "Test User")
-    user.avatar_url = overrides.get("avatar_url", None)
-    user.status_text = overrides.get("status_text", None)
+    user.avatar_url = overrides.get("avatar_url")
+    user.status_text = overrides.get("status_text")
     user.auth_provider = overrides.get("auth_provider", "local")
     user.preferred_genres = overrides.get("preferred_genres", ["fantasia"])
     user.onboarding_completed = overrides.get("onboarding_completed", True)
     user.email_notifications = overrides.get("email_notifications", {})
     user.streak_current = overrides.get("streak_current", 0)
     user.streak_longest = overrides.get("streak_longest", 0)
-    user.streak_last_update = overrides.get("streak_last_update", None)
+    user.streak_last_update = overrides.get("streak_last_update")
     user.total_reading_time_minutes = overrides.get("total_reading_time_minutes", 0)
     user.timezone = overrides.get("timezone", "America/Sao_Paulo")
     user.is_active = overrides.get("is_active", True)
-    user.last_login_at = overrides.get("last_login_at", None)
+    user.last_login_at = overrides.get("last_login_at")
     user.created_at = overrides.get("created_at", datetime(2026, 1, 1, tzinfo=UTC))
     user.updated_at = overrides.get("updated_at", datetime(2026, 1, 1, tzinfo=UTC))
-    user.hardcover_token_encrypted = overrides.get("hardcover_token_encrypted", None)
+    user.hardcover_token_encrypted = overrides.get("hardcover_token_encrypted")
     user.auto_sync_hardcover = overrides.get("auto_sync_hardcover", False)
     return user
 
@@ -91,9 +89,7 @@ class TestConnectHardcover:
             "app.api.v1.endpoints.integrations.connect_hardcover",
             new_callable=AsyncMock,
         ) as mock_connect:
-            mock_connect.side_effect = IntegrationError(
-                "Token Hardcover inválido.", status_code=400
-            )
+            mock_connect.side_effect = IntegrationError("Token Hardcover inválido.", status_code=400)
             resp = self.client.post(
                 "/api/v1/integrations/hardcover",
                 json={"token": "bad_token"},

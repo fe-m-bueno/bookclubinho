@@ -232,9 +232,7 @@ async def _update_streak(
     Only acquire FOR UPDATE when an actual update is needed.
     """
     # Fast non-locking read to check if we need to do anything
-    fast_result = await db.execute(
-        select(User.streak_last_update, User.timezone).where(User.id == user_id)
-    )
+    fast_result = await db.execute(select(User.streak_last_update, User.timezone).where(User.id == user_id))
     row = fast_result.one_or_none()
     if row is None:
         return
@@ -250,9 +248,7 @@ async def _update_streak(
         return
 
     # Needs an update — acquire row lock and re-read to prevent races
-    result = await db.execute(
-        select(User).where(User.id == user_id).with_for_update()
-    )
+    result = await db.execute(select(User).where(User.id == user_id).with_for_update())
     user = result.scalar_one_or_none()
     if user is None:
         return
@@ -349,9 +345,7 @@ async def _emit_streak_events(
     try:
         redis = get_redis()
         # Fetch all active groups the user belongs to
-        groups_result = await db.execute(
-            select(GroupMember.group_id).where(GroupMember.user_id == user.id)
-        )
+        groups_result = await db.execute(select(GroupMember.group_id).where(GroupMember.user_id == user.id))
         group_ids = [str(row[0]) for row in groups_result.all()]
 
         for group_id in group_ids:
@@ -380,5 +374,3 @@ async def _emit_streak_events(
                 )
     except RedisError:
         logger.warning("redis_streak_event_failed", user_id=str(user.id))
-
-

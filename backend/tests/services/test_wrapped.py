@@ -131,8 +131,14 @@ async def test_generate_creates_row() -> None:
         "funniest_oneliner": None,
         "most_emotional_book": None,
         "member_superlatives": [],
-        "emotional_stats": {"total_reviews": 0, "cried_count": 0, "loved_it_count": 0,
-                             "felt_aroused_count": 0, "found_heavy_count": 0, "wants_more_count": 0},
+        "emotional_stats": {
+            "total_reviews": 0,
+            "cried_count": 0,
+            "loved_it_count": 0,
+            "felt_aroused_count": 0,
+            "found_heavy_count": 0,
+            "wants_more_count": 0,
+        },
         "member_avatars": [],
     }
 
@@ -175,8 +181,14 @@ async def test_generate_overwrites_existing() -> None:
         "funniest_oneliner": None,
         "most_emotional_book": None,
         "member_superlatives": [],
-        "emotional_stats": {"total_reviews": 0, "cried_count": 0, "loved_it_count": 0,
-                             "felt_aroused_count": 0, "found_heavy_count": 0, "wants_more_count": 0},
+        "emotional_stats": {
+            "total_reviews": 0,
+            "cried_count": 0,
+            "loved_it_count": 0,
+            "felt_aroused_count": 0,
+            "found_heavy_count": 0,
+            "wants_more_count": 0,
+        },
         "member_avatars": [],
     }
     existing_report.data = fake_data
@@ -269,31 +281,31 @@ def _build_compute_db(
     sup_rows = superlative_rows or [None, None, None, None]
 
     side_effects: list[MagicMock] = [
-        _scalar_or_none(group),      # 1. group
-        _scalars_all(rounds),        # 2. finished_rounds
+        _scalar_or_none(group),  # 1. group
+        _scalars_all(rounds),  # 2. finished_rounds
     ]
 
     if has_rounds:
-        side_effects.append(_scalar_one(total_minutes))        # 3. total_minutes
-        side_effects.append(_one_or_none(avg_rating_row))      # 4. highest rated
-        side_effects.append(_scalar_or_none(active_user))      # 5. most active (JOIN User)
+        side_effects.append(_scalar_one(total_minutes))  # 3. total_minutes
+        side_effects.append(_one_or_none(avg_rating_row))  # 4. highest rated
+        side_effects.append(_scalar_or_none(active_user))  # 5. most active (JOIN User)
 
-    side_effects.append(_scalar_or_none(streak_user))          # 6. streak member
+    side_effects.append(_scalar_or_none(streak_user))  # 6. streak member
 
     if has_rounds:
-        side_effects.append(_one_or_none(oneliner_row))        # 7. funniest oneliner (2-tuple)
-        side_effects.append(_one_or_none(emotional_row))       # 8. most emotional book
+        side_effects.append(_one_or_none(oneliner_row))  # 7. funniest oneliner (2-tuple)
+        side_effects.append(_one_or_none(emotional_row))  # 8. most emotional book
 
-    side_effects.append(_scalars_all(members))                 # 9. member_avatars
+    side_effects.append(_scalars_all(members))  # 9. member_avatars
 
     if has_rounds and has_members:
-        side_effects.append(_one_or_none(sup_rows[0]))         # 10. speed reader
-        side_effects.append(_one_or_none(sup_rows[1]))         # 11. critic
-        side_effects.append(_one_or_none(sup_rows[2]))         # 12. quotes master
-        side_effects.append(_one_or_none(sup_rows[3]))         # 13. chorão
+        side_effects.append(_one_or_none(sup_rows[0]))  # 10. speed reader
+        side_effects.append(_one_or_none(sup_rows[1]))  # 11. critic
+        side_effects.append(_one_or_none(sup_rows[2]))  # 12. quotes master
+        side_effects.append(_one_or_none(sup_rows[3]))  # 13. chorão
 
     if has_rounds:
-        side_effects.append(_one(es_row))                      # 14. emotional stats
+        side_effects.append(_one(es_row))  # 14. emotional stats
 
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=side_effects)
@@ -457,10 +469,10 @@ async def test_member_superlatives_computed() -> None:
         return r
 
     sup_rows = [
-        _row(user1.id, total_minutes=300, book_count=3),   # speed reader
-        _row(user2.id, review_count=5),                     # critic
-        _row(user3.id, quote_count=8),                      # quotes
-        _row(user4.id, total=4, cried_count=4),             # chorao
+        _row(user1.id, total_minutes=300, book_count=3),  # speed reader
+        _row(user2.id, review_count=5),  # critic
+        _row(user3.id, quote_count=8),  # quotes
+        _row(user4.id, total=4, cried_count=4),  # chorao
     ]
 
     streak_user = user5

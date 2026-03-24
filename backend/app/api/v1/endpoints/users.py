@@ -19,7 +19,6 @@ from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, sta
 
 from app.core.cookies import clear_auth_cookies
 from app.core.deps import CurrentUser, DBSession, OptionalUser  # noqa: TC001
-from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
 from app.schemas.notification import NotificationPreferencesUpdate  # noqa: TC001
 from app.schemas.onboarding import UsernameCheckResponse
@@ -35,6 +34,12 @@ from app.schemas.user import (
 from app.security.rate_limit import limiter
 from app.services.account_deletion import AccountDeletionError, delete_account
 from app.services.data_export import DataExportError, request_data_export
+from app.services.notification_preferences import (
+    get_notification_preferences as svc_get_notification_preferences,
+)
+from app.services.notification_preferences import (
+    update_notification_preferences as svc_update_notification_preferences,
+)
 from app.services.onboarding import check_username_available
 from app.services.shared_groups import get_shared_groups
 from app.services.user_profile import (
@@ -42,10 +47,6 @@ from app.services.user_profile import (
     get_public_profile,
     get_public_profile_by_username,
     update_user_profile,
-)
-from app.services.notification_preferences import (
-    get_notification_preferences as svc_get_notification_preferences,
-    update_notification_preferences as svc_update_notification_preferences,
 )
 from app.services.user_profile import delete_user_avatar as svc_delete_avatar
 from app.services.user_profile import upload_user_avatar as svc_upload_avatar
@@ -145,9 +146,7 @@ async def check_username(
 
     Exclui o próprio usuário autenticado da verificação.
     """
-    available = await check_username_available(
-        db=db, username=username, exclude_user_id=user.id
-    )
+    available = await check_username_available(db=db, username=username, exclude_user_id=user.id)
     return UsernameCheckResponse(available=available)
 
 
@@ -192,9 +191,7 @@ async def get_profile_by_username(
     """
     viewer_id = viewer.id if viewer else None
     try:
-        profile = await get_public_profile_by_username(
-            db=db, username=username, viewer_id=viewer_id
-        )
+        profile = await get_public_profile_by_username(db=db, username=username, viewer_id=viewer_id)
     except ProfileError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return UserProfilePublicEnriched.model_validate(profile)
@@ -217,16 +214,12 @@ async def get_shared_groups_endpoint(
 
     from app.db.models.user import User
 
-    result = await db.execute(
-        select(User).where(func.lower(User.username) == username.lower())
-    )
+    result = await db.execute(select(User).where(func.lower(User.username) == username.lower()))
     target = result.scalar_one_or_none()
     if target is None or not target.is_active:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
 
-    groups = await get_shared_groups(
-        db=db, viewer_id=viewer.id, target_user_id=target.id
-    )
+    groups = await get_shared_groups(db=db, viewer_id=viewer.id, target_user_id=target.id)
     return [SharedGroupSummary.model_validate(g) for g in groups]
 
 

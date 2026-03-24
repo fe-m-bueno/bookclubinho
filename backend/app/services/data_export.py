@@ -1,4 +1,5 @@
 """Data export — collect user data, upload to R2, email download link."""
+
 from __future__ import annotations
 
 import asyncio
@@ -33,8 +34,8 @@ class DataExportError(ServiceError):
 
 
 async def request_data_export(
-    redis: "aioredis.Redis",
-    db: "AsyncSession",
+    redis: aioredis.Redis,
+    db: AsyncSession,
     user: User,
 ) -> dict:
     """Collect user data, upload to R2 (presigned), send email. Returns message + cooldown_until."""
@@ -43,10 +44,7 @@ async def request_data_export(
     if ttl > 0:
         cooldown_until = datetime.now(UTC) + timedelta(seconds=ttl)
         return {
-            "message": (
-                "Você já solicitou uma exportação recentemente. "
-                "Aguarde o período de espera."
-            ),
+            "message": ("Você já solicitou uma exportação recentemente. Aguarde o período de espera."),
             "cooldown_until": cooldown_until,
         }
 
@@ -72,9 +70,7 @@ async def request_data_export(
     groups_data = [{"id": str(r.id), "name": r.name} for r in groups_result]
 
     # Reviews
-    reviews_result = await db.execute(
-        select(BookReview).where(BookReview.user_id == user.id)
-    )
+    reviews_result = await db.execute(select(BookReview).where(BookReview.user_id == user.id))
     reviews = reviews_result.scalars().all()
     reviews_data = [
         {
@@ -104,10 +100,7 @@ async def request_data_export(
 
     export_json = json.dumps(export, ensure_ascii=False, indent=2).encode("utf-8")
 
-    bucket_path = (
-        f"exports/{user.id}/"
-        f"{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}_export.json"
-    )
+    bucket_path = f"exports/{user.id}/{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}_export.json"
 
     def _do_upload() -> str:
         _ensure_bucket()

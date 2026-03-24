@@ -73,9 +73,7 @@ async def join_group(db: AsyncSession, user: User, invite_code: str) -> Group:
 async def leave_group(db: AsyncSession, user: User, group_id: uuid.UUID) -> None:
     """Remove usuario do grupo com promoção de admin e desativação se necessário."""
     result = await db.execute(
-        select(Group)
-        .where(Group.id == group_id, Group.is_active.is_(True))
-        .options(selectinload(Group.members))
+        select(Group).where(Group.id == group_id, Group.is_active.is_(True)).options(selectinload(Group.members))
     )
     group = result.scalar_one_or_none()
     if group is None:
@@ -95,16 +93,10 @@ async def leave_group(db: AsyncSession, user: User, group_id: uuid.UUID) -> None
         return
 
     if member.role == GroupRole.ADMIN:
-        other_admins = [
-            m for m in active_members
-            if m.user_id != user.id and m.role == GroupRole.ADMIN
-        ]
+        other_admins = [m for m in active_members if m.user_id != user.id and m.role == GroupRole.ADMIN]
         if not other_admins:
             # Promover membro mais antigo
-            other_members = [
-                m for m in active_members
-                if m.user_id != user.id
-            ]
+            other_members = [m for m in active_members if m.user_id != user.id]
             oldest = min(other_members, key=lambda m: m.joined_at)
             oldest.role = GroupRole.ADMIN
             logger.info(
@@ -118,6 +110,7 @@ async def leave_group(db: AsyncSession, user: User, group_id: uuid.UUID) -> None
 
 
 # ── QR Code / Regenerate ─────────────────────────────────────────────────────
+
 
 def _generate_qr_bytes(url: str) -> bytes:
     """Generate a QR code PNG image for the given URL."""
@@ -143,13 +136,9 @@ def get_qr_url(group_id: uuid.UUID) -> str:
     return get_public_url(f"qrcodes/{group_id}.webp")
 
 
-async def regenerate_invite_code(
-    db: AsyncSession, group_id: uuid.UUID
-) -> tuple[str, str]:
+async def regenerate_invite_code(db: AsyncSession, group_id: uuid.UUID) -> tuple[str, str]:
     """Generate a new invite code and QR code for the group."""
-    result = await db.execute(
-        select(Group).where(Group.id == group_id, Group.is_active.is_(True))
-    )
+    result = await db.execute(select(Group).where(Group.id == group_id, Group.is_active.is_(True)))
     group = result.scalar_one_or_none()
     if group is None:
         raise GroupError("Clube não encontrado.", status_code=404)
@@ -200,9 +189,7 @@ def _validate_photo_size(photo_data: bytes) -> None:
         raise GroupError("Foto deve ter no máximo 5 MB.", status_code=422)
 
 
-async def _upload_group_photo(
-    group_id: uuid.UUID, photo_data: bytes, photo_content_type: str | None
-) -> str:
+async def _upload_group_photo(group_id: uuid.UUID, photo_data: bytes, photo_content_type: str | None) -> str:
     _validate_photo_size(photo_data)
     return await asyncio.to_thread(
         upload_file,
@@ -275,11 +262,7 @@ async def list_user_groups_enriched(
         select(GroupMember)
         .join(Group, GroupMember.group_id == Group.id)
         .where(GroupMember.user_id == user.id, Group.is_active.is_(True))
-        .options(
-            selectinload(GroupMember.group)
-            .selectinload(Group.members)
-            .selectinload(GroupMember.user)
-        )
+        .options(selectinload(GroupMember.group).selectinload(Group.members).selectinload(GroupMember.user))
     )
     memberships = result.scalars().unique().all()
     groups = [m.group for m in memberships]
@@ -307,9 +290,7 @@ async def list_user_groups_enriched(
 
     # Step 3: batch-load my latest ReadingProgress per active round (reading/reviewing)
     reading_round_ids = [
-        r.id
-        for r in round_by_group.values()
-        if r.status in (RoundStatus.READING, RoundStatus.REVIEWING)
+        r.id for r in round_by_group.values() if r.status in (RoundStatus.READING, RoundStatus.REVIEWING)
     ]
 
     progress_by_round: dict[uuid.UUID, ReadingProgress] = {}
@@ -365,9 +346,7 @@ async def list_user_groups_enriched(
         .where(GroupMessage.is_deleted.is_(False))
         .options(selectinload(GroupMessage.user))
     )
-    last_msg_by_group: dict[uuid.UUID, GroupMessage] = {
-        m.group_id: m for m in msg_result.scalars().all()
-    }
+    last_msg_by_group: dict[uuid.UUID, GroupMessage] = {m.group_id: m for m in msg_result.scalars().all()}
 
     # Step 5: assemble and sort by last_activity_at DESC
     enriched: list[dict[str, Any]] = []
@@ -437,14 +416,10 @@ async def update_group(
     return group
 
 
-async def _get_active_group_with_members(
-    db: AsyncSession, group_id: uuid.UUID
-) -> Group:
+async def _get_active_group_with_members(db: AsyncSession, group_id: uuid.UUID) -> Group:
     """Fetch an active group with eagerly loaded members, or raise 404."""
     result = await db.execute(
-        select(Group)
-        .where(Group.id == group_id, Group.is_active.is_(True))
-        .options(selectinload(Group.members))
+        select(Group).where(Group.id == group_id, Group.is_active.is_(True)).options(selectinload(Group.members))
     )
     group = result.scalar_one_or_none()
     if group is None:
@@ -472,15 +447,8 @@ async def update_member_role(
     target = _find_member_or_raise(group, target_user_id)
 
     # Prevent demoting self if sole admin
-    if (
-        target.user_id == requesting_user_id
-        and target.role == GroupRole.ADMIN
-        and new_role == GroupRole.MEMBER
-    ):
-        other_admins = [
-            m for m in group.members
-            if m.user_id != requesting_user_id and m.role == GroupRole.ADMIN
-        ]
+    if target.user_id == requesting_user_id and target.role == GroupRole.ADMIN and new_role == GroupRole.MEMBER:
+        other_admins = [m for m in group.members if m.user_id != requesting_user_id and m.role == GroupRole.ADMIN]
         if not other_admins:
             raise GroupError(
                 "Você é o único admin. Promova outro membro antes de se rebaixar.",

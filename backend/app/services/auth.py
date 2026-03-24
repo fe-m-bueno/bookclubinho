@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
 import re
 import secrets
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.constants import TOKEN_BLACKLIST_PREFIX as _TOKEN_BLACKLIST_PREFIX
 from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
 from app.core.security import (
@@ -31,7 +33,7 @@ from app.core.security import (
 from app.db.models.user import User
 from app.db.models.user_session import UserSession
 from app.security.sanitizer import sanitize
-from app.services.email import send_magic_link_email, send_verification_email
+from app.services.email import email_service, send_magic_link_email, send_verification_email
 
 logger = structlog.get_logger(__name__)
 
@@ -48,11 +50,21 @@ _RESEND_VERIFY_RATE_KEY_PREFIX = "resend_verify_rate:"
 _RESEND_VERIFY_RATE_LIMIT = 3
 _RESEND_VERIFY_RATE_TTL = 3600  # 1 hora
 
-from app.core.constants import TOKEN_BLACKLIST_PREFIX as _TOKEN_BLACKLIST_PREFIX
+# ── Brute force protection ────────────────────────────────────────────────────
+_LOGIN_FAIL_KEY_PREFIX = "login_fail:"
+_LOGIN_LOCK_KEY_PREFIX = "login_lock:"
+_LOGIN_FAIL_TTL = 900  # 15 minutes sliding window
+_LOGIN_LOCK_TTL = 900  # 15 minutes lockout
+_LOGIN_MAX_FAILS = 10  # lock after 10 consecutive failures
+# Valid bcrypt hash format — used as a constant-time dummy target when no real hash exists
+_DUMMY_BCRYPT_HASH = "$2b$12$notarealhashXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 
 async def _is_rate_limited(
-    key_prefix: str, identifier: str, limit: int, ttl: int,
+    key_prefix: str,
+    identifier: str,
+    limit: int,
+    ttl: int,
 ) -> bool:
     """Shared Redis INCR-based rate limiter. Returns True if over limit."""
     redis_client = get_redis()
@@ -61,6 +73,46 @@ async def _is_rate_limited(
     if count == 1:
         await redis_client.expire(key, ttl)
     return count > limit
+
+
+def _hash_email(email: str) -> str:
+    """SHA-256 hash of a lowercase email — used as Redis key suffix to avoid storing PII."""
+    return hashlib.sha256(email.lower().encode()).hexdigest()
+
+
+async def _get_login_fail_count(email_hash: str) -> int:
+    """Return the current consecutive failure count for this email hash."""
+    redis = get_redis()
+    val = await redis.get(f"{_LOGIN_FAIL_KEY_PREFIX}{email_hash}")
+    return int(val) if val else 0
+
+
+async def _increment_login_fail(email_hash: str) -> int:
+    """Increment and return the failure counter, setting TTL on first increment."""
+    redis = get_redis()
+    key = f"{_LOGIN_FAIL_KEY_PREFIX}{email_hash}"
+    count = await redis.incr(key)
+    if count == 1:
+        await redis.expire(key, _LOGIN_FAIL_TTL)
+    return count
+
+
+async def _reset_login_fail(email_hash: str) -> None:
+    """Delete the failure counter after a successful login."""
+    redis = get_redis()
+    await redis.delete(f"{_LOGIN_FAIL_KEY_PREFIX}{email_hash}")
+
+
+async def _is_login_locked(email_hash: str) -> bool:
+    """Return True if the account is currently in a lockout window."""
+    redis = get_redis()
+    return bool(await redis.get(f"{_LOGIN_LOCK_KEY_PREFIX}{email_hash}"))
+
+
+async def _lock_account(email_hash: str) -> None:
+    """Set the lockout key with TTL."""
+    redis = get_redis()
+    await redis.set(f"{_LOGIN_LOCK_KEY_PREFIX}{email_hash}", "1", ex=_LOGIN_LOCK_TTL)
 
 
 def _hash_token(token: str) -> str:
@@ -116,7 +168,7 @@ def _extract_jti_from_token(token: str) -> str | None:
 
 
 async def _create_session(
-    db: "AsyncSession",
+    db: AsyncSession,
     user_id: uuid.UUID,
     refresh_token: str,
     user_agent: str | None,
@@ -178,9 +230,7 @@ async def register_user(
 
     # Generate verification token and store in Redis
     token = secrets.token_urlsafe(32)
-    verify_url = (
-        f"{settings.APP_URL.rstrip('/')}/auth/verify-email?token={token}"
-    )
+    verify_url = f"{settings.APP_URL.rstrip('/')}/auth/verify-email?token={token}"
 
     redis_client = get_redis()
     await redis_client.set(
@@ -213,8 +263,10 @@ async def resend_verification_email(db: AsyncSession, email: str) -> None:
     email_lower = email.lower().strip()
 
     if await _is_rate_limited(
-        _RESEND_VERIFY_RATE_KEY_PREFIX, email_lower,
-        _RESEND_VERIFY_RATE_LIMIT, _RESEND_VERIFY_RATE_TTL,
+        _RESEND_VERIFY_RATE_KEY_PREFIX,
+        email_lower,
+        _RESEND_VERIFY_RATE_LIMIT,
+        _RESEND_VERIFY_RATE_TTL,
     ):
         logger.info("resend_verification_rate_limited", email=email_lower)
         return
@@ -293,8 +345,10 @@ async def send_magic_link(db: AsyncSession, email: str) -> None:
     email_lower = email.lower().strip()
 
     if await _is_rate_limited(
-        _MAGIC_RATE_KEY_PREFIX, email_lower,
-        _MAGIC_RATE_LIMIT, _MAGIC_RATE_TTL,
+        _MAGIC_RATE_KEY_PREFIX,
+        email_lower,
+        _MAGIC_RATE_LIMIT,
+        _MAGIC_RATE_TTL,
     ):
         logger.info("magic_link_rate_limited", email=email_lower)
         return
@@ -339,7 +393,7 @@ async def send_magic_link(db: AsyncSession, email: str) -> None:
 
 
 async def consume_magic_token(
-    db: "AsyncSession",
+    db: AsyncSession,
     token: str,
     user_agent: str | None = None,
     client_ip: str | None = None,
@@ -372,7 +426,8 @@ async def consume_magic_token(
     user.last_login_at = datetime.now(UTC)
 
     access_token, refresh_token = create_token_pair(
-        str(user.id), onboarding_completed=user.onboarding_completed,
+        str(user.id),
+        onboarding_completed=user.onboarding_completed,
     )
 
     await _create_session(db, user.id, refresh_token, user_agent, client_ip)
@@ -390,7 +445,7 @@ _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
 async def google_oauth_callback(
     code: str,
-    db: "AsyncSession",
+    db: AsyncSession,
     user_agent: str | None = None,
     client_ip: str | None = None,
 ) -> tuple[str, str, bool]:
@@ -463,7 +518,8 @@ async def google_oauth_callback(
     user.last_login_at = datetime.now(UTC)
 
     access_token, refresh_token = create_token_pair(
-        str(user.id), onboarding_completed=user.onboarding_completed,
+        str(user.id),
+        onboarding_completed=user.onboarding_completed,
     )
 
     await _create_session(db, user.id, refresh_token, user_agent, client_ip)
@@ -476,7 +532,7 @@ async def google_oauth_callback(
 
 
 async def authenticate_user(
-    db: "AsyncSession",
+    db: AsyncSession,
     email: str,
     password: str,
     user_agent: str | None = None,
@@ -484,33 +540,61 @@ async def authenticate_user(
 ) -> tuple[str, str]:
     """Authenticate user and return (access_token, refresh_token).
 
-    Raises AuthError for any auth failure (single message to prevent enumeration).
-    Optionally creates a UserSession record for session tracking.
+    Raises AuthError for any auth failure (single generic message to prevent enumeration).
+    Implements brute force protection: progressive delays and account lockout after 10 failures.
     """
     email_lower = email.lower().strip()
+    email_hash = _hash_email(email_lower)
+
+    # Check lockout BEFORE DB query — locked accounts get the same generic error
+    if await _is_login_locked(email_hash):
+        # Perform constant-time dummy work to prevent timing-based lockout detection
+        dummy_hash = _DUMMY_BCRYPT_HASH
+        verify_password(password, dummy_hash)
+        raise AuthError("Credenciais inválidas.")
 
     result = await db.execute(select(User).where(User.email == email_lower))
     user = result.scalar_one_or_none()
 
-    # Constant-time: always verify password even if user is None to prevent timing attacks
-    dummy_hash = "$2b$12$notarealhashXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-    hashed = user.hashed_password if (user and user.hashed_password) else dummy_hash
+    # Constant-time: always run bcrypt even if user is None to prevent timing attacks
+    hashed = user.hashed_password if (user and user.hashed_password) else _DUMMY_BCRYPT_HASH
     password_ok = verify_password(password, hashed)
 
-    if user is None or not password_ok:
+    auth_failed = user is None or not password_ok or not user.is_active
+
+    if auth_failed or not user.email_verified:
+        # Increment failure counter and apply progressive delay
+        fail_count = await _increment_login_fail(email_hash)
+
+        if 4 <= fail_count <= 5:
+            await asyncio.sleep(2.0)
+        elif 6 <= fail_count <= 8:
+            await asyncio.sleep(5.0)
+        elif fail_count == 9:
+            await asyncio.sleep(15.0)
+        elif fail_count >= _LOGIN_MAX_FAILS:
+            await _lock_account(email_hash)
+            logger.warning("login_account_locked", email_hash=email_hash)
+            # Fire-and-forget warning email — only when we can identify the user
+            if user is not None and user.is_active:
+                asyncio.create_task(  # noqa: RUF006
+                    email_service.send_account_locked_warning(
+                        to=user.email,
+                        display_name=user.display_name or user.email,
+                    )
+                )
+
+        # Always raise the same generic error regardless of failure reason
         raise AuthError("Credenciais inválidas.")
 
-    if not user.is_active:
-        raise AuthError("Credenciais inválidas.")
+    # Successful authentication — reset brute force counter
+    await _reset_login_fail(email_hash)
 
-    if not user.email_verified:
-        raise AuthError("E-mail não verificado. Confira sua caixa de entrada.", status_code=403)
-
-    # Update last login
     user.last_login_at = datetime.now(UTC)
 
     access_token, refresh_token = create_token_pair(
-        str(user.id), onboarding_completed=user.onboarding_completed,
+        str(user.id),
+        onboarding_completed=user.onboarding_completed,
     )
 
     await _create_session(db, user.id, refresh_token, user_agent, client_ip)
@@ -549,7 +633,7 @@ async def blacklist_refresh_token(token: str) -> None:
 
 async def rotate_refresh_token(
     token: str,
-    db: "AsyncSession | None" = None,
+    db: AsyncSession | None = None,
 ) -> tuple[str, str]:
     """Valida o refresh token, verifica blacklist e emite novo par access+refresh.
 
@@ -582,12 +666,11 @@ async def rotate_refresh_token(
     if exp is not None:
         remaining_ttl = max(0, int(exp - datetime.now(UTC).timestamp()))
         if remaining_ttl > 0:
-            await redis_client.set(
-                f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl
-            )
+            await redis_client.set(f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl)
 
     new_access, new_refresh = create_token_pair(
-        user_id, onboarding_completed=payload.get("onb", False),
+        user_id,
+        onboarding_completed=payload.get("onb", False),
     )
 
     # Update session record if db is available (best-effort — no crash on failure)

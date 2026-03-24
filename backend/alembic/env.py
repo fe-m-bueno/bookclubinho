@@ -1,16 +1,14 @@
 import asyncio
 from logging.config import fileConfig
-from collections.abc import Callable
 
 from alembic import context
 from sqlalchemy import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.core.config import settings
-from app.db.engine import Base, _build_url
-
 # ── Import every model module so Alembic sees all mapped tables ───────────────
 import app.db.models  # noqa: F401  — re-exports User, TimestampMixin, etc.
+from app.db.engine import Base, _build_url
+
 # Add future model modules here:
 # import app.db.models.group      # noqa: F401
 # import app.db.models.round      # noqa: F401
@@ -31,7 +29,7 @@ def run_migrations_offline() -> None:
     Useful for reviewing migrations or running them manually.
     """
     context.configure(
-        url=_build_url(),          # always uses the asyncpg-normalised URL
+        url=_build_url(),  # always uses the asyncpg-normalised URL
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

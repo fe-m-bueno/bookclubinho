@@ -2,6 +2,7 @@
 Database seed script — populates local dev data.
 Run via: make seed  (or: cd backend && python -m app.db.seed)
 """
+
 import asyncio
 
 import structlog

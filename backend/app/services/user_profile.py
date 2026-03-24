@@ -7,7 +7,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import structlog
-from sqlalchemy import func, select, text as sa_text
+from sqlalchemy import func, select
 
 if TYPE_CHECKING:
     from fastapi import UploadFile
@@ -18,7 +18,7 @@ from app.db.models.badge import Badge, UserBadge
 from app.db.models.user import User
 from app.schemas.user import UserUpdate
 from app.security.sanitizer import sanitize
-from app.services.onboarding import OnboardingError, check_username_available
+from app.services.onboarding import check_username_available
 from app.storage.s3_storage import delete_file, upload_file
 
 logger = structlog.get_logger(__name__)
@@ -41,9 +41,7 @@ async def update_user_profile(
 
     if payload.username is not None:
         username = sanitize(payload.username).strip()
-        available = await check_username_available(
-            db=db, username=username, exclude_user_id=user.id
-        )
+        available = await check_username_available(db=db, username=username, exclude_user_id=user.id)
         if not available:
             raise ProfileError("Username já está em uso.", status_code=409)
         user.username = username
@@ -74,7 +72,7 @@ async def update_user_profile(
 async def upload_user_avatar(
     db: AsyncSession,
     user: User,
-    avatar: "UploadFile",
+    avatar: UploadFile,
 ) -> str:
     """Process and upload avatar; return new avatar_url."""
     data = await avatar.read()
@@ -114,9 +112,7 @@ async def get_public_profile(
     # Count finished books via BookReview (one review per finished book)
     from app.db.models.book_review import BookReview  # local import to avoid circular
 
-    count_result = await db.execute(
-        select(func.count()).select_from(BookReview).where(BookReview.user_id == user.id)
-    )
+    count_result = await db.execute(select(func.count()).select_from(BookReview).where(BookReview.user_id == user.id))
     total_books_finished = count_result.scalar_one() or 0
 
     # Fetch up to 12 most recent badges
@@ -148,7 +144,7 @@ async def get_public_profile(
 
 
 async def get_public_profile_by_username(
-    db: "AsyncSession",
+    db: AsyncSession,
     username: str,
     viewer_id: uuid.UUID | None = None,
 ) -> dict:
@@ -157,9 +153,7 @@ async def get_public_profile_by_username(
     Raises ProfileError(404) if user not found or inactive.
     Includes shared_group_count when viewer_id is provided and differs from target.
     """
-    result = await db.execute(
-        select(User).where(func.lower(User.username) == username.lower())
-    )
+    result = await db.execute(select(User).where(func.lower(User.username) == username.lower()))
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise ProfileError("Usuário não encontrado.", status_code=404)
@@ -170,9 +164,7 @@ async def get_public_profile_by_username(
     if viewer_id is not None and viewer_id != user.id:
         from app.services.shared_groups import get_shared_groups
 
-        shared = await get_shared_groups(
-            db=db, viewer_id=viewer_id, target_user_id=user.id
-        )
+        shared = await get_shared_groups(db=db, viewer_id=viewer_id, target_user_id=user.id)
         shared_group_count = len(shared)
 
     return {**profile, "shared_group_count": shared_group_count}

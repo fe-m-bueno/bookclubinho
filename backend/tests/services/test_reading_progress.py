@@ -43,7 +43,7 @@ def _make_user(**overrides: object) -> MagicMock:
     u.id = overrides.get("id", uuid.uuid4())
     u.streak_current = overrides.get("streak_current", 0)
     u.streak_longest = overrides.get("streak_longest", 0)
-    u.streak_last_update = overrides.get("streak_last_update", None)
+    u.streak_last_update = overrides.get("streak_last_update")
     u.timezone = overrides.get("timezone", "America/Sao_Paulo")
     return u
 
@@ -119,9 +119,7 @@ async def test_log_progress_success_with_percentage() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=42.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=42.0)
 
     db.add.assert_called_once()
     assert db.flush.call_count >= 1
@@ -140,9 +138,7 @@ async def test_log_progress_success_with_page_and_page_count() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=100, percentage=None
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=100, percentage=None)
 
     added = db.add.call_args[0][0]
     assert added.current_page == 100
@@ -158,9 +154,7 @@ async def test_log_progress_page_at_page_count_caps_to_100() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=300, percentage=None
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=300, percentage=None)
 
     added = db.add.call_args[0][0]
     assert added.percentage == 100.0
@@ -175,9 +169,7 @@ async def test_log_progress_page_exceeds_page_count_caps_to_100() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=350, percentage=None
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=350, percentage=None)
 
     added = db.add.call_args[0][0]
     assert added.percentage == 100.0
@@ -192,9 +184,7 @@ async def test_log_progress_page_without_page_count_defaults_to_zero() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=50, percentage=None
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=50, percentage=None)
 
     added = db.add.call_args[0][0]
     assert added.percentage == 0.0
@@ -209,9 +199,7 @@ async def test_log_progress_wrong_status_raises_409() -> None:
     db = _db_for_log(round_, member)
 
     with pytest.raises(ReadingProgressError) as exc_info:
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0)
     assert exc_info.value.status_code == 409
     assert "leitura" in str(exc_info.value)
 
@@ -224,9 +212,7 @@ async def test_log_progress_reviewing_status_raises_409() -> None:
     db = _db_for_log(round_, member)
 
     with pytest.raises(ReadingProgressError) as exc_info:
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0)
     assert exc_info.value.status_code == 409
 
 
@@ -262,9 +248,7 @@ async def test_log_progress_percentage_used_when_no_page_count() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=66.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=66.0)
 
     added = db.add.call_args[0][0]
     assert added.percentage == 66.0
@@ -309,9 +293,7 @@ async def test_log_progress_streak_today_no_change() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
 
     assert user.streak_current == 5  # unchanged
 
@@ -328,9 +310,7 @@ async def test_log_progress_streak_yesterday_increments() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
 
     assert user.streak_current == 4
     assert user.streak_longest == 4  # new record
@@ -348,9 +328,7 @@ async def test_log_progress_streak_missed_day_resets_to_1() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
 
     assert user.streak_current == 1
     assert user.streak_longest == 10  # not changed, still personal best
@@ -367,9 +345,7 @@ async def test_log_progress_streak_null_last_update_starts_at_1() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
 
     assert user.streak_current == 1
     assert user.streak_longest == 1
@@ -388,9 +364,7 @@ async def test_log_progress_emits_progress_updated_event() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0)
 
     # Check progress_updated was emitted
     xadd_calls = mock_redis.xadd.call_args_list
@@ -410,9 +384,7 @@ async def test_log_progress_emits_approaching_end_when_80_percent() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=85.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=85.0)
 
     payloads = [call[0][1] for call in mock_redis.xadd.call_args_list]
     assert any(p.get("type") == "approaching_end" for p in payloads)
@@ -428,9 +400,7 @@ async def test_log_progress_no_approaching_end_below_80_percent() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=79.9
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=79.9)
 
     payloads = [call[0][1] for call in mock_redis.xadd.call_args_list]
     assert not any(p.get("type") == "approaching_end" for p in payloads)
@@ -448,9 +418,7 @@ async def test_log_progress_redis_error_does_not_propagate() -> None:
     mock_redis.xadd = AsyncMock(side_effect=RedisError("Redis down"))
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
         # Should not raise
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0)
 
 
 @pytest.mark.asyncio
@@ -492,9 +460,7 @@ async def test_log_progress_emits_streak_milestone() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
-            db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0
-        )
+        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
 
     payloads = [call[0][1] for call in mock_redis.xadd.call_args_list]
     assert any(p.get("type") == "streak_milestone" and p.get("milestone") == "7" for p in payloads)

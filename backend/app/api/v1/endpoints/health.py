@@ -32,6 +32,7 @@ _VERSION: str = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("APP_VERSION", "un
 
 # ── Individual checks ─────────────────────────────────────────────────────────
 
+
 async def _check_db() -> tuple[CheckStatus, str | None]:
     try:
         async with engine.connect() as conn:
@@ -105,6 +106,7 @@ async def _check_s3() -> tuple[CheckStatus, str | None]:
 
 # ── Route ─────────────────────────────────────────────────────────────────────
 
+
 @router.get(
     "/health",
     summary="Health check",
@@ -120,11 +122,12 @@ async def health(detailed: bool = False) -> JSONResponse:
     Pass `?detailed=true` to include error messages in the response
     (disabled by default to avoid leaking internals in production).
     """
-    (db_status, db_err), (redis_status, redis_err), (s3_status, s3_err), (worker_status, worker_err) = (
-        await asyncio.gather(
-            _check_db(), _check_redis(), _check_s3(), _check_notification_worker()
-        )
-    )
+    (
+        (db_status, db_err),
+        (redis_status, redis_err),
+        (s3_status, s3_err),
+        (worker_status, worker_err),
+    ) = await asyncio.gather(_check_db(), _check_redis(), _check_s3(), _check_notification_worker())
 
     all_ok = db_status == "ok" and redis_status == "ok" and s3_status == "ok"
     # worker is optional — degraded state doesn't affect all_ok

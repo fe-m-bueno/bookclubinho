@@ -99,9 +99,7 @@ async def submit_review(
 
     # Reload with user relationship for response serialization
     result = await db.execute(
-        select(BookReview)
-        .where(BookReview.id == review.id)
-        .options(selectinload(BookReview.user))
+        select(BookReview).where(BookReview.id == review.id).options(selectinload(BookReview.user))
     )
     review = result.scalar_one()
 
@@ -208,21 +206,11 @@ async def get_review_stats(
         select(
             func.count().label("total_reviews"),
             func.avg(BookReview.star_rating).label("avg_star_rating"),
-            func.sum(case((BookReview.cried.is_(True), 1), else_=0)).label(
-                "cried_count"
-            ),
-            func.sum(case((BookReview.loved_it.is_(True), 1), else_=0)).label(
-                "loved_it_count"
-            ),
-            func.sum(case((BookReview.felt_aroused.is_(True), 1), else_=0)).label(
-                "felt_aroused_count"
-            ),
-            func.sum(case((BookReview.found_heavy.is_(True), 1), else_=0)).label(
-                "found_heavy_count"
-            ),
-            func.sum(
-                case((BookReview.wants_more_from_author.is_(True), 1), else_=0)
-            ).label("wants_more_count"),
+            func.sum(case((BookReview.cried.is_(True), 1), else_=0)).label("cried_count"),
+            func.sum(case((BookReview.loved_it.is_(True), 1), else_=0)).label("loved_it_count"),
+            func.sum(case((BookReview.felt_aroused.is_(True), 1), else_=0)).label("felt_aroused_count"),
+            func.sum(case((BookReview.found_heavy.is_(True), 1), else_=0)).label("found_heavy_count"),
+            func.sum(case((BookReview.wants_more_from_author.is_(True), 1), else_=0)).label("wants_more_count"),
         ).where(BookReview.round_id == round_id)
     )
     row = result.one()
@@ -254,5 +242,3 @@ async def _require_own_review(
     )
     if result.scalar_one_or_none() is None:
         raise ReviewError("Envie sua review primeiro!", status_code=403)
-
-

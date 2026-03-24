@@ -60,8 +60,7 @@ async def update_profile(
     # Validate username
     if not USERNAME_REGEX.match(username):
         raise OnboardingError(
-            "Username deve começar com letra, ter 3-20 caracteres "
-            "e conter apenas letras, números e _."
+            "Username deve começar com letra, ter 3-20 caracteres e conter apenas letras, números e _."
         )
 
     # Check uniqueness case-insensitive (exclude self)
@@ -94,9 +93,7 @@ async def update_profile(
 
         content_type = avatar.content_type or "image/png"
         bucket_path = f"avatars/{user.id}.webp"
-        avatar_url = await asyncio.to_thread(
-            upload_file, bucket_path, data, content_type
-        )
+        avatar_url = await asyncio.to_thread(upload_file, bucket_path, data, content_type)
         user.avatar_url = avatar_url
 
     user.username = username
@@ -128,9 +125,7 @@ async def complete_onboarding(db: AsyncSession, user: User) -> None:
     if not user.display_name:
         raise OnboardingError("Nome é obrigatório para completar o onboarding.")
     if not user.preferred_genres or len(user.preferred_genres) < 1:
-        raise OnboardingError(
-            "Selecione pelo menos 1 gênero para completar o onboarding."
-        )
+        raise OnboardingError("Selecione pelo menos 1 gênero para completar o onboarding.")
 
     user.onboarding_completed = True
 

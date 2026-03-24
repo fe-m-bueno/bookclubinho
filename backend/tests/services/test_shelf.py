@@ -11,7 +11,6 @@ from redis.exceptions import RedisError
 
 from app.services.shelf import ShelfError, _make_serializable, get_group_shelf, get_public_shelf
 
-
 # ── Mock factories ─────────────────────────────────────────────────────────────
 
 
@@ -19,7 +18,7 @@ def _make_group(**overrides: object) -> MagicMock:
     g = MagicMock()
     g.id = overrides.get("id", uuid.uuid4())
     g.name = overrides.get("name", "Clube do Livro")
-    g.photo_url = overrides.get("photo_url", None)
+    g.photo_url = overrides.get("photo_url")
     return g
 
 
@@ -29,7 +28,7 @@ def _make_round(**overrides: object) -> MagicMock:
     r.group_id = overrides.get("group_id", uuid.uuid4())
     r.book_title = overrides.get("book_title", "Dom Casmurro")
     r.book_author = overrides.get("book_author", "Machado de Assis")
-    r.book_cover_url = overrides.get("book_cover_url", None)
+    r.book_cover_url = overrides.get("book_cover_url")
     r.book_page_count = overrides.get("book_page_count", 256)
     r.book_genres = overrides.get("book_genres", ["ficção"])
     r.started_at = overrides.get("started_at", datetime(2026, 1, 1, tzinfo=UTC))

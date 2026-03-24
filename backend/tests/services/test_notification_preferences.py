@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -46,9 +46,7 @@ def _mock_db(user: MagicMock | None) -> AsyncMock:
 @pytest.mark.asyncio
 async def test_get_notification_preferences_returns_merged_defaults() -> None:
     """Returns user prefs merged with defaults."""
-    user = _make_user(
-        email_notifications={"meetings": False, "invites": True, "auth": True}
-    )
+    user = _make_user(email_notifications={"meetings": False, "invites": True, "auth": True})
     db = _mock_db(user)
 
     prefs = await get_notification_preferences(db=db, user_id=user.id)
@@ -94,7 +92,7 @@ async def test_update_notification_preferences_partial_update() -> None:
 
     assert result["approaching_end"] is True
     assert result["meetings"] is True  # unchanged
-    assert result["auth"] is True      # always True
+    assert result["auth"] is True  # always True
 
 
 @pytest.mark.asyncio

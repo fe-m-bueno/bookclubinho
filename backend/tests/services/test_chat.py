@@ -20,6 +20,15 @@ from app.services.chat import (
     toggle_reaction,
 )
 
+# ── Fixtures ──────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def mock_check_flood():
+    """Bypass Redis flood check in all chat service unit tests."""
+    with patch("app.services.chat._check_flood", new=AsyncMock()):
+        yield
+
 
 # ── Mock factories ─────────────────────────────────────────────────────────────
 
@@ -45,15 +54,15 @@ def _make_message(**overrides: object) -> MagicMock:
     msg.id = overrides.get("id", uuid.uuid4())
     msg.group_id = group_id
     msg.user_id = overrides.get("user_id", uuid.uuid4())
-    msg.round_id = overrides.get("round_id", None)
+    msg.round_id = overrides.get("round_id")
     msg.content_type = overrides.get("content_type", "text")
     msg.content_text = overrides.get("content_text", "Hello!")
-    msg.content_rich_json = overrides.get("content_rich_json", None)
-    msg.media_url = overrides.get("media_url", None)
+    msg.content_rich_json = overrides.get("content_rich_json")
+    msg.media_url = overrides.get("media_url")
     msg.is_spoiler = overrides.get("is_spoiler", False)
     msg.is_deleted = overrides.get("is_deleted", False)
     msg.created_at = overrides.get("created_at", datetime(2026, 3, 19, 10, 0, 0, tzinfo=UTC))
-    msg.updated_at = overrides.get("updated_at", None)
+    msg.updated_at = overrides.get("updated_at")
     msg.reactions = overrides.get("reactions", [])
     return msg
 
@@ -72,22 +81,22 @@ def _make_create_request(**overrides: object) -> MagicMock:
     req = MagicMock()
     req.content_type = overrides.get("content_type", "text")
     req.content_text = overrides.get("content_text", "Hello!")
-    req.content_rich_json = overrides.get("content_rich_json", None)
-    req.media_url = overrides.get("media_url", None)
-    req.thumbnail_url = overrides.get("thumbnail_url", None)
-    req.reference_type = overrides.get("reference_type", None)
-    req.reference_value = overrides.get("reference_value", None)
+    req.content_rich_json = overrides.get("content_rich_json")
+    req.media_url = overrides.get("media_url")
+    req.thumbnail_url = overrides.get("thumbnail_url")
+    req.reference_type = overrides.get("reference_type")
+    req.reference_value = overrides.get("reference_value")
     req.is_spoiler = overrides.get("is_spoiler", False)
-    req.spoiler_chapter = overrides.get("spoiler_chapter", None)
-    req.parent_message_id = overrides.get("parent_message_id", None)
-    req.round_id = overrides.get("round_id", None)
+    req.spoiler_chapter = overrides.get("spoiler_chapter")
+    req.parent_message_id = overrides.get("parent_message_id")
+    req.round_id = overrides.get("round_id")
     return req
 
 
 def _make_edit_request(**overrides: object) -> MagicMock:
     req = MagicMock()
     req.content_text = overrides.get("content_text", "Edited!")
-    req.content_rich_json = overrides.get("content_rich_json", None)
+    req.content_rich_json = overrides.get("content_rich_json")
     return req
 
 
@@ -148,8 +157,10 @@ async def test_create_message_sanitizes_content_text() -> None:
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 
-    with patch("app.services.chat.sanitize", return_value="Hello") as mock_sanitize, \
-         patch("app.services.chat._emit_chat_event", new=AsyncMock()):
+    with (
+        patch("app.services.chat.sanitize", return_value="Hello") as mock_sanitize,
+        patch("app.services.chat._emit_chat_event", new=AsyncMock()),
+    ):
         await create_message(db, group_id=group_id, user_id=user_id, data=data)
 
     mock_sanitize.assert_called_once_with("<script>evil()</script>Hello")
@@ -199,8 +210,10 @@ async def test_edit_message_success_within_window() -> None:
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 
-    with patch("app.services.chat._emit_chat_event", new=AsyncMock()), \
-         patch("app.services.chat.sanitize", return_value="Updated text"):
+    with (
+        patch("app.services.chat._emit_chat_event", new=AsyncMock()),
+        patch("app.services.chat.sanitize", return_value="Updated text"),
+    ):
         result = await edit_message(db, message_id=msg.id, user_id=user_id, data=data)
 
     assert result is msg
@@ -370,9 +383,7 @@ async def test_list_messages_with_cursor() -> None:
     res_counts.__iter__ = MagicMock(return_value=iter([]))
     db.execute = AsyncMock(side_effect=[res_member, res_messages, res_counts])
 
-    result, _reply_counts, next_cursor = await list_messages(
-        db, group_id=group_id, user_id=user_id, limit=limit
-    )
+    result, _reply_counts, next_cursor = await list_messages(db, group_id=group_id, user_id=user_id, limit=limit)
 
     assert len(result) == 2
     assert next_cursor is not None
@@ -428,9 +439,7 @@ async def test_toggle_reaction_adds_new() -> None:
     db.flush = AsyncMock()
 
     with patch("app.services.chat._emit_chat_event", new=AsyncMock()):
-        added, returned_group_id = await toggle_reaction(
-            db, message_id=msg.id, user_id=user_id, emoji="👍"
-        )
+        added, returned_group_id = await toggle_reaction(db, message_id=msg.id, user_id=user_id, emoji="👍")
 
     assert added is True
     assert returned_group_id == group_id
@@ -457,9 +466,7 @@ async def test_toggle_reaction_removes_existing() -> None:
     db.flush = AsyncMock()
 
     with patch("app.services.chat._emit_chat_event", new=AsyncMock()):
-        added, returned_group_id = await toggle_reaction(
-            db, message_id=msg.id, user_id=user_id, emoji="👍"
-        )
+        added, returned_group_id = await toggle_reaction(db, message_id=msg.id, user_id=user_id, emoji="👍")
 
     assert added is False
     assert returned_group_id == group_id
@@ -545,6 +552,4 @@ async def test_emit_chat_event_uses_maxlen() -> None:
 
     mock_redis.xadd.assert_called_once()
     call_kwargs = mock_redis.xadd.call_args
-    assert call_kwargs.kwargs.get("maxlen") == 10000 or (
-        len(call_kwargs.args) > 2 and call_kwargs.args[2] == 10000
-    )
+    assert call_kwargs.kwargs.get("maxlen") == 10000 or (len(call_kwargs.args) > 2 and call_kwargs.args[2] == 10000)

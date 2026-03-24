@@ -17,8 +17,7 @@ _EMAIL_NOTIFICATIONS_DEFAULT = {
 }
 
 _EMAIL_NOTIFICATIONS_SERVER_DEFAULT = (
-    '\'{"meetings": true, "invites": true, "auth": true, '
-    '"approaching_end": false, "all_updates": false}\'::jsonb'
+    '\'{"meetings": true, "invites": true, "auth": true, "approaching_end": false, "all_updates": false}\'::jsonb'
 )
 
 

@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.badge import BadgeError, get_badge_catalog, get_badge_progress, get_group_badges, get_my_badges
-
+from app.services.badge import (
+    BadgeError,
+    get_badge_catalog,
+    get_badge_progress,
+    get_group_badges,
+    get_my_badges,
+)
 
 # ── Mock factories ─────────────────────────────────────────────────────────────
 
@@ -39,7 +44,7 @@ def _make_user(**overrides: object) -> MagicMock:
     u.id = overrides.get("id", uuid.uuid4())
     u.username = overrides.get("username", "leitora")
     u.display_name = overrides.get("display_name", "Leitora Teste")
-    u.avatar_url = overrides.get("avatar_url", None)
+    u.avatar_url = overrides.get("avatar_url")
     return u
 
 

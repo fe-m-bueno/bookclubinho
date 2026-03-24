@@ -5,9 +5,6 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime
 
-import pytest
-from pydantic import ValidationError
-
 from app.schemas.round import (
     BookSummary,
     FinalizeResponse,
@@ -19,7 +16,6 @@ from app.schemas.round import (
     RoundListResponse,
     RoundUpdateRequest,
 )
-
 
 # ── RoundCreateRequest ────────────────────────────────────────────────────────
 

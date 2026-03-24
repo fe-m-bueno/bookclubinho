@@ -14,7 +14,6 @@ from app.schemas.reading_session import (
     SessionStopRequest,
 )
 
-
 # ── SessionStartRequest ───────────────────────────────────────────────────────
 
 

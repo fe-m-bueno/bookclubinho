@@ -96,7 +96,8 @@ async def onboarding_complete(
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     access_token, refresh_token = create_token_pair(
-        str(user.id), onboarding_completed=True,
+        str(user.id),
+        onboarding_completed=True,
     )
     set_auth_cookies(response, access_token, refresh_token)
 

@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     )
 
     # ── App ──────────────────────────────────────────────────────────────────
-    ENVIRONMENT: Literal["dev", "staging", "prod"] = "dev"
+    ENVIRONMENT: Literal["dev", "staging", "prod", "test"] = "dev"
     APP_URL: str = "http://localhost:3000"  # Vercel frontend — used in emails + CORS
     # Comma-separated string — pydantic-settings v2 JSON-parses list[str] fields
     # from env vars before validators run, so we keep it as str and split on demand.
@@ -40,16 +40,16 @@ class Settings(BaseSettings):
     UPSTASH_REDIS_REST_TOKEN: str = ""
 
     # ── Storage (Cloudflare R2 — S3-compatible) ───────────────────────────────
-    S3_ENDPOINT: str = ""           # https://<account>.r2.cloudflarestorage.com
+    S3_ENDPOINT: str = ""  # https://<account>.r2.cloudflarestorage.com
     S3_ACCESS_KEY: str = ""
     S3_SECRET_KEY: str = ""
     S3_BUCKET_NAME: str = "bookclub-public"
-    S3_PUBLIC_URL: str = ""         # https://pub.youromain.com  (R2 custom domain)
+    S3_PUBLIC_URL: str = ""  # https://pub.youromain.com  (R2 custom domain)
 
     # ── JWT / Auth ────────────────────────────────────────────────────────────
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # ── OAuth — Google ────────────────────────────────────────────────────────

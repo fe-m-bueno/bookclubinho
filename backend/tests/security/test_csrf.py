@@ -155,9 +155,7 @@ class TestCSRFMiddleware:
         response.set_cookie.assert_called_once()
         cookie_kwargs = response.set_cookie.call_args
         assert cookie_kwargs[1]["httponly"] is False  # JS must read it
-        cookie_name = (
-            cookie_kwargs[0][0] if cookie_kwargs[0] else cookie_kwargs[1].get("key", "")
-        )
+        cookie_name = cookie_kwargs[0][0] if cookie_kwargs[0] else cookie_kwargs[1].get("key", "")
         assert _CSRF_COOKIE in cookie_name
 
     @pytest.mark.asyncio

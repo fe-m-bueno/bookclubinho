@@ -13,9 +13,7 @@ from app.db.models.base import TimestampMixin
 
 class WrappedReport(TimestampMixin, Base):
     __tablename__ = "wrapped_reports"
-    __table_args__ = (
-        UniqueConstraint("group_id", "year", name="uq_wrapped_reports_group_year"),
-    )
+    __table_args__ = (UniqueConstraint("group_id", "year", name="uq_wrapped_reports_group_year"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

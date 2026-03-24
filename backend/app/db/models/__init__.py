@@ -1,3 +1,4 @@
+from app.db.models.audit_log import AuditLog
 from app.db.models.badge import Badge, BadgeCategory, UserBadge
 from app.db.models.base import TimestampMixin
 from app.db.models.book_review import BookReview
@@ -13,6 +14,7 @@ from app.db.models.user_session import UserSession
 from app.db.models.wrapped_report import WrappedReport
 
 __all__ = [
+    "AuditLog",
     "Badge",
     "BadgeCategory",
     "BookReview",

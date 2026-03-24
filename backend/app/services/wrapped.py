@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 from app.core.exceptions import ServiceError
 from app.db.models.book_review import BookReview
 from app.db.models.group import Group, GroupMember
-from app.db.models.hall_of_quote import HallOfQuote, QuoteVote
+from app.db.models.hall_of_quote import HallOfQuote
 from app.db.models.reading_progress import ReadingProgress
 from app.db.models.reading_session import ReadingSession
 from app.db.models.round import Round, RoundStatus
@@ -48,9 +48,7 @@ async def get_wrapped(
     )
     report = result.scalar_one_or_none()
     if report is None:
-        raise WrappedError(
-            f"Wrapped {year} ainda não foi gerado para este grupo.", status_code=404
-        )
+        raise WrappedError(f"Wrapped {year} ainda não foi gerado para este grupo.", status_code=404)
     return _report_to_dict(report)
 
 
@@ -155,9 +153,7 @@ async def _compute_wrapped_data(
         {
             "genre": item["genre"],
             "count": item["count"],
-            "percentage": round(
-                (item["count"] / total_genre_count * 100) if total_genre_count else 0.0, 2
-            ),
+            "percentage": round((item["count"] / total_genre_count * 100) if total_genre_count else 0.0, 2),
         }
         for item in raw_genres
     ]
@@ -177,9 +173,7 @@ async def _compute_wrapped_data(
         )
         top_rating_row = avg_rating_result.one_or_none()
         if top_rating_row is not None:
-            top_round = next(
-                (r for r in finished_rounds if r.id == top_rating_row.round_id), None
-            )
+            top_round = next((r for r in finished_rounds if r.id == top_rating_row.round_id), None)
             if top_round is not None:
                 highest_rated_book = {
                     "title": top_round.book_title or "",
@@ -262,23 +256,14 @@ async def _compute_wrapped_data(
             )
             .where(BookReview.round_id.in_(round_ids))
             .group_by(BookReview.round_id)
-            .order_by(
-                (
-                    cast(_bool_sum(BookReview.cried), Float)
-                    / func.nullif(func.count(BookReview.id), 0)
-                ).desc()
-            )
+            .order_by((cast(_bool_sum(BookReview.cried), Float) / func.nullif(func.count(BookReview.id), 0)).desc())
             .limit(1)
         )
         emotional_row = emotional_result.one_or_none()
         if emotional_row is not None and int(emotional_row.total) > 0:
-            emo_round = next(
-                (r for r in finished_rounds if r.id == emotional_row.round_id), None
-            )
+            emo_round = next((r for r in finished_rounds if r.id == emotional_row.round_id), None)
             if emo_round is not None:
-                cried_pct = round(
-                    float(emotional_row.cried_count or 0) / float(emotional_row.total) * 100, 2
-                )
+                cried_pct = round(float(emotional_row.cried_count or 0) / float(emotional_row.total) * 100, 2)
                 most_emotional_book = {
                     "title": emo_round.book_title or "",
                     "cover_url": emo_round.book_cover_url,
@@ -288,9 +273,7 @@ async def _compute_wrapped_data(
 
     # ── Member avatars ────────────────────────────────────────────────────────
     avatars_result = await db.execute(
-        select(User)
-        .join(GroupMember, GroupMember.user_id == User.id)
-        .where(GroupMember.group_id == group_id)
+        select(User).join(GroupMember, GroupMember.user_id == User.id).where(GroupMember.group_id == group_id)
     )
     group_members = avatars_result.scalars().all()
     member_avatars = [
@@ -304,9 +287,7 @@ async def _compute_wrapped_data(
     ]
 
     # ── Member superlatives ───────────────────────────────────────────────────
-    member_superlatives = await _compute_superlatives(
-        db, round_ids=round_ids, members=group_members
-    )
+    member_superlatives = await _compute_superlatives(db, round_ids=round_ids, members=group_members)
 
     # ── Emotional stats (year-scoped) ─────────────────────────────────────────
     if round_ids:
@@ -479,21 +460,14 @@ async def _compute_superlatives(
             )
             .group_by(BookReview.user_id)
             .having(func.count(BookReview.id) > 0)
-            .order_by(
-                (
-                    cast(_bool_sum(BookReview.cried), Float)
-                    / func.nullif(func.count(BookReview.id), 0)
-                ).desc()
-            )
+            .order_by((cast(_bool_sum(BookReview.cried), Float) / func.nullif(func.count(BookReview.id), 0)).desc())
             .limit(1)
         )
         cried_row = cried_result.one_or_none()
         if cried_row is not None:
             u = members_by_id.get(cried_row.user_id)
             if u is not None:
-                pct = round(
-                    float(cried_row.cried_count or 0) / float(cried_row.total) * 100, 0
-                )
+                pct = round(float(cried_row.cried_count or 0) / float(cried_row.total) * 100, 0)
                 superlatives.append(
                     _make_superlative(
                         user=u,

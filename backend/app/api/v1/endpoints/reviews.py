@@ -79,9 +79,7 @@ async def submit_review_endpoint(
 ) -> ReviewResponse:
     """Envia review do livro. Rodada deve estar em leitura ou reviews."""
     try:
-        review = await submit_review(
-            db, round_id=round_id, user_id=current_user.id, data=body
-        )
+        review = await submit_review(db, round_id=round_id, user_id=current_user.id, data=body)
     except ReviewError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -158,9 +156,7 @@ async def update_review_endpoint(
 ) -> ReviewResponse:
     """Edita a review do usuário. Permitido até 48h após envio."""
     try:
-        review = await update_review(
-            db, round_id=round_id, user_id=current_user.id, data=body
-        )
+        review = await update_review(db, round_id=round_id, user_id=current_user.id, data=body)
     except ReviewError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 

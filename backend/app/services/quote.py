@@ -37,9 +37,7 @@ async def create_quote(
     """Create a new hall of quote entry."""
     # Resolve round (provided or current active round)
     if round_id is not None:
-        round_result = await db.execute(
-            select(Round).where(Round.id == round_id, Round.group_id == group_id)
-        )
+        round_result = await db.execute(select(Round).where(Round.id == round_id, Round.group_id == group_id))
         round_ = round_result.scalar_one_or_none()
         if round_ is None:
             raise QuoteError("Rodada não encontrada neste grupo.", status_code=404)
@@ -101,11 +99,7 @@ async def list_quotes(
     )
 
     # Check if user voted for each quote
-    my_votes_subq = (
-        select(QuoteVote.quote_id)
-        .where(QuoteVote.user_id == user_id)
-        .subquery("my_votes")
-    )
+    my_votes_subq = select(QuoteVote.quote_id).where(QuoteVote.user_id == user_id).subquery("my_votes")
 
     stmt = (
         select(
@@ -196,9 +190,7 @@ async def toggle_vote(
 ) -> bool:
     """Toggle vote on a quote. Returns True if vote was added, False if removed."""
     # Verify quote exists and user can access it
-    quote_result = await db.execute(
-        select(HallOfQuote).where(HallOfQuote.id == quote_id)
-    )
+    quote_result = await db.execute(select(HallOfQuote).where(HallOfQuote.id == quote_id))
     quote = quote_result.scalar_one_or_none()
     if quote is None:
         raise QuoteError("Quote não encontrada.", status_code=404)
@@ -227,9 +219,7 @@ async def delete_quote(
     user_id: uuid.UUID,
 ) -> None:
     """Delete a quote. Only the author can delete."""
-    quote_result = await db.execute(
-        select(HallOfQuote).where(HallOfQuote.id == quote_id)
-    )
+    quote_result = await db.execute(select(HallOfQuote).where(HallOfQuote.id == quote_id))
     quote = quote_result.scalar_one_or_none()
     if quote is None:
         raise QuoteError("Quote não encontrada.", status_code=404)

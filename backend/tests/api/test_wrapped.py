@@ -132,9 +132,7 @@ class TestGetWrapped:
         """Wrapped não gerado deve retornar 404."""
         from app.services.wrapped import WrappedError
 
-        mock_get.side_effect = WrappedError(
-            f"Wrapped {YEAR} ainda não foi gerado para este grupo.", status_code=404
-        )
+        mock_get.side_effect = WrappedError(f"Wrapped {YEAR} ainda não foi gerado para este grupo.", status_code=404)
 
         response = self.client.get(f"/api/v1/groups/{GROUP_ID}/wrapped/{YEAR}")
 

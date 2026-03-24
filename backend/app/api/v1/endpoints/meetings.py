@@ -101,9 +101,7 @@ def _meeting_to_response(meeting: Meeting) -> MeetingResponse:
     )
 
 
-def _meeting_to_list_item(
-    meeting: Meeting, current_user_id: uuid.UUID
-) -> MeetingListItem:
+def _meeting_to_list_item(meeting: Meeting, current_user_id: uuid.UUID) -> MeetingListItem:
     my_rsvp = next(
         (r.status for r in meeting.rsvps if r.user_id == current_user_id),
         None,
@@ -278,9 +276,7 @@ async def update_meeting_endpoint(
 ) -> MeetingResponse:
     """Atualiza um encontro. Apenas criador ou admin."""
     try:
-        await update_meeting(
-            db, meeting_id=meeting_id, user_id=current_user.id, data=body
-        )
+        await update_meeting(db, meeting_id=meeting_id, user_id=current_user.id, data=body)
     except MeetingError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 

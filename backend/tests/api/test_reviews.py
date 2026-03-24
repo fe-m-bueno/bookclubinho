@@ -42,9 +42,7 @@ def _mock_review(**overrides: object) -> MagicMock:
     review.felt_aroused = overrides.get("felt_aroused", False)
     review.found_heavy = overrides.get("found_heavy", False)
     review.wants_more_from_author = overrides.get("wants_more_from_author", True)
-    review.sincere_review = overrides.get(
-        "sincere_review", "Uma review sincera e longa o suficiente"
-    )
+    review.sincere_review = overrides.get("sincere_review", "Uma review sincera e longa o suficiente")
     review.funny_oneliner = overrides.get("funny_oneliner")
     review.extra_thoughts = overrides.get("extra_thoughts")
     review.completed_at = overrides.get("completed_at", datetime.now(UTC))
@@ -117,9 +115,7 @@ class TestSubmitReview:
     def test_submit_duplicate_returns_409(self, mock_submit: MagicMock) -> None:
         from app.services.review import ReviewError
 
-        mock_submit.side_effect = ReviewError(
-            "Você já enviou uma review para esta rodada.", status_code=409
-        )
+        mock_submit.side_effect = ReviewError("Você já enviou uma review para esta rodada.", status_code=409)
 
         response = self.client.post(
             f"/api/v1/rounds/{ROUND_ID}/review",
@@ -182,14 +178,10 @@ class TestListReviews:
         assert len(response.json()) == 2
 
     @patch("app.api.v1.endpoints.reviews.get_all_reviews")
-    def test_list_without_own_review_returns_403(
-        self, mock_get_all: MagicMock
-    ) -> None:
+    def test_list_without_own_review_returns_403(self, mock_get_all: MagicMock) -> None:
         from app.services.review import ReviewError
 
-        mock_get_all.side_effect = ReviewError(
-            "Envie sua review primeiro!", status_code=403
-        )
+        mock_get_all.side_effect = ReviewError("Envie sua review primeiro!", status_code=403)
 
         response = self.client.get(f"/api/v1/rounds/{ROUND_ID}/reviews")
 
@@ -251,9 +243,7 @@ class TestUpdateReview:
     def test_update_expired_returns_409(self, mock_update: MagicMock) -> None:
         from app.services.review import ReviewError
 
-        mock_update.side_effect = ReviewError(
-            "O prazo de 48h para editar a review expirou.", status_code=409
-        )
+        mock_update.side_effect = ReviewError("O prazo de 48h para editar a review expirou.", status_code=409)
 
         response = self.client.patch(
             f"/api/v1/rounds/{ROUND_ID}/reviews/me",
@@ -293,14 +283,10 @@ class TestReviewStats:
         assert data["avg_star_rating"] == 3.8
 
     @patch("app.api.v1.endpoints.reviews.get_review_stats")
-    def test_stats_without_review_returns_403(
-        self, mock_stats: MagicMock
-    ) -> None:
+    def test_stats_without_review_returns_403(self, mock_stats: MagicMock) -> None:
         from app.services.review import ReviewError
 
-        mock_stats.side_effect = ReviewError(
-            "Envie sua review primeiro!", status_code=403
-        )
+        mock_stats.side_effect = ReviewError("Envie sua review primeiro!", status_code=403)
 
         response = self.client.get(f"/api/v1/rounds/{ROUND_ID}/reviews/stats")
 

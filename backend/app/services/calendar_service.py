@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 def generate_ics(meeting: Meeting) -> str:
     """Generate a VCALENDAR string for a single meeting event."""
     dtstart = meeting.scheduled_at.strftime("%Y%m%dT%H%M%SZ")
-    dtend = (
-        meeting.scheduled_at + timedelta(minutes=meeting.duration_minutes)
-    ).strftime("%Y%m%dT%H%M%SZ")
+    dtend = (meeting.scheduled_at + timedelta(minutes=meeting.duration_minutes)).strftime("%Y%m%dT%H%M%SZ")
 
     location = meeting.location or meeting.virtual_link or ""
     description = meeting.description or ""
@@ -40,9 +38,7 @@ def generate_ics(meeting: Meeting) -> str:
 def generate_google_calendar_url(meeting: Meeting) -> str:
     """Generate a Google Calendar event creation URL."""
     dtstart = meeting.scheduled_at.strftime("%Y%m%dT%H%M%SZ")
-    dtend = (
-        meeting.scheduled_at + timedelta(minutes=meeting.duration_minutes)
-    ).strftime("%Y%m%dT%H%M%SZ")
+    dtend = (meeting.scheduled_at + timedelta(minutes=meeting.duration_minutes)).strftime("%Y%m%dT%H%M%SZ")
 
     location = meeting.location or meeting.virtual_link or ""
     description = meeting.description or ""
@@ -59,9 +55,4 @@ def generate_google_calendar_url(meeting: Meeting) -> str:
 
 def _ical_escape(value: str) -> str:
     """Escape special characters for iCalendar text fields."""
-    return (
-        value.replace("\\", "\\\\")
-        .replace(";", "\\;")
-        .replace(",", "\\,")
-        .replace("\n", "\\n")
-    )
+    return value.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")

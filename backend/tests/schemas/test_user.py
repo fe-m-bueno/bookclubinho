@@ -1,4 +1,5 @@
 """Testes unitários para os schemas de User."""
+
 import uuid
 from datetime import UTC, datetime
 

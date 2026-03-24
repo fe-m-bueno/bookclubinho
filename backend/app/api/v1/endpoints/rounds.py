@@ -26,6 +26,7 @@ from __future__ import annotations
 import uuid  # noqa: TC003 — required at runtime for FastAPI path-param resolution
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
+from sqlalchemy import select
 
 from app.core.deps import (  # noqa: TC001
     CurrentUser,
@@ -33,8 +34,6 @@ from app.core.deps import (  # noqa: TC001
     GroupAdminDep,
     GroupMemberDep,
 )
-from sqlalchemy import select
-
 from app.db.models.group import GroupMember  # noqa: TC001
 from app.db.models.reading_progress import ReadingProgress  # noqa: TC001
 from app.db.models.round import Round, RoundNomination  # noqa: TC001
@@ -472,9 +471,7 @@ async def finish_round_endpoint(
         "book_finished",
         badge_payload,
     )
-    members_result = await db.execute(
-        select(GroupMember.user_id).where(GroupMember.group_id == group_id)
-    )
+    members_result = await db.execute(select(GroupMember.user_id).where(GroupMember.group_id == group_id))
     for (member_id,) in members_result.all():
         if str(member_id) != str(current_user.id):
             background_tasks.add_task(

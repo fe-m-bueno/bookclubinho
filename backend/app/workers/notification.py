@@ -4,6 +4,7 @@ Notification worker — consumes events from Redis Streams and dispatches emails
 Run standalone:
     python -m app.workers.notification
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -171,7 +172,7 @@ async def _handle_new_message(redis: aioredis.Redis, data: dict[str, str]) -> No
             preview = preview[:80] + "..."
         group_url = f"{settings.APP_URL}/groups/{group_id}/chat"
 
-        for member, cooldown_val in zip(eligible, cooldown_vals):
+        for member, cooldown_val in zip(eligible, cooldown_vals, strict=False):
             if cooldown_val is not None:
                 continue
             try:
@@ -186,9 +187,7 @@ async def _handle_new_message(redis: aioredis.Redis, data: dict[str, str]) -> No
                 logger.exception("digest_email_failed", user_id=str(member.id))
 
 
-async def _consume_notification_stream(
-    redis: aioredis.Redis, stop_event: asyncio.Event
-) -> None:
+async def _consume_notification_stream(redis: aioredis.Redis, stop_event: asyncio.Event) -> None:
     """Consume events from the notifications Redis stream."""
     with contextlib.suppress(Exception):
         await redis.xgroup_create(STREAM_KEY, CONSUMER_GROUP, id="0", mkstream=True)
@@ -237,9 +236,7 @@ async def _process_single_reminder(redis: aioredis.Redis, entry: str) -> None:
 
     async with AsyncSessionLocal() as db:
         meeting_result = await db.execute(
-            select(Meeting)
-            .options(selectinload(Meeting.group))
-            .where(Meeting.id == meeting_id)
+            select(Meeting).options(selectinload(Meeting.group)).where(Meeting.id == meeting_id)
         )
         meeting = meeting_result.scalar_one_or_none()
 
@@ -272,9 +269,7 @@ async def _process_single_reminder(redis: aioredis.Redis, entry: str) -> None:
         tl: Literal["24h", "1h"] = time_label  # type: ignore[assignment]
         for user in users:
             try:
-                await email_service.send_meeting_reminder(
-                    user=user, meeting=meeting, time_until=tl
-                )
+                await email_service.send_meeting_reminder(user=user, meeting=meeting, time_until=tl)
             except Exception:
                 logger.exception(
                     "meeting_reminder_email_failed",
@@ -286,9 +281,7 @@ async def _process_single_reminder(redis: aioredis.Redis, entry: str) -> None:
     logger.info("meeting_reminder_sent", entry=entry)
 
 
-async def _poll_meeting_reminders(
-    redis: aioredis.Redis, stop_event: asyncio.Event
-) -> None:
+async def _poll_meeting_reminders(redis: aioredis.Redis, stop_event: asyncio.Event) -> None:
     """Poll the meeting_reminders sorted set and send reminder emails."""
     logger.info("meeting_reminder_poller_started")
 
@@ -312,13 +305,11 @@ async def _poll_meeting_reminders(
 
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=REMINDER_POLL_INTERVAL)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
 
-async def _publish_heartbeat(
-    redis: aioredis.Redis, stop_event: asyncio.Event
-) -> None:
+async def _publish_heartbeat(redis: aioredis.Redis, stop_event: asyncio.Event) -> None:
     """Publish a heartbeat to Redis every HEARTBEAT_INTERVAL seconds."""
     logger.info("heartbeat_publisher_started")
 
@@ -332,7 +323,7 @@ async def _publish_heartbeat(
 
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=HEARTBEAT_INTERVAL)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
 
