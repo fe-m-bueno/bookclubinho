@@ -12,12 +12,11 @@ export const STAGGER_VARIANTS_NORMAL = {
     visible: { transition: { staggerChildren: 0.06 } },
   } satisfies Variants,
   item: {
-    hidden: { opacity: 0, y: 20, rotate: -0.5 },
+    hidden: { opacity: 0, y: 12 },
     visible: {
       opacity: 1,
       y: 0,
-      rotate: 0,
-      transition: SPRING_TRANSITION,
+      transition: { duration: 0.25, ease: "easeOut" },
     },
   } satisfies Variants,
 };

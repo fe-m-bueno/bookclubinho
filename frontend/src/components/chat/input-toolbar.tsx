@@ -300,11 +300,11 @@ export function InputToolbar({
           {open && (
             <motion.div
               key="toolbar"
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="flex items-center overflow-hidden"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="flex items-center"
             >
               <div className="flex items-center gap-0.5 pl-1">
 

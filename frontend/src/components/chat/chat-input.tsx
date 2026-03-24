@@ -62,11 +62,10 @@ export function ChatInput({
         {replyTo && !editingMessage && (
           <motion.div
             key="reply-banner"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.15, ease: "easeInOut" }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
           >
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
               <Reply className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -94,11 +93,10 @@ export function ChatInput({
         {editingMessage && (
           <motion.div
             key="edit-banner"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.15, ease: "easeInOut" }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
           >
             <div className="flex items-center gap-2 rounded-lg bg-sage-100/60 px-3 py-1.5 dark:bg-sage-900/40">
               <Pencil
@@ -167,11 +165,10 @@ export function ChatInput({
         {uploadProgress !== null && uploadProgress > 0 && (
           <motion.div
             key="upload-progress"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="overflow-hidden"
           >
             <UploadProgressBar progress={uploadProgress} />
           </motion.div>

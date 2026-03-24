@@ -31,12 +31,11 @@ export function MessageReactions({
         {visible.map((reaction) => (
           <motion.button
             key={reaction.emoji}
-            layoutId={`reaction-${reaction.emoji}`}
             type="button"
-            initial={{ scale: 0, opacity: 0 }}
+            initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
             whileTap={{ scale: 0.88 }}
             onClick={() => onToggle(reaction.emoji)}
             aria-label={`${reaction.emoji} ${reaction.count} ${reaction.did_i_react ? "— remover reação" : "— reagir"}`}

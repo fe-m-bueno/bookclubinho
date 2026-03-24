@@ -6,12 +6,8 @@
       "mcp__claude_ai_Context7__resolve-library-id",
       "mcp__claude_ai_Context7__query-docs",
       "Bash(gh label:*)",
-      "Bash(.venv/bin/python -m pytest tests/api/test_groups.py::TestListGroupsEndpoint::test_returns_groups -v --tb=short)",
-      "Bash(.venv/bin/python -m pytest tests/api/test_groups.py::TestListGroupsEndpoint::test_returns_groups -v --tb=long)",
-      "Bash(.venv/bin/python -m pytest tests/ -x -q)",
       "Bash(npm run:*)",
-      "Bash(npm test:*)",
-      "Bash(.venv/bin/python -m pytest tests/api/test_integrations.py tests/api/test_sessions.py tests/api/test_privacy.py tests/api/test_public_profile.py -v --tb=short)"
+      "Bash(npm test:*)"
     ]
   }
 }

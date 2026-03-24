@@ -79,13 +79,12 @@ export function MeetingCard({
 
   return (
     <motion.div
-      layout={!shouldReduceMotion}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={
         shouldReduceMotion
           ? { duration: 0 }
-          : { type: "spring", stiffness: 300, damping: 30 }
+          : { duration: 0.2, ease: "easeOut" }
       }
       className="rounded-xl border bg-card p-4 space-y-3"
     >
