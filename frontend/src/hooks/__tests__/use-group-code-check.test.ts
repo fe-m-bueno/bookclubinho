@@ -86,6 +86,21 @@ describe("useGroupCodeCheck", () => {
     expect(result.current.group).toBeNull();
   });
 
+  it("fetches immediately when debounceMs is 0", async () => {
+    const groupData = { name: "Instant", photo_url: null, member_count: 1 };
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(groupData), { status: 200 }),
+    );
+
+    const { result } = renderHook(() => useGroupCodeCheck("ABCD2345", 0));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("valid");
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.group).toEqual(groupData);
+  });
+
   it("calls API with credentials include", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(

@@ -25,6 +25,7 @@ import {
   useDeleteMeetingStandalone,
   useDownloadIcs,
 } from "@/hooks/use-meeting-mutations";
+import type { RsvpStatus } from "@/lib/types/meeting";
 import { TYPE_BADGE, RSVP_OPTIONS, RSVP_LABELS, DATE_FORMATTER, DATE_ONLY_FORMATTER } from "./meeting-form-shared";
 import { MeetingDetailSkeleton } from "./meeting-skeleton";
 
