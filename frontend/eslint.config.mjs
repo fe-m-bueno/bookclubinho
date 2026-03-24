@@ -1,21 +1,18 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+import nextConfig from "eslint-config-next";
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...nextConfig,
   {
     rules: {
       // Bloqueia dangerouslySetInnerHTML sem sanitizador — prevenção XSS
-      // Todo conteúdo rico de usuário deve passar por DOMPurify antes de ser renderizado.
       "react/no-danger": "error",
+      // Desativado: regras experimentais do React Compiler com muitos falsos positivos
+      "react-hooks/react-compiler": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/purity": "off",
+      // Desativado: falsos positivos comuns em componentes anônimos/HOCs
+      "react/display-name": "off",
     },
   },
 ];
