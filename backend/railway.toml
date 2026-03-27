@@ -1,0 +1,10 @@
+[build]
+builder = "railpack"
+
+[deploy]
+preDeployCommand = ["alembic upgrade head"]
+startCommand = "bash start.sh"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
