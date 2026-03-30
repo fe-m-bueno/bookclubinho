@@ -54,6 +54,7 @@ dependencies = [
 
     # Logging
     "structlog>=24.4.0",
+    "sentry-sdk>=2.55.0",
 
     # Utils
     "PyYAML>=6.0",
