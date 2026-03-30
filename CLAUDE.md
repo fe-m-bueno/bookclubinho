@@ -29,9 +29,9 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
 
 **Frontend (Vercel):** Next.js 16+ App Router, TypeScript strict, Tailwind CSS, shadcn/ui (new-york), Framer Motion, Zustand, React Query, Tiptap
 
-**Backend (Railway):** FastAPI Python 3.12+, Pydantic v2, SQLAlchemy 2.0 async + asyncpg, Alembic
+**Backend (Render):** FastAPI Python 3.12+, Pydantic v2, SQLAlchemy 2.0 async + asyncpg, Alembic
 
-**Infra:** PostgreSQL no Railway (internal), Upstash Redis (HTTP para cache, TCP para SSE), Cloudflare R2 (storage), Resend (email), Hardcover GraphQL (livros)
+**Infra:** PostgreSQL no Render, Upstash Redis (HTTP para cache, TCP para SSE), Cloudflare R2 (storage), Resend (email), Hardcover GraphQL (livros)
 
 **Auth:** httpOnly cookies + JWT HS256 + OAuth2 Google + magic link
 
@@ -47,7 +47,7 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
   /src/components  → Componentes
   /src/lib         → Helpers, clients, utils
   /src/stores      → Zustand stores
-/backend           → FastAPI — Railway
+/backend           → FastAPI — Render
   /app/api         → Routers
   /app/core        → config, security, deps
   /app/db          → engine, models, migrations
@@ -137,8 +137,8 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
 - **N+1 queries:** usar `selectinload`/`joinedload` — nunca iterar sobre relacionamentos lazy
 - **Loading states:** todo fetch precisa de skeleton — sem exceção
 - **Mobile:** testar em 375px — se parece bom no desktop, não é suficiente
-- **SSE + Upstash:** usar conexão TCP (`UPSTASH_REDIS_URL`) para `XREAD/BLOCK` — não HTTP API
-- **Migrations:** `alembic upgrade head` roda antes do servidor — está no Railway start command
+- **SSE + Upstash:** usar conexão TCP (`REDIS_URL`) para `XREAD/BLOCK` — não HTTP API
+- **Migrations:** `alembic upgrade head` roda antes do servidor — está no Docker `CMD` usado pelo Render
 - **R2 público vs privado:** avatars/groups = público; media/exports = privado via presigned URLs
 - **Streak timezone:** calcular 'hoje' pelo timezone do usuário, não UTC
 - **Reviews spoiler:** `GET /rounds/{id}/reviews` exige que o usuário tenha submetido a própria review

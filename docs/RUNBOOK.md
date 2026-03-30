@@ -14,7 +14,8 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 
 **Passos:**
 1. Gere um novo segredo: `openssl rand -hex 64`
-2. No Railway, atualize a variável `JWT_SECRET` com o novo valor.
+2. No Render, atualize a variável `JWT_SECRET` no serviço `bookclub-api`.
+3. Confirme que o worker `bookclub-worker` está herdando o mesmo valor via `fromService`.
 3. Faça o deploy do backend.
 4. Invalide todas as sessões ativas via SQL:
    ```sql
@@ -24,27 +25,13 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 
 ---
 
-### FERNET_KEY
-
-**Quando rotacionar:** a cada 180 dias, ou após suspeita de comprometimento.
-
-**Impacto:** dados encriptados com a chave antiga não poderão ser decriptados. Revise quais campos usam encriptação antes de rotacionar.
-
-**Passos:**
-1. Gere uma nova chave: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
-2. Atualize `FERNET_KEY` no Railway.
-3. Execute script de re-encriptação para dados existentes (se aplicável).
-4. Faça o deploy.
-
----
-
 ### S3 / Cloudflare R2 (Access Key + Secret)
 
 **Quando rotacionar:** a cada 90 dias, ou após offboarding de desenvolvedor com acesso.
 
 **Passos:**
 1. No painel Cloudflare R2, crie um novo par de chaves de API.
-2. Atualize `S3_ACCESS_KEY` e `S3_SECRET_KEY` no Railway.
+2. Atualize `S3_ACCESS_KEY` e `S3_SECRET_KEY` no Render.
 3. Faça o deploy.
 4. Verifique uploads de avatar em staging.
 5. Revogue as chaves antigas no painel Cloudflare.
@@ -57,7 +44,7 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 
 **Passos:**
 1. No painel Resend, crie uma nova API key com os mesmos escopos.
-2. Atualize `RESEND_API_KEY` no Railway.
+2. Atualize `RESEND_API_KEY` no Render.
 3. Faça o deploy.
 4. Envie um email de teste via `/api/v1/auth/magic-link`.
 5. Revogue a chave antiga no painel Resend.
@@ -70,7 +57,7 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 
 **Passos:**
 1. No Google Cloud Console, gere um novo Client Secret para o OAuth App.
-2. Atualize `GOOGLE_CLIENT_SECRET` no Railway e no Vercel (frontend, se aplicável).
+2. Atualize `GOOGLE_CLIENT_SECRET` no Render e confirme que `APP_URL`/`ALLOWED_ORIGINS` permanecem apontando para o domínio do Vercel.
 3. Faça o deploy de backend e frontend.
 4. Teste o fluxo OAuth completo em staging.
 5. Revogue o secret antigo no Google Cloud Console.
@@ -83,7 +70,7 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 
 **Passos:**
 1. No painel Sentry, crie um novo DSN para o projeto.
-2. Atualize `SENTRY_DSN` (backend) e `NEXT_PUBLIC_SENTRY_DSN` (frontend) no Railway e Vercel.
+2. Atualize `SENTRY_DSN` (backend) no Render e `NEXT_PUBLIC_SENTRY_DSN` (frontend) no Vercel.
 3. Faça o deploy.
 4. Force um erro de teste para confirmar que os eventos chegam ao Sentry.
 5. Revogue o DSN antigo no Sentry.
@@ -116,7 +103,7 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
    redis-cli keys "login_lock:*" | head -20
    ```
 2. Se ataque massivo, aumentar `_LOGIN_MAX_FAILS` via feature flag (atualizar código + deploy).
-3. Bloquear IP no nível do Railway ou Cloudflare.
+3. Bloquear IP no nível do Render ou Cloudflare.
 
 ### Spam / Flood no Chat
 
@@ -137,7 +124,7 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 ### Vazamento de Secrets
 
 1. Rotacionar imediatamente a credencial afetada (ver seções acima).
-2. Auditar logs de acesso do Railway e Cloudflare para uso indevido.
+2. Auditar logs de acesso do Render, Vercel e Cloudflare para uso indevido.
 3. Notificar usuários afetados se dados foram expostos (obrigação LGPD).
 4. Revogar todos os tokens de usuário como medida de precaução.
 
@@ -145,9 +132,9 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 
 ## Recuperação de Banco de Dados
 
-### Restore de Backup (Railway)
+### Restore de Backup (Render Postgres)
 
-1. Acesse o painel Railway → serviço PostgreSQL → Backups.
+1. Acesse o painel Render → Postgres → Backups.
 2. Selecione o ponto de restauração.
 3. Faça o restore em um banco temporário primeiro para validar.
 4. Atualize `DATABASE_URL` para apontar ao banco restaurado.

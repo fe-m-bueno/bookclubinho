@@ -3,13 +3,12 @@ GET /api/v1/health
 
 Checks database, Redis, and S3 connectivity.
 Returns 200 when all checks pass, 503 when any check fails.
-Used as the Railway health check endpoint.
+Used as the platform health check endpoint.
 """
 
 from __future__ import annotations
 
 import asyncio
-import os
 from typing import Literal
 
 import redis.asyncio as aioredis
@@ -19,6 +18,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.core.config import settings
+from app.core.version import resolve_app_version
 from app.db.engine import engine
 
 router = APIRouter(tags=["health"])
@@ -26,8 +26,7 @@ logger = structlog.get_logger(__name__)
 
 CheckStatus = Literal["ok", "error"]
 
-# Git SHA injected by Railway at build time; falls back to "unknown"
-_VERSION: str = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("APP_VERSION", "unknown"))
+_VERSION: str = resolve_app_version()
 
 
 # ── Individual checks ─────────────────────────────────────────────────────────

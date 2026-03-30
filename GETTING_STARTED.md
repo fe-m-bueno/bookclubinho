@@ -130,13 +130,13 @@ cat > .env << 'EOF'
 DATABASE_URL=postgresql+asyncpg://bookclub:bookclub@localhost:5432/bookclub
 
 # Redis (cache + SSE) — usar local durante dev
-UPSTASH_REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://localhost:6379
 
 # JWT Secret (gere um com: openssl rand -hex 32)
-SECRET_KEY=seu-super-secreto-dev-key-aqui-minimo-32-chars
+JWT_SECRET=seu-super-secreto-dev-key-aqui-minimo-32-chars
 
 # Environment
-ENVIRONMENT=development
+ENVIRONMENT=dev
 
 # Resend (email transacional) — OPCIONAL
 # RESEND_API_KEY=seu_resend_api_key
@@ -152,16 +152,16 @@ EOF
 
 **Variáveis obrigatórias:**
 - `DATABASE_URL` — Connection string do PostgreSQL
-- `UPSTASH_REDIS_URL` — Connection string do Redis (local em dev)
-- `SECRET_KEY` — Chave JWT (mínimo 32 caracteres)
-- `ENVIRONMENT` — `development` ou `production`
+- `REDIS_URL` — Connection string do Redis (local em dev)
+- `JWT_SECRET` — Chave JWT (mínimo 32 caracteres)
+- `ENVIRONMENT` — `dev` ou `prod`
 
 **Variáveis opcionais em dev:**
 - `RESEND_API_KEY` — Para enviar emails (pode ignorar)
 - `GOOGLE_CLIENT_ID/SECRET` — Para OAuth Google (pode ignorar)
 - `SENTRY_DSN` — Para erro tracking (pode ignorar)
 
-**Gerar SECRET_KEY seguro:**
+**Gerar JWT_SECRET seguro:**
 ```bash
 openssl rand -hex 32
 # Ou em Python:
@@ -478,7 +478,7 @@ Get-Command python # Windows — deve mostrar venv/Scripts/python
 
 **Causas:**
 1. Redis não está rodando
-2. `UPSTASH_REDIS_URL` está errada
+2. `REDIS_URL` está errada
 3. Está usando URL HTTP em vez de TCP
 
 **Solução:**
@@ -487,15 +487,15 @@ Get-Command python # Windows — deve mostrar venv/Scripts/python
 docker compose -f infra/docker-compose.yml ps redis
 
 # Verificar .env no backend
-cat backend/.env | grep UPSTASH_REDIS_URL
+cat backend/.env | grep REDIS_URL
 # Deve ser: redis://localhost:6379
 
 # Em produção (Upstash), usar:
-# UPSTASH_REDIS_URL=redis://default:<token>@<host>:<port>
+# REDIS_URL=redis://default:<token>@<host>:<port>
 
 # NUNCA usar URL HTTP em dev/prod:
-# ❌ UPSTASH_REDIS_URL=https://...
-# ✅ UPSTASH_REDIS_URL=redis://...
+# ❌ REDIS_URL=https://...
+# ✅ REDIS_URL=redis://...
 ```
 
 ---

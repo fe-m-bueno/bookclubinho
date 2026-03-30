@@ -6,9 +6,9 @@ from app.core.config import settings
 
 def _build_url() -> str:
     """
-    Railway injects DATABASE_URL as postgresql://... (psycopg2 scheme).
-    SQLAlchemy async requires postgresql+asyncpg://.
-    Handle both so local .env and Railway env work without changes.
+    Hosting providers commonly inject DATABASE_URL as postgresql://...
+    while SQLAlchemy async requires postgresql+asyncpg://.
+    Handle both so local .env and provider env work without manual edits.
     """
     url = str(settings.DATABASE_URL)
     if url.startswith("postgresql://"):

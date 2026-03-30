@@ -2,7 +2,7 @@
 
 Uma plataforma colaborativa para gerenciar grupos de leitura, permitindo criar clubes, votar em livros, acompanhar progresso de leitura, discutir e compartilhar experiências de forma integrada e engajante.
 
-[Documentação completa](./docs) · [Setup rápido](./GETTING_STARTED.md) · [Arquitetura](./docs/ARCHITECTURE.md) · [Runbook de produção](./docs/RUNBOOK.md)
+[Documentação completa](./docs) · [Setup rápido](./GETTING_STARTED.md) · [Deploy](./DEPLOY.md) · [Arquitetura](./docs/ARCHITECTURE.md) · [Runbook de produção](./docs/RUNBOOK.md)
 
 ---
 
@@ -44,11 +44,11 @@ Bookclubinho é uma webapp full-stack que torna a experiência de clube do livro
 - **Cache & Realtime:** Upstash Redis (HTTP para cache, TCP para SSE)
 - **Rate Limiting:** slowapi + Redis
 - **Logs estruturados:** structlog
-- **Deploy:** Railway
+- **Deploy:** Render
 
 ### Infraestrutura
 
-- **Database:** PostgreSQL (Railway)
+- **Database:** PostgreSQL (Render)
 - **Cache & Realtime:** Upstash Redis (TCP + HTTP)
 - **Storage:** Cloudflare R2 (avatars, media, exports)
 - **Email transacional:** Resend
@@ -105,9 +105,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 **Backend** (`.env`):
 ```env
 DATABASE_URL=postgresql+asyncpg://bookclub:bookclub@localhost:5432/bookclub
-UPSTASH_REDIS_URL=redis://localhost:6379
-SECRET_KEY=seu-super-secreto-dev-key
-ENVIRONMENT=development
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=seu-super-secreto-dev-key
+ENVIRONMENT=dev
 ```
 
 Para detalhes completos, veja [GETTING_STARTED.md](./GETTING_STARTED.md).
@@ -360,7 +360,7 @@ Ver [ARCHITECTURE.md](./docs/ARCHITECTURE.md) para diagrama completo.
    - Aguarde code review
 
 5. **Merge para master:**
-   - Deploy automático em Vercel + Railway
+   - Deploy automático em Vercel + Render
    - Migrations rodam antes do servidor iniciar
 
 ---
@@ -394,9 +394,9 @@ pip install -r requirements.txt
 
 ### Redis não conecta
 
-Verifique `UPSTASH_REDIS_URL` no `.env` (deve apontar para Redis local em dev):
+Verifique `REDIS_URL` no `.env` (deve apontar para Redis local em dev):
 ```env
-UPSTASH_REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://localhost:6379
 ```
 
 ### SSE não funciona
@@ -404,10 +404,10 @@ UPSTASH_REDIS_URL=redis://localhost:6379
 Certifique-se de estar usando a **conexão TCP** do Upstash (não HTTP):
 ```env
 # Correto
-UPSTASH_REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://localhost:6379
 
 # Errado (isso é a API HTTP)
-UPSTASH_REDIS_URL=https://...
+REDIS_URL=https://...
 ```
 
 Para mais, veja [GETTING_STARTED.md](./GETTING_STARTED.md).
@@ -417,7 +417,7 @@ Para mais, veja [GETTING_STARTED.md](./GETTING_STARTED.md).
 ## Monitoramento em Produção
 
 - **Sentry:** erros + performance tracing (DSN separados para backend/frontend)
-- **Railway:** logs de aplicação, métricas de CPU/memória
+- **Render:** logs de aplicação, deploys e métricas do backend/worker
 - **Runbook:** procedimentos de credenciais e incidentes em [docs/RUNBOOK.md](./docs/RUNBOOK.md)
 
 ---

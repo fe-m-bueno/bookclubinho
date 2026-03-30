@@ -13,13 +13,13 @@ Visão geral da arquitetura do sistema, camadas de segurança e decisões de des
                     └──────────┬──────────┘
                                │ /api/v1/* (rewrite)
                     ┌──────────▼──────────┐
-                    │  Railway (FastAPI)   │
+                    │   Render (FastAPI)   │
                     │  Python 3.12        │
                     └────┬──────┬────┬────┘
                          │      │    │
                ┌─────────▼──┐   │  ┌▼──────────────┐
                │ PostgreSQL  │   │  │  Upstash Redis  │
-               │  (Railway)  │   │  │  (cache + SSE)  │
+               │  (Render)   │   │  │  (cache + SSE)  │
                └─────────────┘   │  └────────────────┘
                                  │
                     ┌────────────▼──────────────┐
@@ -27,6 +27,11 @@ Visão geral da arquitetura do sistema, camadas de segurança e decisões de des
                     │    avatars/ + groups/ pub  │
                     │    media/ + exports/ priv  │
                     └───────────────────────────┘
+
+                    ┌─────────────────────┐
+                    │  Render Worker      │
+                    │  notifications      │
+                    └─────────────────────┘
 ```
 
 Serviços externos: **Resend** (email transacional), **Hardcover** (API de livros GraphQL), **Sentry** (erros + performance).
@@ -45,7 +50,7 @@ Serviços externos: **Resend** (email transacional), **Hardcover** (API de livro
 | ESLint no-danger | `eslint.config.mjs` — bloqueia `dangerouslySetInnerHTML` |
 | Sem secrets no bundle | Apenas `NEXT_PUBLIC_*` expostos ao cliente |
 
-### Backend (FastAPI / Railway)
+### Backend (FastAPI / Render)
 
 Middleware chain (ordem de execução — LIFO no Starlette):
 
@@ -168,6 +173,6 @@ Push/PR → GitHub Actions
   └── frontend-audit (npm audit --audit-level=high)
 
 Deploy automático:
-  ├── Backend → Railway (push to master)
+  ├── Backend + worker + Postgres → Render Blueprint
   └── Frontend → Vercel (push to master)
 ```
