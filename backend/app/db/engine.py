@@ -2,21 +2,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
+from app.core.database_url import normalize_database_url
 
 
 def _build_url() -> str:
-    """
-    Hosting providers commonly inject DATABASE_URL as postgresql://...
-    while SQLAlchemy async requires postgresql+asyncpg://.
-    Handle both so local .env and provider env work without manual edits.
-    """
-    url = str(settings.DATABASE_URL)
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    elif url.startswith("postgres://"):
-        # Some providers use the shorter alias
-        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-    return url
+    return normalize_database_url(str(settings.DATABASE_URL))
 
 
 engine = create_async_engine(
