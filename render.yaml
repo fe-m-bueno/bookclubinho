@@ -1,0 +1,156 @@
+databases:
+  - name: bookclub-postgres
+    databaseName: bookclub
+    user: bookclub
+
+services:
+  - type: web
+    name: bookclub-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bookclub-postgres
+          property: connectionString
+      - key: ENVIRONMENT
+        value: prod
+      - key: APP_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET_NAME
+        value: bookclub-public
+      - key: S3_PUBLIC_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: HARDCOVER_API_URL
+        value: https://api.hardcover.app/v1/graphql
+      - key: HARDCOVER_API_TOKEN
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: "1"
+
+  - type: worker
+    name: bookclub-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python -m app.workers.notification
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bookclub-postgres
+          property: connectionString
+      - key: ENVIRONMENT
+        value: prod
+      - key: APP_URL
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: APP_URL
+      - key: REDIS_URL
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: REDIS_URL
+      - key: UPSTASH_REDIS_REST_URL
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: UPSTASH_REDIS_REST_URL
+      - key: UPSTASH_REDIS_REST_TOKEN
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: UPSTASH_REDIS_REST_TOKEN
+      - key: S3_ENDPOINT
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: S3_ENDPOINT
+      - key: S3_ACCESS_KEY
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: S3_ACCESS_KEY
+      - key: S3_SECRET_KEY
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: S3_SECRET_KEY
+      - key: S3_BUCKET_NAME
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: S3_BUCKET_NAME
+      - key: S3_PUBLIC_URL
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: S3_PUBLIC_URL
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: JWT_SECRET
+      - key: GOOGLE_CLIENT_ID
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: GOOGLE_CLIENT_ID
+      - key: GOOGLE_CLIENT_SECRET
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: GOOGLE_CLIENT_SECRET
+      - key: RESEND_API_KEY
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: RESEND_API_KEY
+      - key: RESEND_FROM_EMAIL
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: RESEND_FROM_EMAIL
+      - key: HARDCOVER_API_URL
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: HARDCOVER_API_URL
+      - key: HARDCOVER_API_TOKEN
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: HARDCOVER_API_TOKEN
+      - key: SENTRY_DSN
+        fromService:
+          type: web
+          name: bookclub-api
+          envVarKey: SENTRY_DSN

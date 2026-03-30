@@ -19,10 +19,9 @@ interface LinkPreviewCardProps {
 }
 
 async function fetchPreview(url: string): Promise<LinkPreviewData> {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/link-preview?url=${encodeURIComponent(url)}`,
-    { credentials: "include" }
-  );
+  const res = await fetch(`/api/v1/link-preview?url=${encodeURIComponent(url)}`, {
+    credentials: "include",
+  });
   if (!res.ok) throw new Error("preview unavailable");
   return res.json();
 }

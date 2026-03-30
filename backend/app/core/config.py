@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # ── App ──────────────────────────────────────────────────────────────────
     ENVIRONMENT: Literal["dev", "staging", "prod", "test"] = "dev"
-    APP_URL: str = "http://localhost:3000"  # Vercel frontend — used in emails + CORS
+    APP_URL: str = "http://localhost:3000"  # Public frontend URL — used in emails, redirects, CORS
     # Comma-separated string — pydantic-settings v2 JSON-parses list[str] fields
     # from env vars before validators run, so we keep it as str and split on demand.
     ALLOWED_ORIGINS: str = "http://localhost:3000"
@@ -27,10 +27,10 @@ class Settings(BaseSettings):
     def DEBUG(self) -> bool:  # noqa: N802
         return self.ENVIRONMENT == "dev"
 
-    # ── Database (Railway Postgres internal URL) ──────────────────────────────
+    # ── Database (provider-managed PostgreSQL URL) ────────────────────────────
     DATABASE_URL: PostgresDsn
-    # asyncpg driver — Alembic and SQLAlchemy both use this
-    # Format: postgresql+asyncpg://user:pass@host:port/db
+    # SQLAlchemy async uses asyncpg.
+    # Provider-injected URLs like postgresql://... are normalised in app.db.engine.
 
     # ── Redis / Upstash ───────────────────────────────────────────────────────
     # TCP URL — used for SSE (XREAD/BLOCK) and pub/sub
@@ -55,11 +55,10 @@ class Settings(BaseSettings):
     # ── OAuth — Google ────────────────────────────────────────────────────────
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    BACKEND_URL: str = "http://localhost:8000"
 
     @property
     def GOOGLE_REDIRECT_URI(self) -> str:  # noqa: N802
-        return f"{self.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback"
+        return f"{self.APP_URL.rstrip('/')}/api/v1/auth/google/callback"
 
     # ── Email — Resend ────────────────────────────────────────────────────────
     RESEND_API_KEY: str = ""

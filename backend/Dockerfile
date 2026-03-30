@@ -18,12 +18,11 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application source
 COPY . .
 
-# Expose the git SHA so /api/v1/health can report it.
-# Railway sets RAILWAY_GIT_COMMIT_SHA automatically at build time.
-ARG RAILWAY_GIT_COMMIT_SHA=unknown
-ENV APP_VERSION=${RAILWAY_GIT_COMMIT_SHA}
+# Fallback version string for /api/v1/health.
+# In production, hosting providers can expose commit metadata at runtime.
+ENV APP_VERSION=unknown
 
-# Railway health check — called after deployment before traffic is routed.
+# Health check — called after deployment before traffic is routed.
 # Timeout generous enough to let the DB probe finish its retries on cold start.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python -c \

@@ -1,5 +1,5 @@
 # Local development infrastructure ONLY.
-# Production uses: Railway (Postgres), Upstash (Redis), Cloudflare R2 (storage).
+# Production uses: Render Postgres, Upstash (Redis), Cloudflare R2 (storage).
 # The app itself (backend + frontend) runs natively on the host for hot reload.
 
 services:

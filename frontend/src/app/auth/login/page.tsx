@@ -21,8 +21,6 @@ import { FormField } from "@/components/auth/form-field";
 import { GoogleIcon } from "@/components/icons/google-icon";
 import { useAuthSubmit, FORM_HEADERS } from "@/hooks/use-auth-submit";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
 const loginSchema = z.object({
   email: z.string().min(1, "E-mail é obrigatório").email("E-mail inválido"),
   password: z.string().min(1, "Senha é obrigatória"),
@@ -208,7 +206,7 @@ export default function LoginPage() {
             variant="outline"
             className="w-full h-11"
             onClick={() => {
-              window.location.href = `${API_URL}/api/v1/auth/google/login`;
+              window.location.assign("/api/v1/auth/google/login");
             }}
             type="button"
           >

@@ -16,9 +16,7 @@ export function useChatSSE({ groupId, currentUserId }: UseChatSSEOptions) {
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const url = `${baseUrl}/api/v1/groups/${groupId}/chat/stream`;
+    const url = `/api/v1/groups/${groupId}/chat/stream`;
     const es = new EventSource(url, { withCredentials: true });
     esRef.current = es;
 
