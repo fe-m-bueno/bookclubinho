@@ -14,7 +14,10 @@ class TestSettings:
 
         settings = Settings()
 
-        assert settings.GOOGLE_REDIRECT_URI == "https://bookclubinho.vercel.app/api/v1/auth/google/callback"
+        assert (
+            settings.GOOGLE_REDIRECT_URI
+            == "https://bookclubinho.vercel.app/api/v1/auth/google/callback"
+        )
 
 
 class TestResolveVersion:
@@ -44,7 +47,10 @@ class TestDatabaseUrlNormalization:
     def test_converts_plain_postgres_scheme_to_asyncpg(self) -> None:
         url = "postgresql://user:pass@localhost:5432/bookclub"
 
-        assert normalize_database_url(url) == "postgresql+asyncpg://user:pass@localhost:5432/bookclub"
+        assert (
+            normalize_database_url(url)
+            == "postgresql+asyncpg://user:pass@localhost:5432/bookclub"
+        )
 
     def test_sanitizes_neon_url_for_asyncpg(self) -> None:
         url = (
