@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.exc import InterfaceError
 
 from tests.conftest import make_user, mock_db_returning
 
@@ -166,6 +167,65 @@ class TestGetSession:
                 await gen.__anext__()
             except StopAsyncIteration:
                 pass
+
+    @pytest.mark.asyncio
+    async def test_closed_connection_during_commit_is_suppressed(self) -> None:
+        from app.core.deps import get_session
+
+        mock_session = AsyncMock()
+        mock_session.commit = AsyncMock(
+            side_effect=InterfaceError(
+                statement=None,
+                params=None,
+                orig=Exception("cannot call Transaction.commit(): the underlying connection is closed"),
+            )
+        )
+        mock_session.rollback = AsyncMock()
+
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.core.deps.AsyncSessionLocal", return_value=mock_ctx),
+            patch("app.core.deps.get_rls_user_id", return_value=""),
+        ):
+            gen = get_session()
+            await gen.__anext__()
+            with pytest.raises(StopAsyncIteration):
+                await gen.__anext__()
+
+        mock_session.rollback.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_closed_connection_during_rollback_preserves_original_error(self) -> None:
+        from app.core.deps import get_session
+
+        mock_session = AsyncMock()
+        mock_session.commit = AsyncMock()
+        mock_session.rollback = AsyncMock(
+            side_effect=InterfaceError(
+                statement=None,
+                params=None,
+                orig=Exception("cannot call Transaction.rollback(): the underlying connection is closed"),
+            )
+        )
+
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.core.deps.AsyncSessionLocal", return_value=mock_ctx),
+            patch("app.core.deps.get_rls_user_id", return_value=""),
+        ):
+            gen = get_session()
+            await gen.__anext__()
+
+            with pytest.raises(RuntimeError, match="boom"):
+                await gen.athrow(RuntimeError("boom"))
+
+        mock_session.commit.assert_not_called()
 
 
 class TestGetCurrentUser:

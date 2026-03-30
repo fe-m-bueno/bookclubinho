@@ -2,8 +2,10 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
+import structlog
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy import select, text
+from sqlalchemy.exc import InterfaceError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rls import get_rls_user_id
@@ -13,6 +15,11 @@ from app.db.models.group import Group, GroupMember, GroupRole
 from app.db.models.user import User
 
 _NOT_RESOLVED: object = object()  # sentinel for "user not yet looked up"
+logger = structlog.get_logger(__name__)
+
+
+def _is_closed_connection_interface_error(exc: InterfaceError) -> bool:
+    return "underlying connection is closed" in str(exc).lower()
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -30,10 +37,21 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
                 _uid = str(uuid.UUID(user_id))
                 await session.execute(text(f"SET LOCAL app.current_user_id = '{_uid}'"))
             yield session
-            await session.commit()
         except Exception:
-            await session.rollback()
+            try:
+                await session.rollback()
+            except InterfaceError as exc:
+                if not _is_closed_connection_interface_error(exc):
+                    raise
+                logger.warning("db_session_rollback_closed_connection", error=str(exc))
             raise
+        else:
+            try:
+                await session.commit()
+            except InterfaceError as exc:
+                if not _is_closed_connection_interface_error(exc):
+                    raise
+                logger.warning("db_session_commit_closed_connection", error=str(exc))
 
 
 DBSession = Annotated[AsyncSession, Depends(get_session)]
