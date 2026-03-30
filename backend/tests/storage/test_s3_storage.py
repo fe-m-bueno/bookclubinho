@@ -7,8 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from PIL import Image
+from botocore.exceptions import ClientError
 
 from app.storage.s3_storage import (
+    _ensure_bucket,
     _generate_gif_thumbnail,
     _generate_thumbnail,
     _is_gif,
@@ -160,3 +162,27 @@ def test_process_media_upload_rejects_invalid_magic_bytes() -> None:
 
     with pytest.raises(ValueError, match="imagem válida"):
         process_media_upload(invalid_bytes, "group-123", "file-uuid-3")
+
+
+def test_ensure_bucket_ignores_not_implemented_bucket_policy() -> None:
+    mock_client = MagicMock()
+    mock_client.head_bucket = MagicMock()
+    mock_client.put_bucket_policy.side_effect = ClientError(
+        {
+            "Error": {
+                "Code": "NotImplemented",
+                "Message": "PutBucketPolicy not implemented",
+            }
+        },
+        "PutBucketPolicy",
+    )
+
+    with (
+        patch("app.storage.s3_storage._client", return_value=mock_client),
+        patch("app.storage.s3_storage.settings") as mock_settings,
+    ):
+        mock_settings.S3_BUCKET_NAME = "test-bucket"
+        with patch("app.storage.s3_storage._bucket_ensured", False):
+            _ensure_bucket()
+
+    mock_client.put_bucket_policy.assert_called_once()

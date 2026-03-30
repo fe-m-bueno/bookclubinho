@@ -31,6 +31,7 @@ from typing import Final
 import boto3
 from boto3 import Session as BotoSession
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from PIL import Image, ImageOps
 
 from app.core.config import settings
@@ -301,7 +302,15 @@ def _ensure_bucket() -> None:
             ],
         }
     )
-    client.put_bucket_policy(Bucket=bucket, Policy=policy)
+    try:
+        client.put_bucket_policy(Bucket=bucket, Policy=policy)
+    except ClientError as exc:
+        error_code = exc.response.get("Error", {}).get("Code")
+        # Some S3-compatible providers expose object storage but do not
+        # implement bucket policies. In those environments, public access must
+        # be configured outside the app, so we skip only this known case.
+        if error_code != "NotImplemented":
+            raise
     _bucket_ensured = True
 
 
