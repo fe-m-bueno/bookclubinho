@@ -6,8 +6,8 @@ import io
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PIL import Image
 from botocore.exceptions import ClientError
+from PIL import Image
 
 from app.storage.s3_storage import (
     _ensure_bucket,
