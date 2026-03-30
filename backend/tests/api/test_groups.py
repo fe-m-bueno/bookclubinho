@@ -520,6 +520,16 @@ class TestValidateCodeEndpoint:
         assert result.name is None
         assert result.member_count == 0
 
+
+class TestGroupsSlashCompatibility:
+    def test_groups_router_registers_both_slash_variants(self) -> None:
+        from app.api.v1.endpoints.groups import router
+
+        routes = {(route.path, tuple(sorted(route.methods or []))) for route in router.routes}
+
+        assert ("", ("GET",)) in routes
+        assert ("/", ("GET",)) in routes
+
     @pytest.mark.asyncio
     async def test_inactive_group_returns_valid_false(self) -> None:
         from app.api.v1.endpoints.groups import validate_code

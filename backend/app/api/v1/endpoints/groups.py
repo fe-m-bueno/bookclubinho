@@ -113,6 +113,10 @@ async def join_group_endpoint(body: GroupJoinRequest, db: DBSession, user: Curre
 
 
 @router.post(
+    "",
+    include_in_schema=False,
+)
+@router.post(
     "/",
     response_model=GroupCreateResponse,
     status_code=201,
@@ -163,6 +167,10 @@ async def create_group_endpoint(
     )
 
 
+@router.get(
+    "",
+    include_in_schema=False,
+)
 @router.get(
     "/",
     response_model=GroupListResponse,

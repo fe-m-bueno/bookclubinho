@@ -13,7 +13,7 @@ export function useHomeGroups() {
 
   return useQuery<GroupListResponse, Error>({
     queryKey: ["homeGroups"],
-    queryFn: () => apiFetch<GroupListResponse>("/api/v1/groups", routerRef.current),
+    queryFn: () => apiFetch<GroupListResponse>("/api/v1/groups/", routerRef.current),
     staleTime: 60_000,
   });
 }
