@@ -174,18 +174,17 @@ async def test_update_meeting_by_admin() -> None:
     creator_id = uuid.uuid4()
     group_id = uuid.uuid4()
     meeting = _make_meeting(created_by=creator_id, group_id=group_id)
-    member_for_check = _make_member(user_id=admin_id, group_id=group_id, role="member")
     admin_member = _make_member(user_id=admin_id, group_id=group_id, role="admin")
     data = _make_update_request(title="Admin Edit")
 
     db = AsyncMock()
     res_meeting = MagicMock()
     res_meeting.scalar_one_or_none.return_value = meeting
-    res_member = MagicMock()
-    res_member.scalar_one_or_none.return_value = member_for_check
     res_admin = MagicMock()
     res_admin.scalar_one_or_none.return_value = admin_member
-    db.execute = AsyncMock(side_effect=[res_meeting, res_member, res_admin])
+    # 2 queries, não 3: membership.resolve devolve o GroupMember que a regra
+    # criador-ou-admin consome, em vez de buscar a mesma linha de novo.
+    db.execute = AsyncMock(side_effect=[res_meeting, res_admin])
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 

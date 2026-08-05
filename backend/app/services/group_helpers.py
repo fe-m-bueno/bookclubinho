@@ -14,23 +14,8 @@ if TYPE_CHECKING:
 
 from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
-from app.db.models.group import GroupMember
 
 logger = structlog.get_logger(__name__)
-
-
-async def check_membership(db: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID) -> GroupMember:
-    """Return GroupMember or raise ServiceError 404."""
-    result = await db.execute(
-        select(GroupMember).where(
-            GroupMember.group_id == group_id,
-            GroupMember.user_id == user_id,
-        )
-    )
-    member = result.scalar_one_or_none()
-    if member is None:
-        raise ServiceError("Clube não encontrado.", status_code=404)
-    return member
 
 
 async def validate_round_in_group(db: AsyncSession, round_id_str: str, group_id: uuid.UUID) -> uuid.UUID:

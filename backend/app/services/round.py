@@ -21,9 +21,10 @@ if TYPE_CHECKING:
 from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
 from app.db.models.book_review import BookReview
-from app.db.models.group import Group, GroupMember, GroupRole
+from app.db.models.group import GroupMember, GroupRole
 from app.db.models.round import Round, RoundNomination, RoundStatus, RoundVote
 from app.security.sanitizer import sanitize
+from app.services import membership
 
 logger = structlog.get_logger(__name__)
 
@@ -49,6 +50,7 @@ async def _fetch_round_and_member(
     user_id: uuid.UUID,
     *,
     load_nominations_and_votes: bool = False,
+    require_role: GroupRole | None = None,
 ) -> tuple[Round, GroupMember]:
     """Fetch a round and verify the user is a member of its group.
 
@@ -62,19 +64,16 @@ async def _fetch_round_and_member(
     if round_ is None:
         raise RoundError("Rodada não encontrada.", status_code=404)
 
-    member_result = await db.execute(
-        select(GroupMember)
-        .join(Group, GroupMember.group_id == Group.id)
-        .where(
-            GroupMember.user_id == user_id,
-            GroupMember.group_id == round_.group_id,
-            Group.is_active.is_(True),
-        )
+    # "Rodada não encontrada." on purpose: with the club's own message here,
+    # probing round_ids would distinguish "no such round" from "round in a club
+    # that isn't yours".
+    member = await membership.resolve(
+        db,
+        round_.group_id,
+        user_id,
+        require_role=require_role,
+        not_found_message="Rodada não encontrada.",
     )
-    member = member_result.scalar_one_or_none()
-    if member is None:
-        raise RoundError("Rodada não encontrada.", status_code=404)
-
     return round_, member
 
 
@@ -112,11 +111,13 @@ async def verify_round_admin(
     Returns 404 if the round doesn't exist or user is not a member.
     Returns 403 if user is a member but not admin.
     """
-    round_, member = await _fetch_round_and_member(
-        db, round_id, user_id, load_nominations_and_votes=load_nominations_and_votes
+    round_, _member = await _fetch_round_and_member(
+        db,
+        round_id,
+        user_id,
+        load_nominations_and_votes=load_nominations_and_votes,
+        require_role=GroupRole.ADMIN,
     )
-    if member.role != GroupRole.ADMIN:
-        raise RoundError("Apenas administradores podem realizar esta ação.", status_code=403)
     return round_
 
 

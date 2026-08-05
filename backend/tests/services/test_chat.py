@@ -19,6 +19,7 @@ from app.services.chat import (
     remove_reaction,
     toggle_reaction,
 )
+from app.services.membership import MembershipError
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ async def test_create_message_not_member_raises_404() -> None:
     db.execute = AsyncMock(return_value=res)
 
     data = _make_create_request()
-    with pytest.raises(ChatError) as exc_info:
+    with pytest.raises(MembershipError) as exc_info:
         await create_message(db, group_id=uuid.uuid4(), user_id=uuid.uuid4(), data=data)
     assert exc_info.value.status_code == 404
 
