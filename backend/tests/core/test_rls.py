@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.rls import RLSMiddleware, _current_user_id, get_rls_user_id
+from app.core.rls import RLSMiddleware, _current_user_id, apply_rls_user, get_rls_user_id
 
 
 class TestGetRlsUserId:
@@ -122,3 +123,49 @@ class TestRLSMiddleware:
             await middleware.dispatch(mock_request, call_next)
 
         assert captured_user_id == ""
+
+
+class TestApplyRlsUser:
+    """O UUID deve chegar ao Postgres como bind parameter, nunca interpolado no SQL."""
+
+    @pytest.mark.asyncio
+    async def test_passes_uuid_as_bind_parameter(self) -> None:
+        session = AsyncMock()
+        uid = "3f2b1c4e-5d6a-4b8c-9e0f-1a2b3c4d5e6f"
+
+        await apply_rls_user(session, uid)
+
+        session.execute.assert_awaited_once()
+        stmt, params = session.execute.await_args.args
+        assert params == {"uid": uid}
+        assert uid not in str(stmt), "UUID foi interpolado no texto da query"
+
+    @pytest.mark.asyncio
+    async def test_uses_set_config_scoped_to_transaction(self) -> None:
+        session = AsyncMock()
+
+        await apply_rls_user(session, "3f2b1c4e-5d6a-4b8c-9e0f-1a2b3c4d5e6f")
+
+        sql = str(session.execute.await_args.args[0])
+        assert "set_config" in sql
+        assert "app.current_user_id" in sql
+        # terceiro argumento `true` == is_local, equivalente a SET LOCAL
+        assert "true" in sql
+
+    @pytest.mark.asyncio
+    async def test_accepts_uuid_instance(self) -> None:
+        session = AsyncMock()
+        uid = uuid.uuid4()
+
+        await apply_rls_user(session, uid)
+
+        assert session.execute.await_args.args[1] == {"uid": str(uid)}
+
+    @pytest.mark.asyncio
+    async def test_rejects_non_uuid(self) -> None:
+        session = AsyncMock()
+
+        with pytest.raises(ValueError):
+            await apply_rls_user(session, "'; DROP TABLE users; --")
+
+        session.execute.assert_not_awaited()

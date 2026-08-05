@@ -14,8 +14,8 @@ from tests.conftest import make_user, mock_db_returning
 
 class TestGetSessionRLS:
     @pytest.mark.asyncio
-    async def test_sets_rls_user_id_with_literal(self) -> None:
-        """SET LOCAL must use a literal UUID, not a bind parameter."""
+    async def test_sets_rls_user_id_with_bind_param(self) -> None:
+        """O contexto RLS usa set_config com bind parameter — o UUID não entra no SQL."""
         from app.core.deps import get_session
 
         user_id = str(uuid.uuid4())
@@ -33,12 +33,12 @@ class TestGetSessionRLS:
             session = await gen.__anext__()
             assert session is mock_session
 
-            # Verify SET LOCAL was called with a literal UUID (no bind params)
+            # O UUID deve viajar como bind parameter, fora do texto da query
             mock_session.execute.assert_called_once()
-            call_args = mock_session.execute.call_args
-            sql_clause = call_args[0][0]
-            assert f"'{user_id}'" in sql_clause.text
-            assert ":uid" not in sql_clause.text
+            sql_clause, params = mock_session.execute.call_args[0]
+            assert ":uid" in sql_clause.text
+            assert user_id not in sql_clause.text
+            assert params == {"uid": user_id}
 
     @pytest.mark.asyncio
     async def test_skips_set_local_when_no_user(self) -> None:
@@ -87,10 +87,10 @@ class TestGetSession:
     """Tests for the get_session dependency — especially RLS SET LOCAL."""
 
     @pytest.mark.asyncio
-    async def test_set_local_uses_literal_not_bind_param(self) -> None:
-        """Regression: SET LOCAL does not support bind params ($1/:uid).
-
-        The user_id must be interpolated as a literal string after UUID validation.
+    async def test_rls_context_never_interpolates_uuid(self) -> None:
+        """Regression: `SET LOCAL` não aceita bind params, o que antes forçava
+        interpolar o UUID na string SQL. `set_config(..., :uid, true)` aceita —
+        nenhum valor deve aparecer no texto da query.
         """
         from app.core.deps import get_session
 
@@ -112,12 +112,12 @@ class TestGetSession:
             session = await gen.__anext__()
             assert session is mock_session
 
-            # Verify SET LOCAL was called with a literal, not a bind param
-            call_args = mock_session.execute.call_args
-            sql_text = str(call_args[0][0].text)
-            assert f"'{uid}'" in sql_text
-            assert ":uid" not in sql_text
-            assert "$1" not in sql_text
+            sql_clause, params = mock_session.execute.call_args[0]
+            sql_text = str(sql_clause.text)
+            assert "set_config" in sql_text
+            assert ":uid" in sql_text
+            assert uid not in sql_text
+            assert params == {"uid": uid}
 
             # Clean up generator
             try:

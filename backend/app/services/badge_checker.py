@@ -11,10 +11,11 @@ from typing import Any
 
 import structlog
 from redis.exceptions import RedisError
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.redis import get_redis
+from app.core.rls import apply_rls_user
 from app.db.engine import AsyncSessionLocal
 from app.db.models.badge import Badge, UserBadge
 from app.db.models.book_review import BookReview
@@ -54,12 +55,12 @@ async def check_and_award_badges(
     try:
         uid = uuid.UUID(user_id)
         async with AsyncSessionLocal() as db:
-            # db.begin() issues explicit BEGIN before SET LOCAL.
-            # SET LOCAL requires an active transaction — without explicit begin(),
-            # the asyncpg driver may execute SET LOCAL before BEGIN is issued,
-            # leaving the RLS context unset for subsequent queries.
+            # db.begin() issues an explicit BEGIN before the RLS setting is applied.
+            # set_config(..., is_local=true) is transaction-scoped — without explicit
+            # begin(), the asyncpg driver may run it before BEGIN is issued, leaving
+            # the RLS context unset for subsequent queries.
             async with db.begin():
-                await db.execute(text(f"SET LOCAL app.current_user_id = '{uid}'"))
+                await apply_rls_user(db, uid)
                 for slug in slugs_to_check:
                     try:
                         # Savepoint per badge: a failure on one doesn't corrupt
