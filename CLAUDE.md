@@ -163,6 +163,22 @@ postgres · filesystem · github · memory · context7 · exa
 
 ---
 
+## Agent skills
+
+### Issue tracker
+
+Issues vivem no GitHub Issues de `fe-m-bueno/bookclubinho`, via `gh` CLI. Ver `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Vocabulário padrão de cinco papéis (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). Ver `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — `CONTEXT.md` + `docs/adr/` na raiz. Ver `docs/agents/domain.md`.
+
+---
+
 > Dúvidas de arquitetura → `/docs/ARCHITECTURE.md`
 > Deploy quebrou → `/docs/RUNBOOK.md`
 > Setup do zero → `/docs/SETUP.md`
