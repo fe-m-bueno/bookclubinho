@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { useGroupProgress } from "../use-group-progress";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockGroupProgress = {
   progress: [
@@ -37,10 +38,7 @@ describe("useGroupProgress", () => {
   });
 
   it("fetches progress data successfully", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockGroupProgress,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockGroupProgress));
 
     const { result } = renderHook(() => useGroupProgress("r1"));
 
@@ -55,10 +53,7 @@ describe("useGroupProgress", () => {
   });
 
   it("calls API with correct URL and credentials", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockGroupProgress,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockGroupProgress));
 
     renderHook(() => useGroupProgress("r1"));
 
@@ -71,10 +66,7 @@ describe("useGroupProgress", () => {
   });
 
   it("sets progress to empty array on 404", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 404));
 
     const { result } = renderHook(() => useGroupProgress("r1"));
 
@@ -87,10 +79,7 @@ describe("useGroupProgress", () => {
   });
 
   it("redirects to login on 401", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 401));
 
     renderHook(() => useGroupProgress("r1"));
 
@@ -100,10 +89,7 @@ describe("useGroupProgress", () => {
   });
 
   it("sets access error on 403", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 403));
 
     const { result } = renderHook(() => useGroupProgress("r1"));
 
@@ -115,10 +101,7 @@ describe("useGroupProgress", () => {
   });
 
   it("sets generic error on other status codes", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 500));
 
     const { result } = renderHook(() => useGroupProgress("r1"));
 
@@ -144,10 +127,7 @@ describe("useGroupProgress", () => {
   });
 
   it("exposes refetch function that re-fetches data", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-      json: async () => mockGroupProgress,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse(mockGroupProgress));
 
     const { result } = renderHook(() => useGroupProgress("r1"));
 
@@ -177,10 +157,7 @@ describe("useGroupProgress", () => {
     });
 
     it("polls every 30 seconds", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: async () => mockGroupProgress,
-      } as Response);
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse(mockGroupProgress));
 
       renderHook(() => useGroupProgress("r1"));
 
@@ -206,10 +183,7 @@ describe("useGroupProgress", () => {
     });
 
     it("clears interval on unmount", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: async () => mockGroupProgress,
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse(mockGroupProgress));
 
       const { unmount } = renderHook(() => useGroupProgress("r1"));
 

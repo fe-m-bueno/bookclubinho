@@ -51,6 +51,7 @@ vi.mock("framer-motion", async () => {
 });
 
 import { CreateGroupForm } from "../create-group-form";
+import { jsonResponse } from "@/test-utils/http";
 
 describe("CreateGroupForm", () => {
   beforeEach(() => {
@@ -124,10 +125,7 @@ describe("CreateGroupForm", () => {
       created_at: "2026-01-01T00:00:00Z",
     };
 
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockResponse));
 
     const user = userEvent.setup();
     render(<CreateGroupForm onSuccess={onSuccess} />);
@@ -151,11 +149,7 @@ describe("CreateGroupForm", () => {
   });
 
   it("shows toast on 422 validation error", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 422,
-      json: async () => ({ detail: "Nome inválido" }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ detail: "Nome inválido" }), 422));
 
     const user = userEvent.setup();
     render(<CreateGroupForm onSuccess={vi.fn()} />);
@@ -169,11 +163,7 @@ describe("CreateGroupForm", () => {
   });
 
   it("shows toast on 401 unauthorized", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-      json: async () => ({ detail: "Unauthorized" }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ detail: "Unauthorized" }), 401));
 
     const user = userEvent.setup();
     render(<CreateGroupForm onSuccess={vi.fn()} />);
@@ -189,11 +179,7 @@ describe("CreateGroupForm", () => {
   });
 
   it("shows toast on 429 rate limit", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 429,
-      json: async () => ({ detail: "Rate limited" }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ detail: "Rate limited" }), 429));
 
     const user = userEvent.setup();
     render(<CreateGroupForm onSuccess={vi.fn()} />);

@@ -1,21 +1,16 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-fetch";
+import { api } from "@/lib/api";
 import { ensureCsrf, withCsrf } from "@/lib/csrf";
-import { useRouterRef } from "@/hooks/use-router-ref";
 import type { HardcoverStatus } from "@/lib/types/integration";
 
 export function useHardcoverStatus() {
-  const routerRef = useRouterRef();
 
   return useQuery<HardcoverStatus>({
     queryKey: ["hardcoverStatus"],
     queryFn: () =>
-      apiFetch<HardcoverStatus>(
-        "/api/v1/integrations/hardcover/status",
-        routerRef.current,
-      ),
+      api.get<HardcoverStatus>("/integrations/hardcover/status"),
     staleTime: 60_000,
   });
 }

@@ -55,10 +55,10 @@ describe("ProgressUpdateModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(submitMock).toHaveBeenCalledWith(
-      expect.stringContaining('"current_page":100'),
+      expect.objectContaining({ current_page: 100 }),
     );
     expect(submitMock).toHaveBeenCalledWith(
-      expect.stringContaining('"progress_type":"page"'),
+      expect.objectContaining({ progress_type: "page" }),
     );
   });
 
@@ -93,7 +93,7 @@ describe("ProgressUpdateModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(submitMock).toHaveBeenCalledWith(
-      expect.stringContaining('"note":"Adorei o capítulo 3"'),
+      expect.objectContaining({ note: "Adorei o capítulo 3" }),
     );
   });
 

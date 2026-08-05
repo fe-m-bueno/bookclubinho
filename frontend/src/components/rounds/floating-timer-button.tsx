@@ -8,8 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useTimerStore } from "@/stores/use-timer-store";
 import { subscribeTick, getTickSnapshot, getServerSnapshot } from "@/stores/tick-store";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
-import { JSON_HEADERS } from "@/hooks/use-auth-submit";
+import { api } from "@/lib/api";
 
 function formatElapsed(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -23,27 +22,25 @@ function formatElapsed(ms: number): string {
 }
 
 async function startSession(roundId: string) {
-  await ensureCsrf();
-  const res = await fetch(`/api/v1/reading-sessions/start`, {
-    method: "POST",
-    credentials: "include",
-    headers: withCsrf(JSON_HEADERS),
-    body: JSON.stringify({ round_id: roundId }),
-  });
-  if (!res.ok) return null;
-  return (await res.json()) as { id: string; started_at: string };
+  try {
+    return await api.post<{ id: string; started_at: string }>(
+      "/reading-sessions/start",
+      { round_id: roundId },
+    );
+  } catch {
+    return null;
+  }
 }
 
 async function stopSession(sessionId: string) {
-  await ensureCsrf();
-  const res = await fetch(`/api/v1/reading-sessions/${sessionId}/stop`, {
-    method: "POST",
-    credentials: "include",
-    headers: withCsrf(JSON_HEADERS),
-    body: JSON.stringify({}),
-  });
-  if (!res.ok) return null;
-  return (await res.json()) as { duration_minutes: number | null };
+  try {
+    return await api.post<{ duration_minutes: number | null }>(
+      `/reading-sessions/${sessionId}/stop`,
+      {},
+    );
+  } catch {
+    return null;
+  }
 }
 
 export function FloatingTimerButton() {

@@ -55,15 +55,15 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
   }
 
   const { submit: submitComplete, loading: completing } = useAuthSubmit({
-    url: "/api/v1/onboarding/complete",
+    path: "/onboarding/complete",
     onSuccess: () => celebrateAndRedirect(redirectTargetRef.current),
   });
 
   const { submit: submitJoin, loading: joining } = useAuthSubmit({
-    url: "/api/v1/groups/join",
+    path: "/groups/join",
     onSuccess: async () => {
       redirectTargetRef.current = "/";
-      await submitComplete(JSON.stringify({}));
+      await submitComplete({});
     },
     statusHandlers: [
       { status: 409, handler: () => toast.error("Você já faz parte deste clube.") },
@@ -73,17 +73,17 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
   });
 
   async function handleJoin() {
-    submitJoin(JSON.stringify({ invite_code: rawCode }));
+    submitJoin({ invite_code: rawCode });
   }
 
   function handleCreate() {
     redirectTargetRef.current = "/groups/create";
-    submitComplete(JSON.stringify({}));
+    submitComplete({});
   }
 
   function handleSkip() {
     redirectTargetRef.current = "/";
-    submitComplete(JSON.stringify({}));
+    submitComplete({});
   }
 
   const isLoading = joining || completing;

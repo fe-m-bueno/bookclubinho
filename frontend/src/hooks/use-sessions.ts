@@ -1,18 +1,16 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-fetch";
+import { api } from "@/lib/api";
 import { ensureCsrf, withCsrf } from "@/lib/csrf";
-import { useRouterRef } from "@/hooks/use-router-ref";
 import type { SessionListResponse } from "@/lib/types/session";
 
 export function useSessions() {
-  const routerRef = useRouterRef();
 
   return useQuery<SessionListResponse>({
     queryKey: ["sessions"],
     queryFn: () =>
-      apiFetch<SessionListResponse>("/api/v1/auth/sessions", routerRef.current),
+      api.get<SessionListResponse>("/auth/sessions"),
     staleTime: 30_000,
   });
 }

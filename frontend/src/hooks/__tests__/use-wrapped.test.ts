@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({
 
 import { useWrapped } from "../use-wrapped";
 import type { WrappedResponse } from "@/lib/types/wrapped";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockWrapped: WrappedResponse = {
   group_id: "g1",
@@ -84,10 +85,7 @@ describe("useWrapped", () => {
   });
 
   it("fetches wrapped successfully and sets data", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockWrapped));
 
     const { result } = renderHook(() => useWrapped("g1", 2024));
 
@@ -102,10 +100,7 @@ describe("useWrapped", () => {
   });
 
   it("starts in loading state", () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockWrapped));
 
     const { result } = renderHook(() => useWrapped("g1", 2024));
 
@@ -114,10 +109,7 @@ describe("useWrapped", () => {
   });
 
   it("calls API with correct URL and credentials", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockWrapped));
 
     renderHook(() => useWrapped("g1", 2024));
 
@@ -130,10 +122,7 @@ describe("useWrapped", () => {
   });
 
   it("returns data null and no error on 404 (not generated yet)", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 404));
 
     const { result } = renderHook(() => useWrapped("g1", 2024));
 
@@ -146,10 +135,7 @@ describe("useWrapped", () => {
   });
 
   it("redirects to login on 401", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 401));
 
     renderHook(() => useWrapped("g1", 2024));
 
@@ -159,10 +145,7 @@ describe("useWrapped", () => {
   });
 
   it("sets error on non-401 non-404 failure", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 500));
 
     const { result } = renderHook(() => useWrapped("g1", 2024));
 
@@ -201,10 +184,7 @@ describe("useWrapped", () => {
   });
 
   it("refetch triggers a new API call", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse(mockWrapped));
 
     const { result } = renderHook(() => useWrapped("g1", 2024));
 
@@ -222,10 +202,7 @@ describe("useWrapped", () => {
   });
 
   it("uses groupId and year in the request URL", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockWrapped));
 
     renderHook(() => useWrapped("my-group-99", 2023));
 

@@ -1,20 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-fetch";
-import { useRouterRef } from "@/hooks/use-router-ref";
+import { api } from "@/lib/api";
 import type { PublicProfile } from "@/lib/types/public-profile";
 
 export function usePublicProfile(username: string) {
-  const routerRef = useRouterRef();
 
   return useQuery<PublicProfile>({
     queryKey: ["publicProfile", username],
     queryFn: () =>
-      apiFetch<PublicProfile>(
-        `/api/v1/users/by-username/${encodeURIComponent(username)}/profile`,
-        routerRef.current,
-      ),
+      api.get<PublicProfile>(`/users/by-username/${encodeURIComponent(username)}/profile`),
     staleTime: 60_000,
     enabled: !!username,
   });

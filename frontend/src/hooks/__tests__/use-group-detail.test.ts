@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { useGroupDetail } from "../use-group-detail";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockGroup = {
   id: "g1",
@@ -41,10 +42,7 @@ describe("useGroupDetail", () => {
   });
 
   it("fetches group data successfully", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockGroup,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockGroup));
 
     const { result } = renderHook(() => useGroupDetail("g1"));
 
@@ -59,10 +57,7 @@ describe("useGroupDetail", () => {
   });
 
   it("calls API with credentials include", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockGroup,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockGroup));
 
     renderHook(() => useGroupDetail("g1"));
 
@@ -75,10 +70,7 @@ describe("useGroupDetail", () => {
   });
 
   it("redirects to login on 401", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 401));
 
     renderHook(() => useGroupDetail("g1"));
 
@@ -88,10 +80,7 @@ describe("useGroupDetail", () => {
   });
 
   it("sets error on 403", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 403));
 
     const { result } = renderHook(() => useGroupDetail("g1"));
 
@@ -101,10 +90,7 @@ describe("useGroupDetail", () => {
   });
 
   it("sets error on 404", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 404));
 
     const { result } = renderHook(() => useGroupDetail("g1"));
 
@@ -128,10 +114,7 @@ describe("useGroupDetail", () => {
   });
 
   it("sets generic error on other status codes", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 500));
 
     const { result } = renderHook(() => useGroupDetail("g1"));
 

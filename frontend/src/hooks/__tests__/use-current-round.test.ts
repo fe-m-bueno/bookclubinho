@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { useCurrentRound } from "../use-current-round";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockRound = {
   id: "r1",
@@ -34,10 +35,7 @@ describe("useCurrentRound", () => {
   });
 
   it("fetches round data successfully", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockRound,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockRound));
 
     const { result } = renderHook(() => useCurrentRound("g1"));
 
@@ -52,10 +50,7 @@ describe("useCurrentRound", () => {
   });
 
   it("calls API with credentials include", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockRound,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockRound));
 
     renderHook(() => useCurrentRound("g1"));
 
@@ -68,10 +63,7 @@ describe("useCurrentRound", () => {
   });
 
   it("sets round to null on 404 without error", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 404));
 
     const { result } = renderHook(() => useCurrentRound("g1"));
 
@@ -84,10 +76,7 @@ describe("useCurrentRound", () => {
   });
 
   it("redirects to login on 401", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 401));
 
     renderHook(() => useCurrentRound("g1"));
 
@@ -97,10 +86,7 @@ describe("useCurrentRound", () => {
   });
 
   it("sets error on 403", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 403));
 
     const { result } = renderHook(() => useCurrentRound("g1"));
 
@@ -124,10 +110,7 @@ describe("useCurrentRound", () => {
   });
 
   it("sets generic error on other status codes", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 500));
 
     const { result } = renderHook(() => useCurrentRound("g1"));
 

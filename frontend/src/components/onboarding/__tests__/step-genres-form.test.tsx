@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { toast } from "sonner";
 import { StepGenresForm } from "../step-genres-form";
+import { jsonResponse } from "@/test-utils/http";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -49,10 +50,7 @@ const mockGenres = [
 ];
 
 function mockFetchGenres() {
-  vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-    ok: true,
-    json: async () => ({ genres: mockGenres }),
-  } as Response);
+  vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ genres: mockGenres })));
 }
 
 async function renderAndWaitForGenres(onNext = vi.fn(), onBack = vi.fn()) {
@@ -150,10 +148,7 @@ describe("StepGenresForm", () => {
     await user.click(getGenreButton("Ficção"));
     await user.click(getGenreButton("Fantasia"));
 
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({}),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({})));
 
     await user.click(screen.getByRole("button", { name: "Próximo" }));
 
@@ -170,10 +165,7 @@ describe("StepGenresForm", () => {
   });
 
   it("shows error toast when genre fetch fails with non-OK response", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 500));
     render(<StepGenresForm onNext={vi.fn()} onBack={vi.fn()} />);
 
     await waitFor(() => {
@@ -195,11 +187,7 @@ describe("StepGenresForm", () => {
 
     await user.click(getGenreButton("Ficção"));
 
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 422,
-      json: async () => ({ detail: "Gênero inválido" }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ detail: "Gênero inválido" }), 422));
 
     await user.click(screen.getByRole("button", { name: "Próximo" }));
 
@@ -213,10 +201,7 @@ describe("StepGenresForm", () => {
 
     await user.click(getGenreButton("Ficção"));
 
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 429,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 429));
 
     await user.click(screen.getByRole("button", { name: "Próximo" }));
 

@@ -30,7 +30,7 @@ export function GroupDangerSection({ group, isAdmin }: GroupDangerSectionProps) 
   const [confirmName, setConfirmName] = useState("");
 
   const { submit: submitDelete, loading: deleteLoading } = useAuthSubmit({
-    url: `/api/v1/groups/${group.id}`,
+    path: `/groups/${group.id}`,
     method: "DELETE",
     onSuccess: () => {
       toast.success("Clube excluído.");
@@ -39,7 +39,7 @@ export function GroupDangerSection({ group, isAdmin }: GroupDangerSectionProps) 
   });
 
   const { submit: submitLeave, loading: leaveLoading } = useAuthSubmit({
-    url: `/api/v1/groups/${group.id}/leave`,
+    path: `/groups/${group.id}/leave`,
     method: "POST",
     onSuccess: () => {
       toast.success("Você saiu do clube.");

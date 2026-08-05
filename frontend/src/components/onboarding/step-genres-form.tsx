@@ -30,21 +30,15 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
   const shouldReduceMotion = useReducedMotion();
 
   const { submit, loading: submitting } = useAuthSubmit({
-    url: "/api/v1/onboarding/preferences",
+    path: "/onboarding/preferences",
     onSuccess: () => onNext(),
     statusHandlers: [
       {
         status: 422,
-        handler: async (res) => {
-          const body = await res.json();
-          const detail = body.detail;
-          const msg =
-            typeof detail === "string"
-              ? detail
-              : Array.isArray(detail)
-                ? detail.map((e: { msg?: string }) => e.msg).join(", ")
-                : "Erro de validação";
-          toast.error(msg);
+        handler: (error) => {
+          // O cliente já extrai a primeira msg quando o detail vem como lista
+          // de erros de validação do FastAPI.
+          toast.error(error.detail || "Erro de validação");
         },
       },
     ],
@@ -93,7 +87,7 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
   }
 
   function handleSubmit() {
-    submit(JSON.stringify({ preferred_genres: [...selectedGenres] }));
+    submit({ preferred_genres: [...selectedGenres] });
   }
 
   return (

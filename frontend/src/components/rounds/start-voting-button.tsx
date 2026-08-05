@@ -36,7 +36,7 @@ export function StartVotingButton({
   const canStart = nominations.length >= 2;
 
   const { submit, loading } = useAuthSubmit({
-    url: `/api/v1/rounds/${roundId}/start-voting`,
+    path: `/rounds/${roundId}/start-voting`,
     onSuccess: async () => {
       toast.success("Votação iniciada!");
       onSuccess();
@@ -82,7 +82,7 @@ export function StartVotingButton({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={() => submit("")}>
+              <AlertDialogAction onClick={() => submit()}>
                 Iniciar
               </AlertDialogAction>
             </AlertDialogFooter>

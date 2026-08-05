@@ -183,7 +183,7 @@ describe("RoundVotingPhase", () => {
     const [firstCard] = screen.getAllByRole("button");
     fireEvent.click(firstCard);
     expect(mockSubmit).toHaveBeenCalledWith(
-      JSON.stringify({ nomination_id: "n1" }),
+      { nomination_id: "n1" },
     );
   });
 

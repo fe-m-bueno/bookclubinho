@@ -2,6 +2,7 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import { useBookSearch } from "../use-book-search";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockResults = [
   {
@@ -48,10 +49,7 @@ describe("useBookSearch", () => {
   });
 
   it("fetches after 300ms debounce", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockResults,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockResults));
 
     renderHook(() => useBookSearch("hobbit"));
 
@@ -66,10 +64,7 @@ describe("useBookSearch", () => {
   });
 
   it("returns search results on success", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockResults,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockResults));
 
     const { result } = renderHook(() => useBookSearch("hobbit"));
 
@@ -93,10 +88,7 @@ describe("useBookSearch", () => {
   });
 
   it("cancels pending timer on query change", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-      json: async () => [],
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse([]));
 
     const { rerender } = renderHook(({ q }) => useBookSearch(q), {
       initialProps: { q: "hobbit" },

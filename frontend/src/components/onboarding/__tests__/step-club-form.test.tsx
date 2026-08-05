@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { toast } from "sonner";
 import { useGroupCodeCheck } from "@/hooks/use-group-code-check";
 import { StepClubForm } from "../step-club-form";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockPush = vi.fn();
 
@@ -170,14 +171,8 @@ describe("StepClubForm", () => {
 
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ message: "OK", group_id: "123" }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ message: "OK" }),
-      } as Response);
+      .mockResolvedValueOnce(jsonResponse(({ message: "OK", group_id: "123" })))
+      .mockResolvedValueOnce(jsonResponse(({ message: "OK" })));
 
     const user = userEvent.setup();
     render(<StepClubForm onBack={vi.fn()} />);
@@ -196,10 +191,7 @@ describe("StepClubForm", () => {
   });
 
   it("skip flow: POST /onboarding/complete", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ message: "OK" }),
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ message: "OK" })));
 
     const user = userEvent.setup();
     render(<StepClubForm onBack={vi.fn()} />);
@@ -215,10 +207,7 @@ describe("StepClubForm", () => {
   });
 
   it("create flow: POST /onboarding/complete", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ message: "OK" }),
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ message: "OK" })));
 
     const user = userEvent.setup();
     render(<StepClubForm onBack={vi.fn()} />);
@@ -240,11 +229,7 @@ describe("StepClubForm", () => {
       member_count: 3,
     });
 
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 409,
-      json: async () => ({ detail: "Você já faz parte deste clube." }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ detail: "Você já faz parte deste clube." }), 409));
 
     const user = userEvent.setup();
     render(<StepClubForm onBack={vi.fn()} />);
@@ -263,11 +248,7 @@ describe("StepClubForm", () => {
       member_count: 8,
     });
 
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-      json: async () => ({ detail: "Este clube está cheio." }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ detail: "Este clube está cheio." }), 403));
 
     const user = userEvent.setup();
     render(<StepClubForm onBack={vi.fn()} />);

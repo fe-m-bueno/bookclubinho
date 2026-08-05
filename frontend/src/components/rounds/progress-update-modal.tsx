@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 
 interface ProgressUpdateModalProps {
   roundId: string;
@@ -75,8 +75,7 @@ export function ProgressUpdateModal({
       : null;
 
   const { submit, loading } = useAuthSubmit({
-    url: `/api/v1/rounds/${roundId}/progress`,
-    headers: JSON_HEADERS,
+    path: `/rounds/${roundId}/progress`,
     onSuccess: async () => {
       toast.success("Progresso atualizado!");
       onUpdated();
@@ -85,8 +84,7 @@ export function ProgressUpdateModal({
   });
 
   const { submit: submitFinish, loading: finishLoading } = useAuthSubmit({
-    url: `/api/v1/rounds/${roundId}/progress`,
-    headers: JSON_HEADERS,
+    path: `/rounds/${roundId}/progress`,
     onSuccess: async () => {
       toast.success("Parabéns! Você terminou o livro! 🎉");
       onUpdated();
@@ -120,7 +118,7 @@ export function ProgressUpdateModal({
       };
     }
 
-    submit(JSON.stringify(body));
+    submit(body);
   };
 
   const handleFinish = () => {
@@ -135,7 +133,7 @@ export function ProgressUpdateModal({
           progress_type: "finished",
           ...(note ? { note } : {}),
         };
-    submitFinish(JSON.stringify(body));
+    submitFinish(body);
   };
 
   return (

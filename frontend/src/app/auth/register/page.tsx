@@ -52,7 +52,7 @@ export default function RegisterPage() {
   });
 
   const { submit: submitRegister, loading } = useAuthSubmit({
-    url: "/api/v1/auth/register",
+    path: "/auth/register",
     onSuccess: () => {
       setSubmittedEmail(form.getValues("email"));
       setSubmitted(true);
@@ -60,16 +60,15 @@ export default function RegisterPage() {
     statusHandlers: [
       {
         status: 422,
-        handler: async (res) => {
-          const body = await res.json();
-          toast.error(body.detail || "Erro de validação");
+        handler: (error) => {
+          toast.error(error.detail || "Erro de validação");
         },
       },
     ],
   });
 
   const { submit: submitResend, loading: resendLoading } = useAuthSubmit({
-    url: "/api/v1/auth/resend-verification",
+    path: "/auth/resend-verification",
     onSuccess: () => {
       toast.success("E-mail reenviado!");
       startCooldown();
@@ -79,16 +78,16 @@ export default function RegisterPage() {
 
   async function onSubmit(data: RegisterFormData) {
     await submitRegister(
-      JSON.stringify({
+      {
         display_name: data.display_name,
         email: data.email,
         password: data.password,
-      })
+      }
     );
   }
 
   async function handleResend() {
-    await submitResend(JSON.stringify({ email: submittedEmail }));
+    await submitResend({ email: submittedEmail });
   }
 
   return (

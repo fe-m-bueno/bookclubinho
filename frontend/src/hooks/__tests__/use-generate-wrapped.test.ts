@@ -12,6 +12,7 @@ vi.mock("@/lib/csrf", () => ({
 import { useGenerateWrapped } from "../use-generate-wrapped";
 import { ensureCsrf, withCsrf } from "@/lib/csrf";
 import type { WrappedResponse } from "@/lib/types/wrapped";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockWrapped: WrappedResponse = {
   group_id: "g1",
@@ -60,10 +61,7 @@ describe("useGenerateWrapped", () => {
   });
 
   it("POST success returns wrapped data", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockWrapped));
 
     const { result } = renderHook(() => useGenerateWrapped());
 
@@ -95,10 +93,7 @@ describe("useGenerateWrapped", () => {
       expect(result.current.loading).toBe(true);
     });
 
-    resolveRequest({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    resolveRequest(jsonResponse(mockWrapped));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -106,10 +101,7 @@ describe("useGenerateWrapped", () => {
   });
 
   it("sends CSRF token in request headers", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockWrapped));
 
     const { result } = renderHook(() => useGenerateWrapped());
 
@@ -130,11 +122,7 @@ describe("useGenerateWrapped", () => {
   });
 
   it("sets error on non-ok response with detail message", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-      json: async () => ({ detail: "Você não tem permissão." }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ detail: "Você não tem permissão." }), 403));
 
     const { result } = renderHook(() => useGenerateWrapped());
 
@@ -149,11 +137,7 @@ describe("useGenerateWrapped", () => {
   });
 
   it("uses default error message when response has no detail", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      json: async () => ({}),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({}), 500));
 
     const { result } = renderHook(() => useGenerateWrapped());
 
@@ -178,10 +162,7 @@ describe("useGenerateWrapped", () => {
   });
 
   it("uses groupId and year in the POST URL", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockWrapped));
 
     const { result } = renderHook(() => useGenerateWrapped());
 
@@ -196,11 +177,7 @@ describe("useGenerateWrapped", () => {
   });
 
   it("clears previous error before a new request", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      json: async () => ({ detail: "Erro anterior" }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ detail: "Erro anterior" }), 500));
 
     const { result } = renderHook(() => useGenerateWrapped());
 
@@ -210,10 +187,7 @@ describe("useGenerateWrapped", () => {
 
     expect(result.current.error).toBe("Erro anterior");
 
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockWrapped,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockWrapped));
 
     await act(async () => {
       await result.current.generate("g1", 2024);

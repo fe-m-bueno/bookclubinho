@@ -54,15 +54,13 @@ export function StepProfileForm({ onNext }: StepProfileFormProps) {
   const statusText = form.watch("statusText") ?? "";
 
   const { submit, loading: submitting } = useAuthSubmit({
-    url: "/api/v1/onboarding/profile",
-    headers: NO_CONTENT_TYPE,
+    path: "/onboarding/profile",
     onSuccess: () => onNext(),
     statusHandlers: [
       {
         status: 422,
-        handler: async (res) => {
-          const body = await res.json();
-          toast.error(body.detail || "Erro de validação");
+        handler: (error) => {
+          toast.error(error.detail || "Erro de validação");
         },
       },
       { status: 409, handler: () => toast.error("Username já está em uso") },

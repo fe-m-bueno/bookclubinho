@@ -16,6 +16,7 @@ vi.mock("@/lib/csrf", () => ({
 
 import { useQuotes, useQuoteMutations } from "../use-quotes";
 import type { QuoteResponse, QuoteListResponse } from "@/lib/types/quote";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockQuote: QuoteResponse = {
   id: "q1",
@@ -53,10 +54,7 @@ describe("useQuotes", () => {
   });
 
   it("starts in loading state", () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockQuoteListResponse,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockQuoteListResponse));
 
     const { result } = renderHook(() =>
       useQuotes({ groupId: "g1", sort: "votes" }),
@@ -67,10 +65,7 @@ describe("useQuotes", () => {
   });
 
   it("fetches quotes successfully", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockQuoteListResponse,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockQuoteListResponse));
 
     const { result } = renderHook(() =>
       useQuotes({ groupId: "g1", sort: "votes" }),
@@ -86,10 +81,7 @@ describe("useQuotes", () => {
   });
 
   it("calls API with correct sort and groupId", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockQuoteListResponse,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockQuoteListResponse));
 
     renderHook(() => useQuotes({ groupId: "g1", sort: "recent" }));
 
@@ -105,10 +97,7 @@ describe("useQuotes", () => {
   });
 
   it("includes round_id param when provided", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockQuoteListResponse,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockQuoteListResponse));
 
     renderHook(() =>
       useQuotes({ groupId: "g1", sort: "votes", roundId: "r1" }),
@@ -121,10 +110,7 @@ describe("useQuotes", () => {
   });
 
   it("redirects to login on 401", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 401));
 
     renderHook(() => useQuotes({ groupId: "g1", sort: "votes" }));
 
@@ -134,10 +120,7 @@ describe("useQuotes", () => {
   });
 
   it("sets error on fetch failure", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 500));
 
     const { result } = renderHook(() =>
       useQuotes({ groupId: "g1", sort: "votes" }),
@@ -183,10 +166,7 @@ describe("useQuotes", () => {
   });
 
   it("sets hasMore true when next_cursor is present", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockQuoteListWithCursor,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockQuoteListWithCursor));
 
     const { result } = renderHook(() =>
       useQuotes({ groupId: "g1", sort: "votes" }),
@@ -210,14 +190,8 @@ describe("useQuotes", () => {
     };
 
     vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockQuoteListWithCursor,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => secondPage,
-      } as Response);
+      .mockResolvedValueOnce(jsonResponse(mockQuoteListWithCursor))
+      .mockResolvedValueOnce(jsonResponse(secondPage));
 
     const { result } = renderHook(() =>
       useQuotes({ groupId: "g1", sort: "votes" }),
@@ -240,14 +214,8 @@ describe("useQuotes", () => {
 
   it("refetch resets quotes and fetches again", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockQuoteListResponse,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockQuoteListResponse,
-      } as Response);
+      .mockResolvedValueOnce(jsonResponse(mockQuoteListResponse))
+      .mockResolvedValueOnce(jsonResponse(mockQuoteListResponse));
 
     const { result } = renderHook(() =>
       useQuotes({ groupId: "g1", sort: "votes" }),
@@ -268,10 +236,7 @@ describe("useQuotes", () => {
 
   it("resets quotes when sort changes", async () => {
     vi.spyOn(globalThis, "fetch")
-      .mockResolvedValue({
-        ok: true,
-        json: async () => mockQuoteListResponse,
-      } as Response);
+      .mockImplementation(async () => jsonResponse(mockQuoteListResponse));
 
     const { result, rerender } = renderHook(
       ({ sort }: { sort: "votes" | "recent" }) =>
@@ -304,10 +269,7 @@ describe("useQuoteMutations", () => {
   });
 
   it("createQuote returns quote on success", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockQuote,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockQuote));
 
     const { result } = renderHook(() => useQuoteMutations("g1"));
 
@@ -329,10 +291,7 @@ describe("useQuoteMutations", () => {
   });
 
   it("createQuote returns null on API error", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 400));
 
     const { result } = renderHook(() => useQuoteMutations("g1"));
 
@@ -360,10 +319,7 @@ describe("useQuoteMutations", () => {
   });
 
   it("toggleVote returns voted boolean on success", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ voted: true }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(({ voted: true })));
 
     const { result } = renderHook(() => useQuoteMutations("g1"));
 
@@ -383,10 +339,7 @@ describe("useQuoteMutations", () => {
   });
 
   it("toggleVote returns null on API error", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 404));
 
     const { result } = renderHook(() => useQuoteMutations("g1"));
 
@@ -399,10 +352,7 @@ describe("useQuoteMutations", () => {
   });
 
   it("deleteQuote returns true on 200", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 200));
 
     const { result } = renderHook(() => useQuoteMutations("g1"));
 
@@ -422,10 +372,7 @@ describe("useQuoteMutations", () => {
   });
 
   it("deleteQuote returns true on 204", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 204,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 204));
 
     const { result } = renderHook(() => useQuoteMutations("g1"));
 
@@ -438,10 +385,7 @@ describe("useQuoteMutations", () => {
   });
 
   it("deleteQuote returns false on API error", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 403));
 
     const { result } = renderHook(() => useQuoteMutations("g1"));
 

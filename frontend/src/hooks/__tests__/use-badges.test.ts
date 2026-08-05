@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { useBadges, fetchBadgeProgress } from "../use-badges";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockMyBadges = {
   badges: {
@@ -60,11 +61,7 @@ describe("useBadges", () => {
   });
 
   it("starts in loading state", () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => mockMyBadges,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse(mockMyBadges, 200));
 
     const { result } = renderHook(() => useBadges());
     expect(result.current.loading).toBe(true);
@@ -72,16 +69,8 @@ describe("useBadges", () => {
 
   it("fetches both endpoints and returns merged data", async () => {
     vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockMyBadges,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockCatalog,
-      } as Response);
+      .mockResolvedValueOnce(jsonResponse(mockMyBadges, 200))
+      .mockResolvedValueOnce(jsonResponse(mockCatalog, 200));
 
     const { result } = renderHook(() => useBadges());
 
@@ -95,21 +84,9 @@ describe("useBadges", () => {
   });
 
   it("calls both API endpoints with credentials include", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => mockMyBadges,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse(mockMyBadges, 200));
 
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => mockMyBadges,
-    } as Response).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => mockCatalog,
-    } as Response);
+    fetchSpy.mockResolvedValueOnce(jsonResponse(mockMyBadges, 200)).mockResolvedValueOnce(jsonResponse(mockCatalog, 200));
 
     renderHook(() => useBadges());
 
@@ -127,16 +104,8 @@ describe("useBadges", () => {
 
   it("redirects to login when my badges returns 401", async () => {
     vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        json: async () => ({}),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockCatalog,
-      } as Response);
+      .mockResolvedValueOnce(jsonResponse(({}), 401))
+      .mockResolvedValueOnce(jsonResponse(mockCatalog, 200));
 
     renderHook(() => useBadges());
 
@@ -147,16 +116,8 @@ describe("useBadges", () => {
 
   it("redirects to login when catalog returns 401", async () => {
     vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockMyBadges,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        json: async () => ({}),
-      } as Response);
+      .mockResolvedValueOnce(jsonResponse(mockMyBadges, 200))
+      .mockResolvedValueOnce(jsonResponse(({}), 401));
 
     renderHook(() => useBadges());
 
@@ -167,16 +128,8 @@ describe("useBadges", () => {
 
   it("sets error when my badges request fails", async () => {
     vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: async () => ({}),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockCatalog,
-      } as Response);
+      .mockResolvedValueOnce(jsonResponse(({}), 500))
+      .mockResolvedValueOnce(jsonResponse(mockCatalog, 200));
 
     const { result } = renderHook(() => useBadges());
 
@@ -189,16 +142,8 @@ describe("useBadges", () => {
 
   it("sets error when catalog request fails", async () => {
     vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockMyBadges,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: async () => ({}),
-      } as Response);
+      .mockResolvedValueOnce(jsonResponse(mockMyBadges, 200))
+      .mockResolvedValueOnce(jsonResponse(({}), 500));
 
     const { result } = renderHook(() => useBadges());
 
@@ -239,33 +184,13 @@ describe("useBadges", () => {
 
   it("refetch triggers a new request", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => mockMyBadges,
-      } as Response);
+      .mockImplementation(async () => jsonResponse(mockMyBadges, 200));
 
     fetchSpy
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockMyBadges,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockCatalog,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockMyBadges,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockCatalog,
-      } as Response);
+      .mockResolvedValueOnce(jsonResponse(mockMyBadges, 200))
+      .mockResolvedValueOnce(jsonResponse(mockCatalog, 200))
+      .mockResolvedValueOnce(jsonResponse(mockMyBadges, 200))
+      .mockResolvedValueOnce(jsonResponse(mockCatalog, 200));
 
     const { result } = renderHook(() => useBadges());
 
@@ -300,10 +225,7 @@ describe("fetchBadgeProgress", () => {
       percentage: 60,
     };
 
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockProgress,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockProgress));
 
     const result = await fetchBadgeProgress("bookworm");
 
@@ -315,10 +237,7 @@ describe("fetchBadgeProgress", () => {
   });
 
   it("throws on non-ok response", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 404));
 
     await expect(fetchBadgeProgress("non-existent")).rejects.toThrow(
       "Failed to fetch progress for badge: non-existent",

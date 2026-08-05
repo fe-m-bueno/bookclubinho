@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({
 
 import { useGroupStats } from "../use-group-stats";
 import type { GroupStatsResponse } from "@/lib/types/stats";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockStats: GroupStatsResponse = {
   total_books_read: 5,
@@ -53,10 +54,7 @@ describe("useGroupStats", () => {
   });
 
   it("fetches stats successfully and sets data", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockStats,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockStats));
 
     const { result } = renderHook(() => useGroupStats("g1"));
 
@@ -71,10 +69,7 @@ describe("useGroupStats", () => {
   });
 
   it("starts in loading state", () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockStats,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockStats));
 
     const { result } = renderHook(() => useGroupStats("g1"));
 
@@ -83,10 +78,7 @@ describe("useGroupStats", () => {
   });
 
   it("calls API with correct URL and credentials", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockStats,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockStats));
 
     renderHook(() => useGroupStats("g1"));
 
@@ -99,10 +91,7 @@ describe("useGroupStats", () => {
   });
 
   it("redirects to login on 401", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 401));
 
     renderHook(() => useGroupStats("g1"));
 
@@ -112,10 +101,7 @@ describe("useGroupStats", () => {
   });
 
   it("sets error on non-401 failure", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 500));
 
     const { result } = renderHook(() => useGroupStats("g1"));
 
@@ -156,10 +142,7 @@ describe("useGroupStats", () => {
   });
 
   it("refetch triggers a new API call", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-      json: async () => mockStats,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse(mockStats));
 
     const { result } = renderHook(() => useGroupStats("g1"));
 
@@ -175,10 +158,7 @@ describe("useGroupStats", () => {
   });
 
   it("uses groupId in the request URL", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockStats,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockStats));
 
     renderHook(() => useGroupStats("my-group-id-123"));
 

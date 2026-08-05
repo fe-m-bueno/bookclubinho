@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { toast } from "sonner";
 
 interface StartReviewButtonProps {
@@ -26,8 +26,7 @@ export function StartReviewButton({
   onStarted,
 }: StartReviewButtonProps) {
   const { submit, loading } = useAuthSubmit({
-    url: `/api/v1/rounds/${roundId}/start-review`,
-    headers: JSON_HEADERS,
+    path: `/rounds/${roundId}/start-review`,
     onSuccess: async () => {
       toast.success("Fase de reviews iniciada!");
       onStarted();
@@ -71,7 +70,7 @@ export function StartReviewButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => submit(JSON.stringify({}))}>
+            <AlertDialogAction onClick={() => submit({})}>
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
