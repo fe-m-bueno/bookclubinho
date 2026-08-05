@@ -21,6 +21,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, R
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.core.after_commit import BackgroundTasksScheduler
 from app.core.deps import CurrentUser, DBSession, GroupMemberDep  # noqa: TC001
 from app.db.models.message import GroupMessage, MessageReaction
 from app.schemas.message import (
@@ -36,7 +37,6 @@ from app.schemas.message import (
 )
 from app.schemas.report import MessageReportRequest, MessageReportResponse
 from app.security.rate_limit import limiter
-from app.services.badge_checker import check_and_award_badges
 from app.services.chat import (
     ChatError,
     create_message,
@@ -203,16 +203,15 @@ async def send_message(
 ) -> ChatMessageResponse:
     """Envia uma nova mensagem no chat do grupo."""
     try:
-        msg = await create_message(db, group_id=group_id, user_id=current_user.id, data=body)
+        msg = await create_message(
+            db,
+            group_id=group_id,
+            user_id=current_user.id,
+            data=body,
+            after_commit=BackgroundTasksScheduler(background_tasks),
+        )
     except ChatError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-
-    background_tasks.add_task(
-        check_and_award_badges,
-        str(current_user.id),
-        "message_sent",
-        {"group_id": str(group_id)},
-    )
 
     return await _reload_and_respond(db, msg.id, current_user.id)
 

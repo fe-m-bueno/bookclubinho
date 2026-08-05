@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.core.after_commit import AfterCommit
     from app.schemas.message import MessageCreateRequest, MessageEditRequest
 
 from app.core.exceptions import ServiceError
@@ -23,6 +24,7 @@ from app.db.models.message import ContentType, GroupMessage, MessageReaction
 from app.security.sanitizer import sanitize
 from app.security.tiptap import sanitize_tiptap_json
 from app.services import membership
+from app.services.badge_checker import check_and_award_badges
 from app.services.group_helpers import emit_group_event
 
 logger = structlog.get_logger(__name__)
@@ -100,6 +102,8 @@ async def create_message(
     group_id: uuid.UUID,
     user_id: uuid.UUID,
     data: MessageCreateRequest,
+    *,
+    after_commit: AfterCommit,
 ) -> GroupMessage:
     """Create a new chat message. Validates membership and sanitizes content."""
     await membership.resolve(db, group_id, user_id)
@@ -180,6 +184,13 @@ async def create_message(
         )
     except Exception:
         logger.warning("notification_xadd_failed", message_id=str(msg.id))
+
+    after_commit.schedule(
+        check_and_award_badges,
+        str(user_id),
+        "message_sent",
+        {"group_id": str(group_id)},
+    )
 
     logger.info("chat_message_created", message_id=str(msg.id), group_id=str(group_id))
     return msg

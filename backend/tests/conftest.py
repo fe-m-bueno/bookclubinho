@@ -3,7 +3,34 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+
+class RecordingAfterCommit:
+    """Test adapter for the `AfterCommit` port — records instead of scheduling.
+
+    Lets a test assert *which* effects a service scheduled. Before the port
+    existed that was only observable by mounting the app and going through HTTP.
+    """
+
+    def __init__(self) -> None:
+        self.scheduled: list[tuple[Any, tuple[Any, ...], dict[str, Any]]] = []
+
+    def schedule(self, fn: Any, /, *args: Any, **kwargs: Any) -> None:
+        self.scheduled.append((fn, args, kwargs))
+
+    @property
+    def event_types(self) -> list[str]:
+        """The badge event names scheduled, in order — the usual assertion."""
+        return [args[1] for _fn, args, _kw in self.scheduled if len(args) > 1]
+
+
+@pytest.fixture
+def after_commit() -> RecordingAfterCommit:
+    return RecordingAfterCommit()
 
 
 def mock_db_returning(value: object) -> AsyncMock:

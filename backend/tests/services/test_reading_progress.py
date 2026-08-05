@@ -15,8 +15,10 @@ from app.services.reading_progress import (
     cleanup_expired_streaks,
     get_group_progress,
     get_my_progress,
-    log_progress,
+    mark_finished,
+    record_progress,
 )
+from tests.conftest import RecordingAfterCommit
 
 # ── Mock factories ─────────────────────────────────────────────────────────────
 
@@ -63,7 +65,7 @@ def _make_progress(**overrides: object) -> MagicMock:
 
 
 def _db_for_log(round_: MagicMock, member: MagicMock, user: MagicMock | None = None) -> AsyncMock:
-    """Mock db for log_progress: verify_round_member (2 queries) → fast streak read → streak lock → groups."""
+    """Mock db for record_progress: verify_round_member (2 queries) → fast streak read → streak lock → groups."""
     db = AsyncMock()
     res_round = MagicMock()
     res_round.scalar_one_or_none.return_value = round_
@@ -107,11 +109,11 @@ def _db_for_get_my(round_: MagicMock, member: MagicMock, progress: MagicMock | N
     return db
 
 
-# ── log_progress ──────────────────────────────────────────────────────────────
+# ── record_progress ──────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_log_progress_success_with_percentage() -> None:
+async def test_record_progress_success_with_percentage() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING, book_page_count=None)
     member = _make_member(user_id=user_id)
@@ -119,7 +121,14 @@ async def test_log_progress_success_with_percentage() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=42.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=42.0,
+        )
 
     db.add.assert_called_once()
     assert db.flush.call_count >= 1
@@ -130,7 +139,7 @@ async def test_log_progress_success_with_percentage() -> None:
 
 
 @pytest.mark.asyncio
-async def test_log_progress_success_with_page_and_page_count() -> None:
+async def test_record_progress_success_with_page_and_page_count() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING, book_page_count=200)
     member = _make_member(user_id=user_id)
@@ -138,7 +147,14 @@ async def test_log_progress_success_with_page_and_page_count() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=100, percentage=None)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=100,
+            percentage=None,
+        )
 
     added = db.add.call_args[0][0]
     assert added.current_page == 100
@@ -146,7 +162,7 @@ async def test_log_progress_success_with_page_and_page_count() -> None:
 
 
 @pytest.mark.asyncio
-async def test_log_progress_page_at_page_count_caps_to_100() -> None:
+async def test_record_progress_page_at_page_count_caps_to_100() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING, book_page_count=300)
     member = _make_member(user_id=user_id)
@@ -154,14 +170,21 @@ async def test_log_progress_page_at_page_count_caps_to_100() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=300, percentage=None)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=300,
+            percentage=None,
+        )
 
     added = db.add.call_args[0][0]
     assert added.percentage == 100.0
 
 
 @pytest.mark.asyncio
-async def test_log_progress_page_exceeds_page_count_caps_to_100() -> None:
+async def test_record_progress_page_exceeds_page_count_caps_to_100() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING, book_page_count=300)
     member = _make_member(user_id=user_id)
@@ -169,14 +192,21 @@ async def test_log_progress_page_exceeds_page_count_caps_to_100() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=350, percentage=None)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=350,
+            percentage=None,
+        )
 
     added = db.add.call_args[0][0]
     assert added.percentage == 100.0
 
 
 @pytest.mark.asyncio
-async def test_log_progress_page_without_page_count_defaults_to_zero() -> None:
+async def test_record_progress_page_without_page_count_defaults_to_zero() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING, book_page_count=None)
     member = _make_member(user_id=user_id)
@@ -184,7 +214,14 @@ async def test_log_progress_page_without_page_count_defaults_to_zero() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=50, percentage=None)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=50,
+            percentage=None,
+        )
 
     added = db.add.call_args[0][0]
     assert added.percentage == 0.0
@@ -192,32 +229,46 @@ async def test_log_progress_page_without_page_count_defaults_to_zero() -> None:
 
 
 @pytest.mark.asyncio
-async def test_log_progress_wrong_status_raises_409() -> None:
+async def test_record_progress_wrong_status_raises_409() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.NOMINATING)
     member = _make_member(user_id=user_id)
     db = _db_for_log(round_, member)
 
     with pytest.raises(ReadingProgressError) as exc_info:
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=50.0,
+        )
     assert exc_info.value.status_code == 409
     assert "leitura" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
-async def test_log_progress_reviewing_status_raises_409() -> None:
+async def test_record_progress_reviewing_status_raises_409() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.REVIEWING)
     member = _make_member(user_id=user_id)
     db = _db_for_log(round_, member)
 
     with pytest.raises(ReadingProgressError) as exc_info:
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=50.0,
+        )
     assert exc_info.value.status_code == 409
 
 
 @pytest.mark.asyncio
-async def test_log_progress_not_member_raises_404() -> None:
+async def test_record_progress_not_member_raises_404() -> None:
     """verify_round_member raises RoundError(404) — propagates through."""
     from app.services.round import RoundError
 
@@ -228,8 +279,9 @@ async def test_log_progress_not_member_raises_404() -> None:
     db.execute = AsyncMock(return_value=res_not_found)
 
     with pytest.raises(RoundError) as exc_info:
-        await log_progress(
+        await record_progress(
             db,
+            after_commit=RecordingAfterCommit(),
             round_id=uuid.uuid4(),
             user_id=user_id,
             current_page=None,
@@ -239,7 +291,7 @@ async def test_log_progress_not_member_raises_404() -> None:
 
 
 @pytest.mark.asyncio
-async def test_log_progress_percentage_used_when_no_page_count() -> None:
+async def test_record_progress_percentage_used_when_no_page_count() -> None:
     """When only pct given and no page_count, the given pct is stored directly."""
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING, book_page_count=None)
@@ -248,14 +300,21 @@ async def test_log_progress_percentage_used_when_no_page_count() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=66.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=66.0,
+        )
 
     added = db.add.call_args[0][0]
     assert added.percentage == 66.0
 
 
 @pytest.mark.asyncio
-async def test_log_progress_stores_note_and_total_pages() -> None:
+async def test_record_progress_stores_note_and_total_pages() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING, book_page_count=None)
     member = _make_member(user_id=user_id)
@@ -263,8 +322,9 @@ async def test_log_progress_stores_note_and_total_pages() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(
+        await record_progress(
             db,
+            after_commit=RecordingAfterCommit(),
             round_id=round_.id,
             user_id=user_id,
             current_page=None,
@@ -282,7 +342,7 @@ async def test_log_progress_stores_note_and_total_pages() -> None:
 
 
 @pytest.mark.asyncio
-async def test_log_progress_streak_today_no_change() -> None:
+async def test_record_progress_streak_today_no_change() -> None:
     """If streak_last_update == today, streak_current doesn't change."""
     user_id = uuid.uuid4()
     today = date.today()
@@ -293,13 +353,20 @@ async def test_log_progress_streak_today_no_change() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=30.0,
+        )
 
     assert user.streak_current == 5  # unchanged
 
 
 @pytest.mark.asyncio
-async def test_log_progress_streak_yesterday_increments() -> None:
+async def test_record_progress_streak_yesterday_increments() -> None:
     """If streak_last_update == yesterday, streak_current += 1."""
     user_id = uuid.uuid4()
     yesterday = date.today() - timedelta(days=1)
@@ -310,14 +377,21 @@ async def test_log_progress_streak_yesterday_increments() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=30.0,
+        )
 
     assert user.streak_current == 4
     assert user.streak_longest == 4  # new record
 
 
 @pytest.mark.asyncio
-async def test_log_progress_streak_missed_day_resets_to_1() -> None:
+async def test_record_progress_streak_missed_day_resets_to_1() -> None:
     """If streak_last_update is older than yesterday, streak_current resets to 1."""
     user_id = uuid.uuid4()
     two_days_ago = date.today() - timedelta(days=2)
@@ -328,14 +402,21 @@ async def test_log_progress_streak_missed_day_resets_to_1() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=30.0,
+        )
 
     assert user.streak_current == 1
     assert user.streak_longest == 10  # not changed, still personal best
 
 
 @pytest.mark.asyncio
-async def test_log_progress_streak_null_last_update_starts_at_1() -> None:
+async def test_record_progress_streak_null_last_update_starts_at_1() -> None:
     """First ever reading — streak starts at 1."""
     user_id = uuid.uuid4()
     user = _make_user(streak_current=0, streak_longest=0, streak_last_update=None)
@@ -345,7 +426,14 @@ async def test_log_progress_streak_null_last_update_starts_at_1() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=30.0,
+        )
 
     assert user.streak_current == 1
     assert user.streak_longest == 1
@@ -355,7 +443,7 @@ async def test_log_progress_streak_null_last_update_starts_at_1() -> None:
 
 
 @pytest.mark.asyncio
-async def test_log_progress_emits_progress_updated_event() -> None:
+async def test_record_progress_emits_progress_updated_event() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING)
     member = _make_member(user_id=user_id)
@@ -364,7 +452,14 @@ async def test_log_progress_emits_progress_updated_event() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=50.0,
+        )
 
     # Check progress_updated was emitted
     xadd_calls = mock_redis.xadd.call_args_list
@@ -375,7 +470,7 @@ async def test_log_progress_emits_progress_updated_event() -> None:
 
 
 @pytest.mark.asyncio
-async def test_log_progress_emits_approaching_end_when_80_percent() -> None:
+async def test_record_progress_emits_approaching_end_when_80_percent() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING)
     member = _make_member(user_id=user_id)
@@ -384,14 +479,21 @@ async def test_log_progress_emits_approaching_end_when_80_percent() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=85.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=85.0,
+        )
 
     payloads = [call[0][1] for call in mock_redis.xadd.call_args_list]
     assert any(p.get("type") == "approaching_end" for p in payloads)
 
 
 @pytest.mark.asyncio
-async def test_log_progress_no_approaching_end_below_80_percent() -> None:
+async def test_record_progress_no_approaching_end_below_80_percent() -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING)
     member = _make_member(user_id=user_id)
@@ -400,14 +502,21 @@ async def test_log_progress_no_approaching_end_below_80_percent() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=79.9)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=79.9,
+        )
 
     payloads = [call[0][1] for call in mock_redis.xadd.call_args_list]
     assert not any(p.get("type") == "approaching_end" for p in payloads)
 
 
 @pytest.mark.asyncio
-async def test_log_progress_redis_error_does_not_propagate() -> None:
+async def test_record_progress_redis_error_does_not_propagate() -> None:
     """Redis failures should not break progress logging."""
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.READING)
@@ -418,11 +527,18 @@ async def test_log_progress_redis_error_does_not_propagate() -> None:
     mock_redis.xadd = AsyncMock(side_effect=RedisError("Redis down"))
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
         # Should not raise
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=50.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=50.0,
+        )
 
 
 @pytest.mark.asyncio
-async def test_log_progress_emits_streak_milestone() -> None:
+async def test_record_progress_emits_streak_milestone() -> None:
     """A 7-day streak should emit a streak_milestone event."""
     user_id = uuid.uuid4()
     yesterday = date.today() - timedelta(days=1)
@@ -460,7 +576,14 @@ async def test_log_progress_emits_streak_milestone() -> None:
 
     mock_redis = AsyncMock()
     with patch("app.services.reading_progress.get_redis", return_value=mock_redis):
-        await log_progress(db, round_id=round_.id, user_id=user_id, current_page=None, percentage=30.0)
+        await record_progress(
+            db,
+            after_commit=RecordingAfterCommit(),
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=30.0,
+        )
 
     payloads = [call[0][1] for call in mock_redis.xadd.call_args_list]
     assert any(p.get("type") == "streak_milestone" and p.get("milestone") == "7" for p in payloads)
@@ -661,16 +784,206 @@ async def test_get_group_progress_includes_user_display_fields() -> None:
 # ── cleanup_expired_streaks ───────────────────────────────────────────────────
 
 
+def _cleanup_db(timezones: list[str], rowcount: int = 1) -> AsyncMock:
+    """db mock: primeira query devolve os timezones distintos, o resto são UPDATEs."""
+    tz_res = MagicMock()
+    tz_res.scalars.return_value.all.return_value = timezones
+    upd_res = MagicMock()
+    upd_res.rowcount = rowcount
+
+    db = AsyncMock()
+    db.execute = AsyncMock(side_effect=[tz_res, *[upd_res] * len(timezones)])
+    db.flush = AsyncMock()
+    return db
+
+
 @pytest.mark.asyncio
 async def test_cleanup_expired_streaks_resets_users() -> None:
-    db = AsyncMock()
-    res = MagicMock()
-    res.rowcount = 5
-    db.execute = AsyncMock(return_value=res)
-    db.flush = AsyncMock()
+    db = _cleanup_db(["America/Sao_Paulo"], rowcount=5)
 
     count = await cleanup_expired_streaks(db)
 
     assert count == 5
-    db.execute.assert_called_once()
     db.flush.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_cleanup_sums_across_timezones() -> None:
+    db = _cleanup_db(["America/Sao_Paulo", "Pacific/Auckland", "UTC"], rowcount=2)
+
+    count = await cleanup_expired_streaks(db)
+
+    assert count == 6  # 3 timezones × 2 linhas
+    # 1 SELECT dos timezones + 1 UPDATE por timezone
+    assert db.execute.await_count == 4
+
+
+@pytest.mark.asyncio
+async def test_cleanup_uses_each_timezone_own_cutoff() -> None:
+    """O corte de cada grupo é o 'ontem' daquele timezone, não o de UTC.
+
+    Antes disso o cleanup comparava streak_last_update — gravado no timezone do
+    usuário — contra um único datetime.now(UTC).date(), e zerava um dia cedo quem
+    está a oeste de UTC: alguém em UTC-11 cujo dia local ainda corre.
+    """
+    db = _cleanup_db(["Pacific/Kiritimati", "Pacific/Midway"])  # UTC+14 e UTC-11
+
+    await cleanup_expired_streaks(db)
+
+    cutoffs = []
+    for call in db.execute.await_args_list[1:]:
+        compiled = str(call.args[0].compile(compile_kwargs={"literal_binds": True}))
+        cutoffs.append(compiled)
+
+    # Os dois UPDATEs usam datas diferentes: 25h de diferença entre os fusos
+    # garante que o 'ontem' de cada um não coincide.
+    assert len(cutoffs) == 2
+    assert cutoffs[0] != cutoffs[1]
+    for tz_name, compiled in zip(["Pacific/Kiritimati", "Pacific/Midway"], cutoffs, strict=True):
+        assert tz_name in compiled, "cada UPDATE deve ser escopado ao seu timezone"
+
+
+@pytest.mark.asyncio
+async def test_cleanup_falls_back_to_utc_on_unknown_timezone() -> None:
+    """Um nome de timezone que o ZoneInfo não conhece não derruba o batch.
+
+    Mesmo fallback de _update_streak. Fazer a conta em Python em vez de usar o
+    timezone() do Postgres é o que garante isso: lá, um nome inválido faria o
+    UPDATE inteiro falhar e nenhum streak seria zerado.
+    """
+    db = _cleanup_db(["Nao/Existe", "UTC"], rowcount=3)
+
+    count = await cleanup_expired_streaks(db)
+
+    assert count == 6
+    assert db.execute.await_count == 3
+
+
+# ── mark_finished ─────────────────────────────────────────────────────────────
+
+
+def _db_for_mark_finished(
+    *,
+    existing_finished: bool,
+    user: MagicMock | None = None,
+) -> AsyncMock:
+    """db mock: checagem de idempotência → fast streak read → streak lock → groups."""
+    res_existing = MagicMock()
+    res_existing.scalar_one_or_none.return_value = uuid.uuid4() if existing_finished else None
+
+    u = user or _make_user()
+    res_fast = MagicMock()
+    fast_row = MagicMock()
+    fast_row.streak_last_update = u.streak_last_update
+    fast_row.timezone = "America/Sao_Paulo"
+    res_fast.one_or_none.return_value = fast_row
+
+    res_user = MagicMock()
+    res_user.scalar_one_or_none.return_value = u
+    res_groups = MagicMock()
+    res_groups.all.return_value = []
+
+    db = AsyncMock()
+    db.execute = AsyncMock(side_effect=[res_existing, res_fast, res_user, res_groups])
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.refresh = AsyncMock()
+    return db
+
+
+@pytest.mark.asyncio
+async def test_mark_finished_writes_snapshot_and_fans_out(after_commit) -> None:
+    """Este é o bug de #202: o caminho de review escrevia ReadingProgress na mão e
+    não subia streak, não emitia evento nem reavaliava os badges de book_finished."""
+    user_id = uuid.uuid4()
+    round_ = _make_round(status=RoundStatus.REVIEWING, book_page_count=300)
+    db = _db_for_mark_finished(existing_finished=False)
+
+    with patch("app.services.reading_progress.get_redis", return_value=AsyncMock()):
+        progress = await mark_finished(db, round_, user_id, after_commit=after_commit)
+
+    assert progress is not None
+    added = db.add.call_args[0][0]
+    assert added.percentage == 100.0
+    assert added.progress_type == "finished"
+    assert added.current_page == 300
+    assert after_commit.event_types == ["streak_updated", "book_finished"]
+
+
+@pytest.mark.asyncio
+async def test_mark_finished_is_idempotent(after_commit) -> None:
+    """Já existe snapshot 'finished' — nada é escrito e nada é agendado de novo."""
+    round_ = _make_round(status=RoundStatus.REVIEWING)
+    db = _db_for_mark_finished(existing_finished=True)
+
+    result = await mark_finished(db, round_, uuid.uuid4(), after_commit=after_commit)
+
+    assert result is None
+    db.add.assert_not_called()
+    assert after_commit.scheduled == []
+
+
+@pytest.mark.asyncio
+async def test_mark_finished_accepts_reading_status(after_commit) -> None:
+    round_ = _make_round(status=RoundStatus.READING, book_page_count=100)
+    db = _db_for_mark_finished(existing_finished=False)
+
+    with patch("app.services.reading_progress.get_redis", return_value=AsyncMock()):
+        assert await mark_finished(db, round_, uuid.uuid4(), after_commit=after_commit) is not None
+
+
+@pytest.mark.asyncio
+async def test_mark_finished_rejects_nominating_status(after_commit) -> None:
+    round_ = _make_round(status=RoundStatus.NOMINATING)
+    db = _db_for_mark_finished(existing_finished=False)
+
+    with pytest.raises(ReadingProgressError) as exc_info:
+        await mark_finished(db, round_, uuid.uuid4(), after_commit=after_commit)
+
+    assert exc_info.value.status_code == 409
+    assert after_commit.scheduled == []
+
+
+# ── fan-out de record_progress ────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_record_progress_schedules_streak_badge_only_below_100(after_commit) -> None:
+    user_id = uuid.uuid4()
+    round_ = _make_round(status=RoundStatus.READING, book_page_count=None)
+    db = _db_for_log(round_, _make_member(user_id=user_id))
+
+    with patch("app.services.reading_progress.get_redis", return_value=AsyncMock()):
+        await record_progress(
+            db,
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=None,
+            percentage=42.0,
+            after_commit=after_commit,
+        )
+
+    assert after_commit.event_types == ["streak_updated"]
+
+
+@pytest.mark.asyncio
+async def test_record_progress_schedules_book_finished_at_100(after_commit) -> None:
+    """O endpoint fazia um SELECT Round.group_id só para montar este payload;
+    o módulo já tem o round carregado."""
+    user_id = uuid.uuid4()
+    round_ = _make_round(status=RoundStatus.READING, book_page_count=200)
+    db = _db_for_log(round_, _make_member(user_id=user_id))
+
+    with patch("app.services.reading_progress.get_redis", return_value=AsyncMock()):
+        await record_progress(
+            db,
+            round_id=round_.id,
+            user_id=user_id,
+            current_page=200,
+            percentage=None,
+            after_commit=after_commit,
+        )
+
+    assert after_commit.event_types == ["streak_updated", "book_finished"]
+    _fn, args, _kw = after_commit.scheduled[-1]
+    assert args[2] == {"round_id": str(round_.id), "group_id": str(round_.group_id)}

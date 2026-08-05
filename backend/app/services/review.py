@@ -14,14 +14,16 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.core.after_commit import AfterCommit
     from app.schemas.review import ReviewCreateRequest, ReviewUpdateRequest
 
 from app.core.exceptions import ServiceError
 from app.db.models.book_review import BookReview
-from app.db.models.reading_progress import ReadingProgress
 from app.db.models.round import RoundStatus
 from app.security.sanitizer import sanitize
+from app.services.badge_checker import check_and_award_badges
 from app.services.group_helpers import emit_group_event
+from app.services.reading_progress import mark_finished
 from app.services.round import verify_round_member
 
 logger = structlog.get_logger(__name__)
@@ -38,6 +40,8 @@ async def submit_review(
     round_id: uuid.UUID,
     user_id: uuid.UUID,
     data: ReviewCreateRequest,
+    *,
+    after_commit: AfterCommit,
 ) -> BookReview:
     """Submit a book review. Round must be in READING or REVIEWING status."""
     round_ = await verify_round_member(db, round_id, user_id)
@@ -74,28 +78,19 @@ async def submit_review(
     )
     db.add(review)
 
-    # Auto-mark reading progress as finished if not already
-    latest_progress = await db.execute(
-        select(ReadingProgress)
-        .where(
-            ReadingProgress.round_id == round_id,
-            ReadingProgress.user_id == user_id,
-            ReadingProgress.progress_type == "finished",
-        )
-        .limit(1)
-    )
-    if latest_progress.scalar_one_or_none() is None:
-        finished_progress = ReadingProgress(
-            round_id=round_id,
-            user_id=user_id,
-            current_page=round_.book_page_count,
-            percentage=100.0,
-            progress_type="finished",
-            total_pages=round_.book_page_count,
-        )
-        db.add(finished_progress)
-
     await db.flush()
+
+    # Submitting a review means the book is finished. Going through mark_finished
+    # instead of inserting ReadingProgress by hand is what makes the streak, the
+    # SSE events and the book_finished badges fire on this path too.
+    await mark_finished(db, round_, user_id, after_commit=after_commit)
+
+    after_commit.schedule(
+        check_and_award_badges,
+        str(user_id),
+        "review_submitted",
+        {"round_id": str(round_id), "group_id": str(round_.group_id)},
+    )
 
     # Reload with user relationship for response serialization
     result = await db.execute(

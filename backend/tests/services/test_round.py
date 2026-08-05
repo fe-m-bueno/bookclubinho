@@ -29,7 +29,7 @@ from app.services.round import (
     verify_round_admin,
     verify_round_member,
 )
-from tests.conftest import mock_db_returning
+from tests.conftest import RecordingAfterCommit, mock_db_returning
 
 # ── Mock factories ─────────────────────────────────────────────────────────────
 
@@ -1032,7 +1032,12 @@ async def test_start_review_wrong_status() -> None:
 # ── finish_round ──────────────────────────────────────────────────────────────
 
 
-def _db_for_finish(round_: MagicMock, member: MagicMock, review_count: int) -> AsyncMock:
+def _db_for_finish(
+    round_: MagicMock,
+    member: MagicMock,
+    review_count: int,
+    member_ids: list[uuid.UUID] | None = None,
+) -> AsyncMock:
     db = AsyncMock()
     res_round = MagicMock()
     res_round.scalar_one_or_none.return_value = round_
@@ -1040,7 +1045,10 @@ def _db_for_finish(round_: MagicMock, member: MagicMock, review_count: int) -> A
     res_member.scalar_one_or_none.return_value = member
     res_count = MagicMock()
     res_count.scalar_one.return_value = review_count
-    db.execute = AsyncMock(side_effect=[res_round, res_member, res_count])
+    # finish_round busca os membros do clube para agendar o badge de cada um
+    res_members = MagicMock()
+    res_members.all.return_value = [(mid,) for mid in (member_ids or [member.user_id])]
+    db.execute = AsyncMock(side_effect=[res_round, res_member, res_count, res_members])
     return db
 
 
@@ -1052,7 +1060,7 @@ async def test_finish_round_success() -> None:
     member = _make_member(user_id=user_id, role="admin")
     db = _db_for_finish(round_, member, review_count=1)
 
-    result = await finish_round(db, round_id=round_.id, user_id=user_id)
+    result = await finish_round(db, after_commit=RecordingAfterCommit(), round_id=round_.id, user_id=user_id)
     assert result.status == RoundStatus.FINISHED
     assert result.finished_at is not None
 
@@ -1065,7 +1073,7 @@ async def test_finish_round_wrong_status() -> None:
     db = _db_for_admin_action(round_, member)
 
     with pytest.raises(RoundError) as exc_info:
-        await finish_round(db, round_id=round_.id, user_id=user_id)
+        await finish_round(db, after_commit=RecordingAfterCommit(), round_id=round_.id, user_id=user_id)
     assert exc_info.value.status_code == 409
 
 
@@ -1077,7 +1085,7 @@ async def test_finish_round_no_reviews_raises() -> None:
     db = _db_for_finish(round_, member, review_count=0)
 
     with pytest.raises(RoundError) as exc_info:
-        await finish_round(db, round_id=round_.id, user_id=user_id)
+        await finish_round(db, after_commit=RecordingAfterCommit(), round_id=round_.id, user_id=user_id)
     assert exc_info.value.status_code == 422
     assert "review" in str(exc_info.value).lower()
 
@@ -1090,5 +1098,41 @@ async def test_finish_round_sets_finished_at() -> None:
     member = _make_member(user_id=user_id, role="admin")
     db = _db_for_finish(round_, member, review_count=2)
 
-    result = await finish_round(db, round_id=round_.id, user_id=user_id)
+    result = await finish_round(db, after_commit=RecordingAfterCommit(), round_id=round_.id, user_id=user_id)
     assert result.finished_at is not None
+
+
+@pytest.mark.asyncio
+async def test_finish_round_schedules_book_finished_for_every_member(after_commit) -> None:
+    """Encerrar a rodada significa que o clube inteiro terminou o livro.
+
+    O fan-out morava no endpoint, então um segundo caller — cron, CLI, script —
+    transicionava a rodada e nenhum badge era reavaliado.
+    """
+    admin_id = uuid.uuid4()
+    other_ids = [uuid.uuid4(), uuid.uuid4()]
+    round_ = _make_round(status=RoundStatus.REVIEWING, nominations=[])
+    round_.finished_at = None
+    member = _make_member(user_id=admin_id, role="admin")
+    db = _db_for_finish(round_, member, review_count=1, member_ids=[admin_id, *other_ids])
+
+    await finish_round(db, after_commit=after_commit, round_id=round_.id, user_id=admin_id)
+
+    scheduled_users = [args[0] for _fn, args, _kw in after_commit.scheduled]
+    assert scheduled_users == [str(admin_id), *[str(i) for i in other_ids]]
+    assert after_commit.event_types == ["book_finished"] * 3
+    for _fn, args, _kw in after_commit.scheduled:
+        assert args[2] == {"group_id": str(round_.group_id), "round_id": str(round_.id)}
+
+
+@pytest.mark.asyncio
+async def test_finish_round_schedules_nothing_when_status_wrong(after_commit) -> None:
+    user_id = uuid.uuid4()
+    round_ = _make_round(status=RoundStatus.READING, nominations=[])
+    member = _make_member(user_id=user_id, role="admin")
+    db = _db_for_admin_action(round_, member)
+
+    with pytest.raises(RoundError):
+        await finish_round(db, after_commit=after_commit, round_id=round_.id, user_id=user_id)
+
+    assert after_commit.scheduled == []

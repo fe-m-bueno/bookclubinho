@@ -21,7 +21,11 @@ from app.db.models.group import GroupMember
 from app.db.models.reading_progress import ReadingProgress
 from app.db.models.round import Round, RoundStatus
 from app.db.models.user import User
+from app.services.badge_checker import check_and_award_badges
 from app.services.round import verify_round_member
+
+if TYPE_CHECKING:
+    from app.core.after_commit import AfterCommit
 
 logger = structlog.get_logger(__name__)
 
@@ -32,7 +36,7 @@ class ReadingProgressError(ServiceError):
     """Raised when reading progress validation fails."""
 
 
-async def log_progress(
+async def record_progress(
     db: AsyncSession,
     round_id: uuid.UUID,
     user_id: uuid.UUID,
@@ -41,8 +45,19 @@ async def log_progress(
     progress_type: str | None = None,
     total_pages: int | None = None,
     note: str | None = None,
+    *,
+    after_commit: AfterCommit,
 ) -> ReadingProgress:
-    """Insert a new progress snapshot. Round must be in READING status."""
+    """Record a progress snapshot and everything that follows from it.
+
+    Owns the whole fan-out: the snapshot row, the streak, the SSE events, and the
+    badge re-checks. Callers pass an `after_commit` scheduler and nothing else —
+    the badge checks can't run inline because `check_and_award_badges` opens its
+    own session and wouldn't see this transaction's rows.
+
+    Round must be in READING status. To mark a reader finished during the review
+    phase, use `mark_finished`.
+    """
     round_ = await verify_round_member(db, round_id, user_id)
 
     if round_.status != RoundStatus.READING:
@@ -94,14 +109,71 @@ async def log_progress(
         progress_type=resolved_type,
     )
 
-    # Update streak and emit Redis events
-    await _update_streak(db, user_id=user_id, round_=round_)
-    await _emit_progress_events(
+    await _fan_out(
+        db,
         round_=round_,
         user_id=user_id,
         percentage=computed_pct,
+        after_commit=after_commit,
     )
+    return progress
 
+
+async def mark_finished(
+    db: AsyncSession,
+    round_: Round,
+    user_id: uuid.UUID,
+    *,
+    after_commit: AfterCommit,
+) -> ReadingProgress | None:
+    """Mark a reader as finished with the book, idempotently.
+
+    Same fan-out as `record_progress`, but accepts REVIEWING as well as READING,
+    because submitting a review is itself a way of finishing the book. Returns
+    None when a "finished" snapshot already exists.
+
+    This exists so the review path stops writing ReadingProgress by hand: doing
+    that skipped the streak, the SSE events and the `book_finished` badges.
+    """
+    if round_.status not in (RoundStatus.READING, RoundStatus.REVIEWING):
+        raise ReadingProgressError(
+            "A rodada não está em fase de leitura nem de reviews.",
+            status_code=409,
+        )
+
+    existing = await db.execute(
+        select(ReadingProgress.id)
+        .where(
+            ReadingProgress.round_id == round_.id,
+            ReadingProgress.user_id == user_id,
+            ReadingProgress.progress_type == "finished",
+        )
+        .limit(1)
+    )
+    if existing.scalar_one_or_none() is not None:
+        return None
+
+    progress = ReadingProgress(
+        round_id=round_.id,
+        user_id=user_id,
+        current_page=round_.book_page_count,
+        percentage=100.0,
+        progress_type="finished",
+        total_pages=round_.book_page_count,
+    )
+    db.add(progress)
+    await db.flush()
+    await db.refresh(progress)
+
+    logger.info("progress_finished", round_id=str(round_.id), user_id=str(user_id))
+
+    await _fan_out(
+        db,
+        round_=round_,
+        user_id=user_id,
+        percentage=100.0,
+        after_commit=after_commit,
+    )
     return progress
 
 
@@ -201,24 +273,71 @@ async def get_group_progress(
 async def cleanup_expired_streaks(db: AsyncSession) -> int:
     """Reset streak_current to 0 for users who missed yesterday.
 
+    Grouped by timezone and compared against each group's own "yesterday",
+    computed in Python with the same ZoneInfo fallback `_update_streak` uses. A
+    single UTC cutoff would zero out users west of UTC a day early: someone in
+    UTC-11 whose local day is still running would be reset while they can still
+    read today. Doing the date maths here rather than with Postgres' `timezone()`
+    also keeps the job immune to a tz name that Python's tzdata accepts and the
+    server's does not — one such row would fail the whole statement.
+
     Returns the number of users affected.
     """
-    yesterday = datetime.now(UTC).date() - timedelta(days=1)
-    result = await db.execute(
-        update(User)
-        .where(
-            User.streak_last_update < yesterday,
-            User.streak_current > 0,
+    timezones = (await db.execute(select(User.timezone).distinct())).scalars().all()
+
+    count = 0
+    for tz_name in timezones:
+        try:
+            tz: ZoneInfo | type[UTC] = ZoneInfo(tz_name)
+        except ZoneInfoNotFoundError:
+            tz = UTC  # type: ignore[assignment]
+        cutoff = datetime.now(tz).date() - timedelta(days=1)  # type: ignore[arg-type]
+
+        result = await db.execute(
+            update(User)
+            .where(
+                User.timezone == tz_name,
+                User.streak_last_update < cutoff,
+                User.streak_current > 0,
+            )
+            .values(streak_current=0)
         )
-        .values(streak_current=0)
-    )
+        count += result.rowcount
+
     await db.flush()
-    count = result.rowcount
-    logger.info("streak_cleanup_done", users_reset=count)
+    logger.info("streak_cleanup_done", users_reset=count, timezones=len(timezones))
     return count
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
+
+
+async def _fan_out(
+    db: AsyncSession,
+    *,
+    round_: Round,
+    user_id: uuid.UUID,
+    percentage: float,
+    after_commit: AfterCommit,
+) -> None:
+    """Everything that follows from a new progress snapshot.
+
+    Both public entry points go through here, which is the point: the list below
+    used to be split between the service (streak, events) and the endpoint
+    (badges), so any second writer silently did a fraction of it.
+    """
+    await _update_streak(db, user_id=user_id, round_=round_)
+    await _emit_progress_events(round_=round_, user_id=user_id, percentage=percentage)
+
+    after_commit.schedule(check_and_award_badges, str(user_id), "streak_updated", {})
+
+    if percentage >= 100.0:
+        after_commit.schedule(
+            check_and_award_badges,
+            str(user_id),
+            "book_finished",
+            {"round_id": str(round_.id), "group_id": str(round_.group_id)},
+        )
 
 
 async def _update_streak(

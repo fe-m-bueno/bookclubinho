@@ -13,10 +13,13 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.core.after_commit import AfterCommit
+
 from app.core.exceptions import ServiceError
 from app.db.models.reading_session import ReadingSession
 from app.db.models.round import RoundStatus
 from app.db.models.user import User
+from app.services.badge_checker import check_and_award_badges
 from app.services.round import verify_round_member
 
 logger = structlog.get_logger(__name__)
@@ -86,6 +89,8 @@ async def stop_session(
     session_id: uuid.UUID,
     user_id: uuid.UUID,
     duration_override_minutes: int | None = None,
+    *,
+    after_commit: AfterCommit,
 ) -> ReadingSession:
     """Stop an active reading session and record the duration.
 
@@ -123,6 +128,17 @@ async def stop_session(
 
     await db.flush()
     await db.refresh(session)
+
+    after_commit.schedule(
+        check_and_award_badges,
+        str(user_id),
+        "session_stopped",
+        {
+            "round_id": str(session.round_id),
+            "duration_minutes": str(duration),
+            "started_at": session.started_at.isoformat(),
+        },
+    )
 
     logger.info(
         "reading_session_stopped",

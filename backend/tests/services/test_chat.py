@@ -20,6 +20,7 @@ from app.services.chat import (
     toggle_reaction,
 )
 from app.services.membership import MembershipError
+from tests.conftest import RecordingAfterCommit
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -120,7 +121,9 @@ async def test_create_text_message_success() -> None:
     db.refresh = AsyncMock()
 
     with patch("app.services.chat._emit_chat_event", new=AsyncMock()):
-        msg = await create_message(db, group_id=group_id, user_id=user_id, data=data)
+        msg = await create_message(
+            db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data
+        )
 
     db.add.assert_called_once()
     db.flush.assert_called_once()
@@ -139,7 +142,9 @@ async def test_create_message_not_member_raises_404() -> None:
 
     data = _make_create_request()
     with pytest.raises(MembershipError) as exc_info:
-        await create_message(db, group_id=uuid.uuid4(), user_id=uuid.uuid4(), data=data)
+        await create_message(
+            db, after_commit=RecordingAfterCommit(), group_id=uuid.uuid4(), user_id=uuid.uuid4(), data=data
+        )
     assert exc_info.value.status_code == 404
 
 
@@ -162,7 +167,7 @@ async def test_create_message_sanitizes_content_text() -> None:
         patch("app.services.chat.sanitize", return_value="Hello") as mock_sanitize,
         patch("app.services.chat._emit_chat_event", new=AsyncMock()),
     ):
-        await create_message(db, group_id=group_id, user_id=user_id, data=data)
+        await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
 
     mock_sanitize.assert_called_once_with("<script>evil()</script>Hello")
 
@@ -187,7 +192,7 @@ async def test_create_message_with_parent_in_different_group_raises() -> None:
     db.execute = AsyncMock(side_effect=[res_member, res_parent])
 
     with pytest.raises(ChatError) as exc_info:
-        await create_message(db, group_id=group_id, user_id=user_id, data=data)
+        await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
     assert exc_info.value.status_code == 404
 
 

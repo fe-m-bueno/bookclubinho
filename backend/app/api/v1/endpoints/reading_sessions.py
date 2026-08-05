@@ -12,6 +12,7 @@ import uuid  # noqa: TC003 — required at runtime for FastAPI path-param resolu
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 
+from app.core.after_commit import BackgroundTasksScheduler
 from app.core.deps import CurrentUser, DBSession  # noqa: TC001
 from app.db.models.reading_session import ReadingSession  # noqa: TC001
 from app.schemas.reading_session import (
@@ -21,7 +22,6 @@ from app.schemas.reading_session import (
     SessionStopRequest,
 )
 from app.security.rate_limit import limiter
-from app.services.badge_checker import check_and_award_badges
 from app.services.reading_session import (
     ReadingSessionError,
     list_my_sessions,
@@ -95,20 +95,10 @@ async def stop_reading_session(
             session_id=session_id,
             user_id=current_user.id,
             duration_override_minutes=body.duration_override_minutes,
+            after_commit=BackgroundTasksScheduler(background_tasks),
         )
     except ReadingSessionError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-
-    background_tasks.add_task(
-        check_and_award_badges,
-        str(current_user.id),
-        "session_stopped",
-        {
-            "round_id": str(session.round_id),
-            "duration_minutes": str(session.duration_minutes or 0),
-            "started_at": session.started_at.isoformat(),
-        },
-    )
 
     return _session_to_response(session)
 

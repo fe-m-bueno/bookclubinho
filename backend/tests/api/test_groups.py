@@ -14,7 +14,7 @@ from app.db.models.group import GroupRole
 from app.schemas.group import GroupJoinRequest
 from app.services.group import GroupError
 from app.services.membership import MembershipError
-from tests.conftest import make_user, mock_db_returning
+from tests.conftest import RecordingAfterCommit, make_user, mock_db_returning
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -223,7 +223,7 @@ class TestCreateGroup:
         result_no_collision.scalar_one_or_none.return_value = None
         mock_db.execute = AsyncMock(return_value=result_no_collision)
 
-        group = await create_group(db=mock_db, user=user, name="Meu Clube")
+        group = await create_group(after_commit=RecordingAfterCommit(), db=mock_db, user=user, name="Meu Clube")
         assert group.name == "Meu Clube"
         assert group.description is None
         assert group.photo_url is None
@@ -244,6 +244,7 @@ class TestCreateGroup:
             return_value="https://cdn.example.com/groups/test.webp",
         ):
             group = await create_group(
+                after_commit=RecordingAfterCommit(),
                 db=mock_db,
                 user=user,
                 name="Clube Foto",
@@ -260,7 +261,7 @@ class TestCreateGroup:
         mock_db = AsyncMock()
 
         with pytest.raises(GroupError, match="entre 2 e 60") as exc_info:
-            await create_group(db=mock_db, user=user, name="A")
+            await create_group(after_commit=RecordingAfterCommit(), db=mock_db, user=user, name="A")
         assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
@@ -271,7 +272,7 @@ class TestCreateGroup:
         mock_db = AsyncMock()
 
         with pytest.raises(GroupError, match="entre 2 e 60") as exc_info:
-            await create_group(db=mock_db, user=user, name="X" * 61)
+            await create_group(after_commit=RecordingAfterCommit(), db=mock_db, user=user, name="X" * 61)
         assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
@@ -285,7 +286,9 @@ class TestCreateGroup:
         mock_db.execute = AsyncMock(return_value=result_no_collision)
 
         with pytest.raises(GroupError, match="500 caracteres") as exc_info:
-            await create_group(db=mock_db, user=user, name="Clube OK", description="X" * 501)
+            await create_group(
+                after_commit=RecordingAfterCommit(), db=mock_db, user=user, name="Clube OK", description="X" * 501
+            )
         assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
@@ -300,6 +303,7 @@ class TestCreateGroup:
 
         with pytest.raises(GroupError, match="5 MB") as exc_info:
             await create_group(
+                after_commit=RecordingAfterCommit(),
                 db=mock_db,
                 user=user,
                 name="Clube Grande",
@@ -322,7 +326,7 @@ class TestCreateGroup:
 
         mock_db.execute = AsyncMock(side_effect=[collision_result, collision_result, no_collision_result])
 
-        group = await create_group(db=mock_db, user=user, name="Retry Clube")
+        group = await create_group(after_commit=RecordingAfterCommit(), db=mock_db, user=user, name="Retry Clube")
         assert group.name == "Retry Clube"
 
 
@@ -643,7 +647,6 @@ class TestCreateGroupEndpoint:
                 new_callable=AsyncMock,
                 return_value=group,
             ),
-            patch("app.api.v1.endpoints.groups.check_and_award_badges", new_callable=AsyncMock),
         ):
             from fastapi import BackgroundTasks
 
@@ -671,7 +674,6 @@ class TestCreateGroupEndpoint:
                 new_callable=AsyncMock,
                 side_effect=GroupError("Nome deve ter entre 2 e 60 caracteres.", status_code=422),
             ),
-            patch("app.api.v1.endpoints.groups.check_and_award_badges", new_callable=AsyncMock),
             pytest.raises(HTTPException) as exc_info,
         ):
             from fastapi import BackgroundTasks
@@ -701,16 +703,14 @@ class TestCreateGroupEndpoint:
         async def _fake_badge(*_args: object, **_kwargs: object) -> None:
             call_order.append("badge")
 
-        with (
-            patch(
-                "app.api.v1.endpoints.groups.create_group",
-                new_callable=AsyncMock,
-                return_value=group,
-            ),
-            patch(
-                "app.api.v1.endpoints.groups.check_and_award_badges",
-                new=_fake_badge,
-            ),
+        async def _fake_create_group(*_args: object, after_commit: object, **_kwargs: object) -> object:
+            # create_group agenda o badge pelo port; o endpoint commita depois
+            after_commit.schedule(_fake_badge)
+            return group
+
+        with patch(
+            "app.api.v1.endpoints.groups.create_group",
+            new=_fake_create_group,
         ):
             bg = BackgroundTasks()
             await create_group_endpoint(
