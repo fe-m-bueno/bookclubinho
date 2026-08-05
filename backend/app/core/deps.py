@@ -23,17 +23,23 @@ def _is_closed_connection_interface_error(exc: InterfaceError) -> bool:
     return "underlying connection is closed" in str(exc).lower()
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency — yields an async DB session for the duration of a request.
     Sets the RLS user context so PostgreSQL policies can enforce row-level access.
-    Commits on success, rolls back on any exception, always closes the session.
+    Rolls back on any exception, always closes the session.
+
+    The session is published on ``request.state`` so ``CommittingRoute`` can commit
+    it while the request is still in flight. The commit below is the fallback for
+    anything not served through that route class; by then the response has already
+    been sent, which is why it can't be the only one — see app/api/route.py.
     """
     async with AsyncSessionLocal() as session:
         try:
             user_id = get_rls_user_id()
             if user_id:
                 await apply_rls_user(session, user_id)
+            request.state.db_session = session
             yield session
         except Exception:
             try:

@@ -17,6 +17,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from app.api.route import CommitBeforeResponseMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.exceptions import ServiceError
@@ -123,7 +124,12 @@ app = FastAPI(
 app.state.limiter = limiter
 
 # Middleware order: Starlette is LIFO — last added runs outermost (first).
-# Execution order: SecurityHeaders → CORS → CSRF → RLS → route handler
+# Execution order: SecurityHeaders → CORS → CSRF → RLS → CommitBeforeResponse
+#                  → route handler
+# CommitBeforeResponse is the innermost so its send-hook wraps the handler's
+# response directly: the commit lands before any header goes out, and before
+# the BackgroundTasks that the handler scheduled can run.
+app.add_middleware(CommitBeforeResponseMiddleware)
 app.add_middleware(RLSMiddleware)
 app.add_middleware(CSRFMiddleware)
 app.add_middleware(

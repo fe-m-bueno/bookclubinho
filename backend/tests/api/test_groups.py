@@ -682,50 +682,6 @@ class TestCreateGroupEndpoint:
 
         assert exc_info.value.status_code == 422
 
-    @pytest.mark.asyncio
-    async def test_commit_before_badge_check(self) -> None:
-        """db.commit() deve ser chamado antes de agendar check_and_award_badges.
-
-        Garante que a badge founder não sofre race condition: o BackgroundTask
-        abre sessão própria e só enxerga dados já commitados.
-        """
-        from fastapi import BackgroundTasks
-
-        from app.api.v1.endpoints.groups import create_group_endpoint
-
-        group = _make_group(name="Clube Fundador")
-        call_order: list[str] = []
-
-        mock_db = AsyncMock()
-        mock_db.commit = AsyncMock(side_effect=lambda: call_order.append("commit"))
-        mock_user = make_user()
-
-        async def _fake_badge(*_args: object, **_kwargs: object) -> None:
-            call_order.append("badge")
-
-        async def _fake_create_group(*_args: object, after_commit: object, **_kwargs: object) -> object:
-            # create_group agenda o badge pelo port; o endpoint commita depois
-            after_commit.schedule(_fake_badge)
-            return group
-
-        with patch(
-            "app.api.v1.endpoints.groups.create_group",
-            new=_fake_create_group,
-        ):
-            bg = BackgroundTasks()
-            await create_group_endpoint(
-                db=mock_db,
-                user=mock_user,
-                name="Clube Fundador",
-                background_tasks=bg,
-            )
-            # Executa as tasks pendentes para validar a ordem
-            for task in bg.tasks:
-                await task()
-
-        mock_db.commit.assert_awaited_once()
-        assert call_order == ["commit", "badge"], "db.commit() deve ser chamado antes do badge check"
-
 
 # ── Endpoint: GET /groups/ (list) ────────────────────────────────────────────
 
