@@ -18,11 +18,11 @@ if TYPE_CHECKING:
 
 from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
-from app.db.models.group import GroupMember
 from app.db.models.hall_of_quote import HallOfQuote
 from app.db.models.message import ContentType, GroupMessage, MessageReaction
 from app.security.sanitizer import sanitize
 from app.security.tiptap import sanitize_tiptap_json
+from app.services import membership
 from app.services.group_helpers import emit_group_event
 
 logger = structlog.get_logger(__name__)
@@ -69,18 +69,6 @@ async def _check_flood(user_id: uuid.UUID, group_id: uuid.UUID, content_hash: st
         )
 
 
-async def _check_membership(db: AsyncSession, group_id: uuid.UUID, user_id: uuid.UUID) -> None:
-    """Raise ChatError 404 if user is not a member of the group."""
-    result = await db.execute(
-        select(GroupMember).where(
-            GroupMember.group_id == group_id,
-            GroupMember.user_id == user_id,
-        )
-    )
-    if result.scalar_one_or_none() is None:
-        raise ChatError("Clube não encontrado.", status_code=404)
-
-
 async def _emit_chat_event(group_id: uuid.UUID, event_data: dict[str, str]) -> None:
     """Delegate to shared emit_group_event."""
     await emit_group_event(group_id, event_data)
@@ -114,7 +102,7 @@ async def create_message(
     data: MessageCreateRequest,
 ) -> GroupMessage:
     """Create a new chat message. Validates membership and sanitizes content."""
-    await _check_membership(db, group_id, user_id)
+    await membership.resolve(db, group_id, user_id)
 
     # Flood + dedup protection (hash content early, before sanitize, to be consistent)
     _raw_content = (data.content_text or "") + str(data.content_rich_json or "")
@@ -251,7 +239,12 @@ async def edit_message(
     result = await db.execute(select(GroupMessage).where(GroupMessage.id == message_id))
     msg = result.scalar_one_or_none()
 
-    if msg is None or msg.user_id != user_id:
+    if msg is None:
+        raise ChatError("Mensagem não encontrada.", status_code=404)
+    # Membership before authorship: leaving the club revokes the right to act on
+    # messages left behind, even one's own.
+    await membership.resolve(db, msg.group_id, user_id)
+    if msg.user_id != user_id:
         raise ChatError("Mensagem não encontrada.", status_code=404)
     if msg.is_deleted:
         raise ChatError("Não é possível editar uma mensagem apagada.", status_code=409)
@@ -287,7 +280,12 @@ async def delete_message(
     result = await db.execute(select(GroupMessage).where(GroupMessage.id == message_id))
     msg = result.scalar_one_or_none()
 
-    if msg is None or msg.user_id != user_id:
+    if msg is None:
+        raise ChatError("Mensagem não encontrada.", status_code=404)
+    # Same rule as edit_message. delete_message has no time window, so without
+    # this an ex-member could keep erasing old messages indefinitely.
+    await membership.resolve(db, msg.group_id, user_id)
+    if msg.user_id != user_id:
         raise ChatError("Mensagem não encontrada.", status_code=404)
     if msg.is_deleted:
         raise ChatError("Mensagem já foi apagada.", status_code=409)
@@ -318,7 +316,7 @@ async def list_messages(
 
     Returns (messages, reply_counts_by_message_id, next_cursor).
     """
-    await _check_membership(db, group_id, user_id)
+    await membership.resolve(db, group_id, user_id)
 
     filters = [GroupMessage.group_id == group_id]
     if cursor is not None:
@@ -380,7 +378,7 @@ async def toggle_reaction(
     if msg.is_deleted:
         raise ChatError("Não é possível reagir a uma mensagem apagada.", status_code=409)
 
-    await _check_membership(db, msg.group_id, user_id)
+    await membership.resolve(db, msg.group_id, user_id)
 
     existing_result = await db.execute(
         select(MessageReaction).where(
@@ -467,7 +465,7 @@ async def list_reactions(
     if msg is None:
         raise ChatError("Mensagem não encontrada.", status_code=404)
 
-    await _check_membership(db, msg.group_id, user_id)
+    await membership.resolve(db, msg.group_id, user_id)
 
     result = await db.execute(
         select(MessageReaction)

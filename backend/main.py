@@ -19,6 +19,7 @@ from tenacity import (
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.exceptions import ServiceError
 from app.core.logging import configure_logging
 from app.core.redis import close_redis_pool
 from app.core.rls import RLSMiddleware
@@ -144,6 +145,22 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONRe
     return JSONResponse(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         content={"detail": "Muitas requisições. Tente novamente em breve."},
+    )
+
+
+@app.exception_handler(ServiceError)
+async def service_error_handler(request: Request, exc: ServiceError) -> JSONResponse:
+    """Convert any service-layer error into its intended HTTP response.
+
+    Endpoints still catch their own error types and raise HTTPException; this is
+    the net for the ones that don't. Without it, an error raised by a shared
+    module (say MembershipError from inside chat.py) would slip past the
+    endpoint's `except ChatError` — sibling classes, not parent — and surface as
+    a 500 instead of the 404 it means.
+    """
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": str(exc)},
     )
 
 

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 from app.core.exceptions import ServiceError
 from app.db.models.message import GroupMessage
 from app.db.models.report import AUTO_HIDE_THRESHOLD, MessageReport, ReportReason
-from app.services.chat import ChatError, _check_membership
+from app.services import membership
 
 logger = structlog.get_logger(__name__)
 
@@ -38,10 +38,7 @@ async def report_message(
     - Enforces one report per reporter per message (unique constraint).
     - Auto-hides the message when AUTO_HIDE_THRESHOLD unique reports are reached.
     """
-    try:
-        await _check_membership(db, group_id, reporter_id)
-    except ChatError as exc:
-        raise ReportError(str(exc), status_code=exc.status_code) from exc
+    await membership.resolve(db, group_id, reporter_id)
 
     # Verify message exists in this group
     msg_result = await db.execute(

@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from app.db.models.group import GroupRole
 from app.schemas.group import GroupJoinRequest
 from app.services.group import GroupError
+from app.services.membership import MembershipError
 from tests.conftest import make_user, mock_db_returning
 
 # ── helpers ────────────────────────────────────────────────────────────────────
@@ -173,27 +174,36 @@ class TestGetGroupMembership:
         user = make_user()
         mock_db = mock_db_returning(None)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(MembershipError) as exc_info:
             await get_group_membership(group_id=uuid.uuid4(), user=user, db=mock_db)
         assert exc_info.value.status_code == 404
 
 
 class TestGetGroupAdminMembership:
+    """A dependency é um adapter sobre app.services.membership — a política de
+    403/404 é testada lá; aqui só que o adapter repassa a role."""
+
     @pytest.mark.asyncio
     async def test_returns_admin(self) -> None:
         from app.core.deps import get_group_admin_membership
 
-        member = _make_member(role=GroupRole.ADMIN)
-        result = await get_group_admin_membership(member=member)
+        user = make_user()
+        member = _make_member(user_id=user.id, group_id=uuid.uuid4(), role=GroupRole.ADMIN)
+        mock_db = mock_db_returning(member)
+
+        result = await get_group_admin_membership(group_id=member.group_id, user=user, db=mock_db)
         assert result is member
 
     @pytest.mark.asyncio
     async def test_raises_403_for_non_admin(self) -> None:
         from app.core.deps import get_group_admin_membership
 
-        member = _make_member(role=GroupRole.MEMBER)
-        with pytest.raises(HTTPException) as exc_info:
-            await get_group_admin_membership(member=member)
+        user = make_user()
+        member = _make_member(user_id=user.id, group_id=uuid.uuid4(), role=GroupRole.MEMBER)
+        mock_db = mock_db_returning(member)
+
+        with pytest.raises(MembershipError) as exc_info:
+            await get_group_admin_membership(group_id=member.group_id, user=user, db=mock_db)
         assert exc_info.value.status_code == 403
 
 

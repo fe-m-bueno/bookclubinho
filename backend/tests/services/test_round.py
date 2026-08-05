@@ -11,6 +11,7 @@ from redis.exceptions import RedisError
 
 from app.db.models.round import RoundStatus
 from app.schemas.round import NominationCreateRequest
+from app.services.membership import MembershipError
 from app.services.round import (
     RoundError,
     add_nomination,
@@ -135,7 +136,7 @@ async def test_verify_round_admin_not_member() -> None:
     result_member.scalar_one_or_none.return_value = None
     db.execute = AsyncMock(side_effect=[result_round, result_member])
 
-    with pytest.raises(RoundError) as exc_info:
+    with pytest.raises(MembershipError) as exc_info:
         await verify_round_admin(db, round_id=round_.id, user_id=uuid.uuid4())
     assert exc_info.value.status_code == 404
 
@@ -153,7 +154,7 @@ async def test_verify_round_admin_not_admin() -> None:
     result_member.scalar_one_or_none.return_value = member
     db.execute = AsyncMock(side_effect=[result_round, result_member])
 
-    with pytest.raises(RoundError) as exc_info:
+    with pytest.raises(MembershipError) as exc_info:
         await verify_round_admin(db, round_id=round_.id, user_id=user_id)
     assert exc_info.value.status_code == 403
 
@@ -196,7 +197,7 @@ async def test_verify_round_member_not_member() -> None:
     result_member.scalar_one_or_none.return_value = None
     db.execute = AsyncMock(side_effect=[result_round, result_member])
 
-    with pytest.raises(RoundError) as exc_info:
+    with pytest.raises(MembershipError) as exc_info:
         await verify_round_member(db, round_id=round_.id, user_id=uuid.uuid4())
     assert exc_info.value.status_code == 404
 

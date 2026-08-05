@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rls import apply_rls_user, get_rls_user_id
 from app.core.security import extract_access_token_sub, extract_refresh_token_jti
 from app.db.engine import AsyncSessionLocal
-from app.db.models.group import Group, GroupMember, GroupRole
+from app.db.models.group import GroupMember, GroupRole
 from app.db.models.user import User
+from app.services import membership
 
 _NOT_RESOLVED: object = object()  # sentinel for "user not yet looked up"
 logger = structlog.get_logger(__name__)
@@ -139,39 +140,20 @@ OptionalUser = Annotated[User | None, Depends(get_optional_user)]
 
 
 async def get_group_membership(group_id: uuid.UUID, user: CurrentUser, db: DBSession) -> GroupMember:
-    """Resolve the authenticated user's membership in the given group.
+    """Adapter: expose the membership module as a FastAPI dependency.
 
-    Returns 404 (not 403) to avoid leaking group existence.
+    The 404-not-403 policy and the ``Group.is_active`` filter live in
+    ``app.services.membership`` — see that module before changing behaviour here.
     """
-    result = await db.execute(
-        select(GroupMember)
-        .join(Group, GroupMember.group_id == Group.id)
-        .where(
-            GroupMember.user_id == user.id,
-            GroupMember.group_id == group_id,
-            Group.is_active.is_(True),
-        )
-    )
-    member = result.scalar_one_or_none()
-    if member is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Clube não encontrado.",
-        )
-    return member
+    return await membership.resolve(db, group_id, user.id)
 
 
 GroupMemberDep = Annotated[GroupMember, Depends(get_group_membership)]
 
 
-async def get_group_admin_membership(member: GroupMemberDep) -> GroupMember:
-    """Require the resolved member to have the admin role."""
-    if member.role != GroupRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apenas administradores podem realizar esta ação.",
-        )
-    return member
+async def get_group_admin_membership(group_id: uuid.UUID, user: CurrentUser, db: DBSession) -> GroupMember:
+    """Adapter: same seam, requiring the admin role."""
+    return await membership.resolve(db, group_id, user.id, require_role=GroupRole.ADMIN)
 
 
 GroupAdminDep = Annotated[GroupMember, Depends(get_group_admin_membership)]

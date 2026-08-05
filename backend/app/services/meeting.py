@@ -21,8 +21,8 @@ from app.db.models.group import GroupMember, GroupRole
 from app.db.models.meeting import Meeting, MeetingRsvp, RsvpStatus
 from app.db.models.message import ContentType, GroupMessage
 from app.security.sanitizer import sanitize
+from app.services import membership
 from app.services.group_helpers import (
-    check_membership,
     emit_group_event,
     validate_round_in_group,
 )
@@ -37,19 +37,15 @@ class MeetingError(ServiceError):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-async def _verify_owner_or_admin(db: AsyncSession, meeting: Meeting, user_id: uuid.UUID) -> None:
-    """Raise 403 if user is not the creator or a group admin."""
+def _require_owner_or_admin(meeting: Meeting, member: GroupMember, user_id: uuid.UUID) -> None:
+    """Raise 403 unless the user created the meeting or is an admin of its group.
+
+    Takes the GroupMember the caller already resolved — membership is a
+    precondition, established by `membership.resolve` before this runs.
+    """
     if meeting.created_by == user_id:
         return
-
-    result = await db.execute(
-        select(GroupMember).where(
-            GroupMember.group_id == meeting.group_id,
-            GroupMember.user_id == user_id,
-        )
-    )
-    member = result.scalar_one_or_none()
-    if member is None or member.role != GroupRole.ADMIN:
+    if member.role != GroupRole.ADMIN:
         raise MeetingError(
             "Apenas o criador ou administradores podem realizar esta ação.",
             status_code=403,
@@ -281,7 +277,7 @@ async def get_meeting(
     if meeting is None:
         raise MeetingError("Encontro não encontrado.", status_code=404)
 
-    await check_membership(db, meeting.group_id, user_id)
+    await membership.resolve(db, meeting.group_id, user_id)
     return meeting
 
 
@@ -293,8 +289,8 @@ async def update_meeting(
 ) -> Meeting:
     """Update a meeting. Only creator or admin can update."""
     meeting = await _get_meeting_or_404(db, meeting_id)
-    await check_membership(db, meeting.group_id, user_id)
-    await _verify_owner_or_admin(db, meeting, user_id)
+    member = await membership.resolve(db, meeting.group_id, user_id)
+    _require_owner_or_admin(meeting, member, user_id)
 
     if data.title is not None:
         meeting.title = sanitize(data.title)
@@ -333,8 +329,8 @@ async def delete_meeting(
 ) -> uuid.UUID:
     """Delete a meeting. Only creator or admin. Returns group_id."""
     meeting = await _get_meeting_or_404(db, meeting_id)
-    await check_membership(db, meeting.group_id, user_id)
-    await _verify_owner_or_admin(db, meeting, user_id)
+    member = await membership.resolve(db, meeting.group_id, user_id)
+    _require_owner_or_admin(meeting, member, user_id)
 
     group_id = meeting.group_id
     title = meeting.title
@@ -368,7 +364,7 @@ async def update_rsvp(
 ) -> MeetingRsvp:
     """Update RSVP status. Creates RSVP if user joined group after meeting creation."""
     meeting = await _get_meeting_or_404(db, meeting_id)
-    await check_membership(db, meeting.group_id, user_id)
+    await membership.resolve(db, meeting.group_id, user_id)
 
     result = await db.execute(
         select(MeetingRsvp).where(

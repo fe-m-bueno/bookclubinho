@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.db.models.report import AUTO_HIDE_THRESHOLD, ReportReason
+from app.services.membership import MembershipError
 from app.services.report import ReportError, report_message
 
 
@@ -52,7 +53,9 @@ class TestReportMessage:
     @pytest.mark.asyncio
     async def test_raises_404_if_not_member(self) -> None:
         db, group_id, reporter_id = _make_db(member_found=False)
-        with pytest.raises(ReportError) as exc_info:
+        # report.py deixou de re-embrulhar em ReportError: chama o módulo de
+        # membership direto e o handler global de main.py converte o status.
+        with pytest.raises(MembershipError) as exc_info:
             await report_message(
                 db,
                 message_id=uuid.uuid4(),

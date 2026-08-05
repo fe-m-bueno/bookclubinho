@@ -19,6 +19,7 @@ from app.services.chat import (
     remove_reaction,
     toggle_reaction,
 )
+from app.services.membership import MembershipError
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ async def test_create_message_not_member_raises_404() -> None:
     db.execute = AsyncMock(return_value=res)
 
     data = _make_create_request()
-    with pytest.raises(ChatError) as exc_info:
+    with pytest.raises(MembershipError) as exc_info:
         await create_message(db, group_id=uuid.uuid4(), user_id=uuid.uuid4(), data=data)
     assert exc_info.value.status_code == 404
 
@@ -260,6 +261,37 @@ async def test_edit_message_wrong_owner_raises_404() -> None:
 
 
 @pytest.mark.asyncio
+async def test_edit_message_by_ex_member_raises_404() -> None:
+    """Sair do clube revoga o direito de mexer nas próprias mensagens deixadas lá.
+
+    Antes de #208 estas duas funções checavam só autoria: o autor continuava
+    editando mesmo sem linha em GroupMember.
+    """
+    author_id = uuid.uuid4()
+    # created_at recente de propósito: dentro da janela de 15 min, para que a
+    # única coisa capaz de barrar a edição seja a falta de membership.
+    msg = _make_message(
+        user_id=author_id,
+        is_deleted=False,
+        created_at=datetime.now(UTC) - timedelta(minutes=1),
+    )
+    original_text = msg.content_text
+    data = _make_edit_request()
+
+    db = AsyncMock()
+    res_msg = MagicMock()
+    res_msg.scalar_one_or_none.return_value = msg
+    res_no_member = MagicMock()
+    res_no_member.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(side_effect=[res_msg, res_no_member])
+
+    with pytest.raises(MembershipError) as exc_info:
+        await edit_message(db, message_id=msg.id, user_id=author_id, data=data)
+    assert exc_info.value.status_code == 404
+    assert msg.content_text == original_text
+
+
+@pytest.mark.asyncio
 async def test_edit_deleted_message_raises() -> None:
     user_id = uuid.uuid4()
     msg = _make_message(
@@ -316,6 +348,26 @@ async def test_delete_message_wrong_owner_raises_404() -> None:
     with pytest.raises(ChatError) as exc_info:
         await delete_message(db, message_id=msg.id, user_id=other_id)
     assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_message_by_ex_member_raises_404() -> None:
+    """delete_message não tem janela de tempo — sem esta checagem um ex-membro
+    apagaria mensagens antigas dele indefinidamente (#208)."""
+    author_id = uuid.uuid4()
+    msg = _make_message(user_id=author_id, is_deleted=False)
+
+    db = AsyncMock()
+    res_msg = MagicMock()
+    res_msg.scalar_one_or_none.return_value = msg
+    res_no_member = MagicMock()
+    res_no_member.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(side_effect=[res_msg, res_no_member])
+
+    with pytest.raises(MembershipError) as exc_info:
+        await delete_message(db, message_id=msg.id, user_id=author_id)
+    assert exc_info.value.status_code == 404
+    assert msg.is_deleted is False
 
 
 @pytest.mark.asyncio
