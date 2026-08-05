@@ -39,6 +39,9 @@ class EmailService:
 
     def __init__(self) -> None:
         resend.api_key = settings.RESEND_API_KEY
+        # A regra pressupõe Flask/render_template. Aqui o autoescape está ligado
+        # explicitamente abaixo, que é a proteção que a regra quer garantir.
+        # nosemgrep: python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2
         self._env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(str(_TEMPLATES_DIR)),
             autoescape=True,
@@ -49,6 +52,9 @@ class EmailService:
         """Render a template, always injecting app_url."""
         ctx.setdefault("app_url", _frontend_url())
         template = self._env.get_template(template_name)
+        # Templates são estáticos (arquivos em templates/), nunca vêm de input do usuário,
+        # e o Environment acima usa autoescape=True.
+        # nosemgrep: python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2
         return template.render(**ctx)
 
     def _user_display(self, user: User) -> str:
