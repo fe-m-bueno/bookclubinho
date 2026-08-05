@@ -76,8 +76,6 @@ from app.services.round import (
     update_round,
     verify_round_admin,
 )
-from app.services.shelf import populate_shelf_cache
-from app.services.stats import invalidate_group_stats
 
 group_rounds_router = APIRouter(tags=["rounds"])
 rounds_router = APIRouter(tags=["rounds"])
@@ -248,12 +246,7 @@ async def update_round_endpoint(
             user_id=current_user.id,
             load_nominations_and_votes=True,
         )
-        round_ = await update_round(
-            db,
-            round_,
-            deadline=body.deadline,
-            new_status=body.status,
-        )
+        round_ = await update_round(db, round_, deadline=body.deadline)
     except RoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -459,10 +452,6 @@ async def finish_round_endpoint(
         )
     except RoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-
-    # Invalidate stats cache and refresh shelf cache
-    await invalidate_group_stats(round_.group_id)
-    background_tasks.add_task(populate_shelf_cache, round_.group_id)
 
     return _round_to_detail(round_)
 

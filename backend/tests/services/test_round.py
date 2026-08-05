@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -32,6 +32,66 @@ from app.services.round import (
 from tests.conftest import RecordingAfterCommit, mock_db_returning
 
 # ── Mock factories ─────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def no_stats_cache():
+    """finish_round agora invalida o cache de stats; aqui isso não toca o Redis."""
+    with patch("app.services.round.invalidate_group_stats", new=AsyncMock()) as m:
+        yield m
+
+
+# ── Dublê que despacha por tabela ─────────────────────────────────────────────
+#
+# Os dublês antigos roteirizavam a ordem exata das queries com
+# `side_effect=[...]`, então qualquer query adicionada ou reordenada quebrava
+# teste sem quebrar comportamento — o teste afirmava ordem interna, não
+# comportamento. Este responde pela tabela alvo do statement.
+
+
+def _target_table(stmt: object) -> str:
+    text = str(stmt)
+    for table in ("group_members", "round_nominations", "round_votes", "book_reviews", "rounds", "users"):
+        if f"FROM {table}" in text or f"count(*) \nFROM {table}" in text:
+            return table
+    # count(*) sobre uma tabela aparece como "SELECT count(*) AS count_1 \nFROM x"
+    for table in ("book_reviews", "round_votes", "round_nominations", "group_members", "rounds"):
+        if table in text:
+            return table
+    return "?"
+
+
+def _transition_db(
+    *,
+    round_: MagicMock | None = None,
+    member: MagicMock | None = None,
+    reviews: int = 0,
+    member_ids: list[uuid.UUID] | None = None,
+) -> AsyncMock:
+    """db que responde por tabela, não por posição na lista."""
+
+    async def dispatch(stmt: object, *_a: object, **_kw: object) -> MagicMock:
+        table = _target_table(stmt)
+        res = MagicMock()
+        if table == "rounds":
+            res.scalar_one_or_none.return_value = round_
+            res.scalar_one.return_value = round_
+        elif table == "group_members":
+            res.scalar_one_or_none.return_value = member
+            res.all.return_value = [(mid,) for mid in (member_ids or [])]
+        elif table == "book_reviews":
+            res.scalar_one.return_value = reviews
+        else:
+            res.scalar_one_or_none.return_value = None
+            res.all.return_value = []
+        return res
+
+    db = AsyncMock()
+    db.execute = AsyncMock(side_effect=dispatch)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.delete = AsyncMock()
+    return db
 
 
 def _make_round(**overrides: object) -> MagicMock:
@@ -286,49 +346,29 @@ async def test_update_round_no_fields_raises() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_round_valid_transition() -> None:
+async def test_update_round_cannot_change_status() -> None:
+    """O buraco que isto fecha: PATCH com status transicionava sem guarda.
+
+    De VOTING para READING, sem nenhum voto e sem os campos de livro que só o
+    finalize_round escreve — a rodada entrava em leitura com book_id = None.
+    """
+    import inspect
+
+    from app.services.round import update_round as fn
+
+    assert "status" not in inspect.signature(fn).parameters
+
+
+@pytest.mark.asyncio
+async def test_update_round_sets_deadline() -> None:
     round_ = _make_round(status=RoundStatus.NOMINATING)
+    future = date.today() + timedelta(days=30)
     db = AsyncMock()
-    result = await update_round(db, round_, new_status=RoundStatus.VOTING)
-    assert result.status == RoundStatus.VOTING
 
+    result = await update_round(db, round_, deadline=future)
 
-@pytest.mark.asyncio
-async def test_update_round_invalid_transition() -> None:
-    round_ = _make_round(status=RoundStatus.NOMINATING)
-    db = AsyncMock()
-    with pytest.raises(RoundError) as exc_info:
-        await update_round(db, round_, new_status=RoundStatus.FINISHED)
-    assert exc_info.value.status_code == 422
-    assert "nominating" in str(exc_info.value)
-    assert "finished" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
-async def test_update_round_already_finished() -> None:
-    round_ = _make_round(status=RoundStatus.FINISHED)
-    db = AsyncMock()
-    with pytest.raises(RoundError) as exc_info:
-        await update_round(db, round_, new_status=RoundStatus.READING)
-    assert exc_info.value.status_code == 409
-
-
-@pytest.mark.asyncio
-async def test_update_round_invalid_status_string() -> None:
-    round_ = _make_round(status=RoundStatus.NOMINATING)
-    db = AsyncMock()
-    with pytest.raises(RoundError) as exc_info:
-        await update_round(db, round_, new_status="invalid_status")
-    assert exc_info.value.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_update_round_sets_finished_at_on_finish() -> None:
-    round_ = _make_round(status=RoundStatus.REVIEWING)
-    round_.finished_at = None
-    db = AsyncMock()
-    result = await update_round(db, round_, new_status=RoundStatus.FINISHED)
-    assert result.finished_at is not None
+    assert result.deadline == future
+    assert result.status == RoundStatus.NOMINATING
 
 
 @pytest.mark.asyncio
@@ -1038,22 +1078,16 @@ def _db_for_finish(
     review_count: int,
     member_ids: list[uuid.UUID] | None = None,
 ) -> AsyncMock:
-    db = AsyncMock()
-    res_round = MagicMock()
-    res_round.scalar_one_or_none.return_value = round_
-    res_member = MagicMock()
-    res_member.scalar_one_or_none.return_value = member
-    res_count = MagicMock()
-    res_count.scalar_one.return_value = review_count
-    # finish_round busca os membros do clube para agendar o badge de cada um
-    res_members = MagicMock()
-    res_members.all.return_value = [(mid,) for mid in (member_ids or [member.user_id])]
-    db.execute = AsyncMock(side_effect=[res_round, res_member, res_count, res_members])
-    return db
+    return _transition_db(
+        round_=round_,
+        member=member,
+        reviews=review_count,
+        member_ids=member_ids if member_ids is not None else [member.user_id],
+    )
 
 
 @pytest.mark.asyncio
-async def test_finish_round_success() -> None:
+async def test_finish_round_success(no_stats_cache) -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.REVIEWING, nominations=[])
     round_.finished_at = None
@@ -1091,7 +1125,7 @@ async def test_finish_round_no_reviews_raises() -> None:
 
 
 @pytest.mark.asyncio
-async def test_finish_round_sets_finished_at() -> None:
+async def test_finish_round_sets_finished_at(no_stats_cache) -> None:
     user_id = uuid.uuid4()
     round_ = _make_round(status=RoundStatus.REVIEWING, nominations=[])
     round_.finished_at = None
@@ -1103,7 +1137,7 @@ async def test_finish_round_sets_finished_at() -> None:
 
 
 @pytest.mark.asyncio
-async def test_finish_round_schedules_book_finished_for_every_member(after_commit) -> None:
+async def test_finish_round_schedules_book_finished_for_every_member(after_commit, no_stats_cache) -> None:
     """Encerrar a rodada significa que o clube inteiro terminou o livro.
 
     O fan-out morava no endpoint, então um segundo caller — cron, CLI, script —
@@ -1118,11 +1152,17 @@ async def test_finish_round_schedules_book_finished_for_every_member(after_commi
 
     await finish_round(db, after_commit=after_commit, round_id=round_.id, user_id=admin_id)
 
-    scheduled_users = [args[0] for _fn, args, _kw in after_commit.scheduled]
+    badges = [(a, kw) for fn, a, kw in after_commit.scheduled if fn.__name__ == "check_and_award_badges"]
+    scheduled_users = [args[0] for args, _kw in badges]
     assert scheduled_users == [str(admin_id), *[str(i) for i in other_ids]]
-    assert after_commit.event_types == ["book_finished"] * 3
-    for _fn, args, _kw in after_commit.scheduled:
+    assert [args[1] for args, _kw in badges] == ["book_finished"] * 3
+    for args, _kw in badges:
         assert args[2] == {"group_id": str(round_.group_id), "round_id": str(round_.id)}
+
+    # o cache derivado de rodadas finalizadas também é responsabilidade daqui
+    shelf = [a for fn, a, _kw in after_commit.scheduled if fn.__name__ == "populate_shelf_cache"]
+    assert shelf == [(round_.group_id,)]
+    no_stats_cache.assert_awaited_once_with(round_.group_id)
 
 
 @pytest.mark.asyncio
@@ -1136,3 +1176,98 @@ async def test_finish_round_schedules_nothing_when_status_wrong(after_commit) ->
         await finish_round(db, after_commit=after_commit, round_id=round_.id, user_id=user_id)
 
     assert after_commit.scheduled == []
+
+
+# ── A máquina de estados ──────────────────────────────────────────────────────
+
+
+class TestTransitionTable:
+    """A tabela é a máquina. Antes havia duas codificações: VALID_TRANSITIONS,
+    consultada por uma função só, e quatro pares from/to escritos na mão."""
+
+    def test_covers_the_whole_happy_path(self) -> None:
+        from app.services.round import TRANSITIONS
+
+        assert set(TRANSITIONS) == {
+            (RoundStatus.NOMINATING, RoundStatus.VOTING),
+            (RoundStatus.VOTING, RoundStatus.READING),
+            (RoundStatus.READING, RoundStatus.REVIEWING),
+            (RoundStatus.REVIEWING, RoundStatus.FINISHED),
+        }
+
+    def test_finished_is_terminal(self) -> None:
+        from app.services.round import TRANSITIONS
+
+        assert not [pair for pair in TRANSITIONS if pair[0] == RoundStatus.FINISHED]
+
+    def test_no_transition_skips_a_phase(self) -> None:
+        """Nada de nominating → reading, que era possível em duas chamadas de PATCH."""
+        from app.services.round import TRANSITIONS
+
+        order = [
+            RoundStatus.NOMINATING,
+            RoundStatus.VOTING,
+            RoundStatus.READING,
+            RoundStatus.REVIEWING,
+            RoundStatus.FINISHED,
+        ]
+        for src, dst in TRANSITIONS:
+            assert order.index(dst) == order.index(src) + 1
+
+    def test_deletable_only_before_voting(self) -> None:
+        from app.services.round import DELETABLE_FROM
+
+        assert DELETABLE_FROM == frozenset({RoundStatus.NOMINATING})
+
+
+class TestAdvance:
+    @pytest.mark.asyncio
+    async def test_illegal_pair_raises_409_and_leaves_status(self) -> None:
+        from app.services.round import _advance
+
+        round_ = _make_round(status=RoundStatus.NOMINATING, nominations=[])
+        db = AsyncMock()
+
+        with pytest.raises(RoundError) as exc_info:
+            await _advance(db, round_, RoundStatus.FINISHED)
+
+        assert exc_info.value.status_code == 409
+        assert round_.status == RoundStatus.NOMINATING
+
+    @pytest.mark.asyncio
+    async def test_guard_failure_raises_422_and_leaves_status(self) -> None:
+        """Guarda reprovada é 422; par ilegal é 409. A distinção é o contrato antigo."""
+        from app.services.round import _advance
+
+        round_ = _make_round(status=RoundStatus.NOMINATING, nominations=[_make_nomination()])
+        db = AsyncMock()
+
+        with pytest.raises(RoundError) as exc_info:
+            await _advance(db, round_, RoundStatus.VOTING)
+
+        assert exc_info.value.status_code == 422
+        assert round_.status == RoundStatus.NOMINATING
+
+    @pytest.mark.asyncio
+    async def test_transition_without_guard_passes(self) -> None:
+        from app.services.round import _advance
+
+        round_ = _make_round(status=RoundStatus.READING, nominations=[])
+        db = AsyncMock()
+
+        await _advance(db, round_, RoundStatus.REVIEWING)
+
+        assert round_.status == RoundStatus.REVIEWING
+
+    @pytest.mark.asyncio
+    async def test_every_transition_in_the_table_is_reachable(self) -> None:
+        """Percorre a tabela em vez de testar as 4 funções uma por uma."""
+        from app.services.round import TRANSITIONS, _advance
+
+        for (src, dst), guard in TRANSITIONS.items():
+            round_ = _make_round(status=src, nominations=[])
+            db = AsyncMock()
+            with patch.dict(TRANSITIONS, {(src, dst): None}):
+                await _advance(db, round_, dst)
+            assert round_.status == dst, f"{src} → {dst} não avançou"
+            assert guard is None or callable(guard)

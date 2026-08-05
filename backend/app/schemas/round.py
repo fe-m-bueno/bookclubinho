@@ -7,7 +7,6 @@ from datetime import date, datetime  # noqa: TC003
 
 from pydantic import BaseModel, Field
 
-from app.db.models.round import RoundStatus  # noqa: TC001
 from app.schemas.group import MessageResponse  # noqa: F401  (re-exported for convenience)
 
 
@@ -16,8 +15,15 @@ class RoundCreateRequest(BaseModel):
 
 
 class RoundUpdateRequest(BaseModel):
+    """Only the deadline is patchable.
+
+    `status` used to be here and bypassed every transition guard — see
+    `round.update_round`. Phases move via POST /rounds/{id}/start-voting,
+    /finalize, /start-review and /finish, which own their preconditions and
+    their effects.
+    """
+
     deadline: date | None = None
-    status: RoundStatus | None = None
 
 
 class NominationCreateRequest(BaseModel):
