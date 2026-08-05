@@ -40,3 +40,29 @@ no path; os services chamam `resolve` direto. Os dois são adapters do mesmo sea
   editar uma mensagem exige membership *e* autoria.
 
 Ver: [[Group]], [[GroupMember]] no modelo de domínio do `CLAUDE.md`.
+
+---
+
+## Terminar o livro
+
+Um leitor terminou o livro quando existe um snapshot de **ReadingProgress** com
+`progress_type = "finished"` para ele naquela rodada. É um fato por leitor, não
+por rodada — cada um termina no seu tempo.
+
+Há **dois caminhos** para isso acontecer, e ambos contam igual:
+
+1. registrar progresso em 100% (pelo timer ou pelo formulário de página);
+2. **submeter a review** — enviar review é, por si, dizer que terminou.
+
+Terminar tem consequências, e elas são inseparáveis do fato: o streak do dia
+sobe, os eventos de SSE saem para o clube, e os badges de `book_finished`
+(`first_blood`, `speed_reader`, `bookworm`, `variety`) são reavaliados. Por isso
+ninguém escreve `ReadingProgress` na mão — os dois caminhos atravessam
+`app/services/reading_progress.py`, que é dono do fato e das consequências.
+
+**Não confundir com encerrar a rodada.** Encerrar é ação de admin, muda o status
+da **Round** para `finished`, e exige que exista pelo menos uma review. Um leitor
+pode ter terminado o livro numa rodada que ainda está aberta; e a rodada pode ser
+encerrada com membros que nunca terminaram.
+
+Ver: [[Round]], [[ReadingProgress]] no modelo de domínio do `CLAUDE.md`.
