@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.core.after_commit import AfterCommit
     from app.schemas.round import NominationCreateRequest
 
 from app.core.exceptions import ServiceError
@@ -25,6 +26,7 @@ from app.db.models.group import GroupMember, GroupRole
 from app.db.models.round import Round, RoundNomination, RoundStatus, RoundVote
 from app.security.sanitizer import sanitize
 from app.services import membership
+from app.services.badge_checker import check_and_award_badges
 
 logger = structlog.get_logger(__name__)
 
@@ -532,8 +534,16 @@ async def finish_round(
     db: AsyncSession,
     round_id: uuid.UUID,
     user_id: uuid.UUID,
+    *,
+    after_commit: AfterCommit,
 ) -> Round:
-    """Transition round to FINISHED. Requires at least 1 submitted review."""
+    """Transition round to FINISHED. Requires at least 1 submitted review.
+
+    Finishing the round means everyone in the club finished the book, so the
+    `book_finished` badges are re-checked for every member — not just the admin
+    who pressed the button. That fan-out used to live in the endpoint, where a
+    second caller (a cron, a CLI) would have skipped it entirely.
+    """
     round_ = await verify_round_admin(db, round_id, user_id, load_nominations_and_votes=True)
     _require_status(round_, RoundStatus.REVIEWING, "reviews")
 
@@ -549,6 +559,16 @@ async def finish_round(
 
     round_.status = RoundStatus.FINISHED
     round_.finished_at = datetime.now(UTC)
+
+    badge_payload = {"group_id": str(round_.group_id), "round_id": str(round_id)}
+    members_result = await db.execute(select(GroupMember.user_id).where(GroupMember.group_id == round_.group_id))
+    for (member_id,) in members_result.all():
+        after_commit.schedule(
+            check_and_award_badges,
+            str(member_id),
+            "book_finished",
+            badge_payload,
+        )
 
     logger.info("round_finished", round_id=str(round_id))
     return round_

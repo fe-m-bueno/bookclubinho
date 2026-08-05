@@ -26,15 +26,14 @@ from __future__ import annotations
 import uuid  # noqa: TC003 — required at runtime for FastAPI path-param resolution
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
-from sqlalchemy import select
 
+from app.core.after_commit import BackgroundTasksScheduler
 from app.core.deps import (  # noqa: TC001
     CurrentUser,
     DBSession,
     GroupAdminDep,
     GroupMemberDep,
 )
-from app.db.models.group import GroupMember  # noqa: TC001
 from app.db.models.reading_progress import ReadingProgress  # noqa: TC001
 from app.db.models.round import Round, RoundNomination  # noqa: TC001
 from app.schemas.group import MessageResponse
@@ -60,7 +59,6 @@ from app.schemas.round import (
 )
 from app.security.rate_limit import limiter
 from app.services import reading_progress as reading_progress_service
-from app.services.badge_checker import check_and_award_badges
 from app.services.reading_progress import ReadingProgressError
 from app.services.round import (
     RoundError,
@@ -453,33 +451,18 @@ async def finish_round_endpoint(
 ) -> RoundDetailResponse:
     """Encerra a rodada. Requer pelo menos 1 review submetida. Apenas admins."""
     try:
-        round_ = await finish_round(db, round_id=round_id, user_id=current_user.id)
+        round_ = await finish_round(
+            db,
+            round_id=round_id,
+            user_id=current_user.id,
+            after_commit=BackgroundTasksScheduler(background_tasks),
+        )
     except RoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
-    group_id = round_.group_id
-
     # Invalidate stats cache and refresh shelf cache
-    await invalidate_group_stats(group_id)
-    background_tasks.add_task(populate_shelf_cache, group_id)
-
-    # Award book_finished badges for all group members
-    badge_payload = {"group_id": str(group_id), "round_id": str(round_id)}
-    background_tasks.add_task(
-        check_and_award_badges,
-        str(current_user.id),
-        "book_finished",
-        badge_payload,
-    )
-    members_result = await db.execute(select(GroupMember.user_id).where(GroupMember.group_id == group_id))
-    for (member_id,) in members_result.all():
-        if str(member_id) != str(current_user.id):
-            background_tasks.add_task(
-                check_and_award_badges,
-                str(member_id),
-                "book_finished",
-                badge_payload,
-            )
+    await invalidate_group_stats(round_.group_id)
+    background_tasks.add_task(populate_shelf_cache, round_.group_id)
 
     return _round_to_detail(round_)
 
@@ -504,7 +487,7 @@ async def log_reading_progress(
 ) -> ProgressResponse:
     """Registra um snapshot de progresso de leitura. Rodada deve estar em 'reading'."""
     try:
-        progress = await reading_progress_service.log_progress(
+        progress = await reading_progress_service.record_progress(
             db=db,
             round_id=round_id,
             user_id=current_user.id,
@@ -513,25 +496,10 @@ async def log_reading_progress(
             progress_type=body.progress_type,
             total_pages=body.total_pages,
             note=body.note,
+            after_commit=BackgroundTasksScheduler(background_tasks),
         )
     except ReadingProgressError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-    background_tasks.add_task(
-        check_and_award_badges,
-        str(current_user.id),
-        "streak_updated",
-        {},
-    )
-    if progress.percentage >= 100.0:
-        round_result = await db.execute(select(Round.group_id).where(Round.id == round_id))
-        group_id = round_result.scalar_one_or_none()
-        if group_id:
-            background_tasks.add_task(
-                check_and_award_badges,
-                str(current_user.id),
-                "book_finished",
-                {"round_id": str(round_id), "group_id": str(group_id)},
-            )
     return _progress_to_response(progress)
 
 

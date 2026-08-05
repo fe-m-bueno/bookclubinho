@@ -15,6 +15,7 @@ import uuid  # noqa: TC003
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 
+from app.core.after_commit import BackgroundTasksScheduler
 from app.core.deps import CurrentUser, DBSession  # noqa: TC001
 from app.schemas.review import (
     ReviewCreateRequest,
@@ -24,7 +25,6 @@ from app.schemas.review import (
     ReviewUserSummary,
 )
 from app.security.rate_limit import limiter
-from app.services.badge_checker import check_and_award_badges
 from app.services.review import (
     ReviewError,
     get_all_reviews,
@@ -79,16 +79,15 @@ async def submit_review_endpoint(
 ) -> ReviewResponse:
     """Envia review do livro. Rodada deve estar em leitura ou reviews."""
     try:
-        review = await submit_review(db, round_id=round_id, user_id=current_user.id, data=body)
+        review = await submit_review(
+            db,
+            round_id=round_id,
+            user_id=current_user.id,
+            data=body,
+            after_commit=BackgroundTasksScheduler(background_tasks),
+        )
     except ReviewError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-
-    background_tasks.add_task(
-        check_and_award_badges,
-        str(current_user.id),
-        "review_submitted",
-        {"group_id": str(review.group_id), "round_id": str(round_id)},
-    )
 
     return _review_to_response(review)
 

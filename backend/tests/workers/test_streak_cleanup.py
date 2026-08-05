@@ -9,36 +9,49 @@ import pytest
 from app.services.reading_progress import cleanup_expired_streaks
 
 
+def _cleanup_db(timezones: list[str], rowcount: int) -> AsyncMock:
+    """db mock: 1 SELECT dos timezones distintos, depois 1 UPDATE por timezone."""
+    tz_res = MagicMock()
+    tz_res.scalars.return_value.all.return_value = timezones
+    upd_res = MagicMock()
+    upd_res.rowcount = rowcount
+
+    db = AsyncMock()
+    db.execute = AsyncMock(side_effect=[tz_res, *[upd_res] * len(timezones)])
+    db.flush = AsyncMock()
+    return db
+
+
 @pytest.mark.asyncio
 async def test_cleanup_resets_expired_streaks() -> None:
     """Users who missed yesterday get streak_current reset to 0."""
-    db = AsyncMock()
-    res = MagicMock()
-    res.rowcount = 3
-    db.execute = AsyncMock(return_value=res)
-    db.flush = AsyncMock()
+    db = _cleanup_db(["America/Sao_Paulo"], rowcount=3)
 
     count = await cleanup_expired_streaks(db)
 
     assert count == 3
-    db.execute.assert_called_once()
-    # Verify the UPDATE was called (not a SELECT)
-    call_args = db.execute.call_args[0][0]
-    # The statement should be an Update
-    assert "UPDATE" in str(call_args).upper() or hasattr(call_args, "table")
+    # O último statement é um UPDATE, não um SELECT
+    last_stmt = db.execute.await_args.args[0]
+    assert "UPDATE" in str(last_stmt).upper() or hasattr(last_stmt, "table")
 
 
 @pytest.mark.asyncio
 async def test_cleanup_returns_zero_when_no_expired() -> None:
-    db = AsyncMock()
-    res = MagicMock()
-    res.rowcount = 0
-    db.execute = AsyncMock(return_value=res)
-    db.flush = AsyncMock()
+    db = _cleanup_db(["America/Sao_Paulo"], rowcount=0)
 
     count = await cleanup_expired_streaks(db)
 
     assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_cleanup_with_no_users_does_no_updates() -> None:
+    db = _cleanup_db([], rowcount=0)
+
+    count = await cleanup_expired_streaks(db)
+
+    assert count == 0
+    assert db.execute.await_count == 1  # só o SELECT dos timezones
 
 
 @pytest.mark.asyncio
