@@ -157,7 +157,8 @@ class HardcoverClient:
         }
 
     def _cache_key_search(self, query: str, limit: int) -> str:
-        digest = hashlib.md5(f"{query.lower()}:{limit}".encode()).hexdigest()  # noqa: S324
+        # sha256 truncado: chave de cache, não assinatura — mas evita depender de MD5.
+        digest = hashlib.sha256(f"{query.lower()}:{limit}".encode()).hexdigest()[:32]
         return f"hc:search:{digest}"
 
     def _cache_key_book(self, slug: str) -> str:

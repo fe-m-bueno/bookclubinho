@@ -18,6 +18,12 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application source
 COPY . .
 
+# Drop root: the app never writes to /app at runtime, so read-only ownership is enough.
+# Migrations (alembic) and uvicorn both run fine unprivileged on port 8000+.
+RUN useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # Fallback version string for /api/v1/health.
 # In production, hosting providers can expose commit metadata at runtime.
 ENV APP_VERSION=unknown

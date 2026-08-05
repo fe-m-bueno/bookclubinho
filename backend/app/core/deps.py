@@ -4,11 +4,11 @@ from typing import Annotated
 
 import structlog
 from fastapi import Cookie, Depends, HTTPException, Request, status
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.exc import InterfaceError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rls import get_rls_user_id
+from app.core.rls import apply_rls_user, get_rls_user_id
 from app.core.security import extract_access_token_sub, extract_refresh_token_jti
 from app.db.engine import AsyncSessionLocal
 from app.db.models.group import Group, GroupMember, GroupRole
@@ -32,10 +32,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         try:
             user_id = get_rls_user_id()
             if user_id:
-                # SET LOCAL does not support bind parameters ($1/:uid).
-                # Validate as UUID to prevent SQL injection, then interpolate.
-                _uid = str(uuid.UUID(user_id))
-                await session.execute(text(f"SET LOCAL app.current_user_id = '{_uid}'"))
+                await apply_rls_user(session, user_id)
             yield session
         except Exception:
             try:

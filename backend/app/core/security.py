@@ -4,7 +4,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 
 from app.core.config import settings
 
@@ -80,7 +81,7 @@ def extract_access_token_sub(token: str) -> str | None:
         if payload.get("type") != "access":
             return None
         return payload.get("sub")
-    except JWTError:
+    except PyJWTError:
         return None
 
 
@@ -119,5 +120,5 @@ def extract_refresh_token_jti(token: str) -> str | None:
         if payload.get("type") != "refresh":
             return None
         return payload.get("jti")
-    except JWTError:
+    except PyJWTError:
         return None

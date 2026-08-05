@@ -1,0 +1,15 @@
+# Semgrep — exclusões do scan de CI (job `semgrep` em .github/workflows/ci.yml).
+# Toda entrada aqui precisa de justificativa. Não adicione código de aplicação.
+
+frontend/node_modules/
+backend/venv/
+backend/.venv/
+.next/
+coverage/
+
+# Migrations do Alembic são DDL: políticas RLS, CREATE POLICY, GRANT e ALTER TABLE
+# não têm equivalente no ORM, então `op.execute()` com SQL literal é inerente ao
+# arquivo. Nenhuma delas recebe input de usuário — os valores são fixos no momento
+# em que a migration é escrita. Regras acionadas aqui: sqlalchemy-execute-raw-query,
+# formatted-sql-query, avoid-sqlalchemy-text.
+backend/alembic/versions/
