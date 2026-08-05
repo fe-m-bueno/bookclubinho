@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
@@ -27,20 +28,91 @@ from app.db.models.round import Round, RoundNomination, RoundStatus, RoundVote
 from app.security.sanitizer import sanitize
 from app.services import membership
 from app.services.badge_checker import check_and_award_badges
+from app.services.shelf import populate_shelf_cache
+from app.services.stats import invalidate_group_stats
 
 logger = structlog.get_logger(__name__)
-
-VALID_TRANSITIONS: dict[RoundStatus, list[RoundStatus]] = {
-    RoundStatus.NOMINATING: [RoundStatus.VOTING],
-    RoundStatus.VOTING: [RoundStatus.READING],
-    RoundStatus.READING: [RoundStatus.REVIEWING],
-    RoundStatus.REVIEWING: [RoundStatus.FINISHED],
-    RoundStatus.FINISHED: [],
-}
 
 
 class RoundError(ServiceError):
     """Raised when round validation fails."""
+
+
+# ── The state machine ─────────────────────────────────────────────────────────
+#
+# One table, read top to bottom, is the whole machine:
+#
+#     nominating → voting → reading → reviewing → finished
+#
+# A guard is part of a transition's *legality*, not a side effect of it —
+# starting a vote with one nomination isn't a valid transition missing a step,
+# it's an illegal transition. So guards live here, next to the pair they gate.
+# What a transition *causes* (book fields, badges, cache, events) belongs to the
+# named function that performs it.
+
+
+async def _require_two_nominations(db: AsyncSession, round_: Round) -> None:
+    if len(round_.nominations) < 2:
+        raise RoundError(
+            "São necessárias pelo menos 2 indicações para iniciar a votação.",
+            status_code=422,
+        )
+
+
+async def _require_votes(db: AsyncSession, round_: Round) -> None:
+    if not round_.nominations:
+        raise RoundError("Nenhuma indicação registrada.", status_code=422)
+    if not any(n.votes for n in round_.nominations):
+        raise RoundError("Nenhum voto registrado.", status_code=422)
+
+
+async def _require_one_review(db: AsyncSession, round_: Round) -> None:
+    result = await db.execute(select(func.count()).select_from(BookReview).where(BookReview.round_id == round_.id))
+    if result.scalar_one() == 0:
+        raise RoundError(
+            "Pelo menos uma review deve ser submetida antes de encerrar a rodada.",
+            status_code=422,
+        )
+
+
+# AsyncSession is quoted: it only exists under TYPE_CHECKING, and this alias
+# is evaluated at runtime.
+Guard = Callable[["AsyncSession", Round], Awaitable[None]]
+
+TRANSITIONS: dict[tuple[RoundStatus, RoundStatus], Guard | None] = {
+    (RoundStatus.NOMINATING, RoundStatus.VOTING): _require_two_nominations,
+    (RoundStatus.VOTING, RoundStatus.READING): _require_votes,
+    (RoundStatus.READING, RoundStatus.REVIEWING): None,
+    (RoundStatus.REVIEWING, RoundStatus.FINISHED): _require_one_review,
+}
+
+# Removing a round isn't a transition — the round stops existing. Only allowed
+# before voting opens, so a club never loses the record of what it read.
+DELETABLE_FROM = frozenset({RoundStatus.NOMINATING})
+
+_ILLEGAL = object()
+
+
+async def _advance(db: AsyncSession, round_: Round, to: RoundStatus) -> None:
+    """Move the round to `to`, refusing anything the table doesn't allow.
+
+    Every transition goes through here. Before this existed the table was
+    consulted by one function and the other four wrote `round_.status = X` by
+    hand, so the machine had two encodings that nothing kept in sync.
+    """
+    guard = TRANSITIONS.get((round_.status, to), _ILLEGAL)
+    if guard is _ILLEGAL:
+        # 409, not 422: the request is well-formed, the round is just in the
+        # wrong state for it. Matches what the old _require_status returned.
+        raise RoundError(
+            f"Transição de '{round_.status}' para '{to}' não é permitida.",
+            status_code=409,
+        )
+    # Guards raise 422: the transition is legal, its precondition isn't met.
+    if guard is not None:
+        await guard(db, round_)
+
+    round_.status = to
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
@@ -89,8 +161,12 @@ async def _fetch_round_with_nominations_and_votes(db: AsyncSession, round_id: uu
     return result.scalar_one()
 
 
-def _require_status(round_: Round, expected: RoundStatus, phase_label: str) -> None:
-    """Raise RoundError(409) when round is not in the expected status."""
+def _require_phase(round_: Round, expected: RoundStatus, phase_label: str) -> None:
+    """Raise RoundError(409) when the round isn't in the phase an action needs.
+
+    Distinct from the transition table: this gates actions that happen *within* a
+    phase (nominating a book, casting a vote) and don't move the round anywhere.
+    """
     if round_.status != expected:
         raise RoundError(
             f"Rodada está em '{round_.status}', não em fase de {phase_label}.",
@@ -223,40 +299,29 @@ async def update_round(
     db: AsyncSession,
     round_: Round,
     deadline: date | None = None,
-    new_status: RoundStatus | None = None,
 ) -> Round:
-    """Update mutable round fields. Validates status transitions."""
-    if deadline is None and new_status is None:
+    """Update the round's deadline.
+
+    Status is deliberately not settable here. It used to be, and it bypassed
+    every guard: PATCH with status="reading" from VOTING moved the round on with
+    no votes and, worse, without the book fields that only finalize_round writes
+    — leaving a round in reading phase with book_id = None. Transitioning is what
+    the named actions are for.
+    """
+    if deadline is None:
         raise RoundError("Informe ao menos um campo para atualizar.", status_code=422)
 
-    if new_status is not None:
-        # Explicit 409 for "already finished" — distinct from 422 transition errors.
-        if round_.status == RoundStatus.FINISHED:
-            raise RoundError("Rodada já finalizada.", status_code=409)
+    if deadline <= date.today():
+        raise RoundError("O prazo deve ser uma data futura.", status_code=422)
+    round_.deadline = deadline
 
-        allowed = VALID_TRANSITIONS.get(round_.status, [])
-        if new_status not in allowed:
-            raise RoundError(
-                f"Transição de '{round_.status}' para '{new_status}' não é permitida.",
-                status_code=422,
-            )
-
-        round_.status = new_status
-        if new_status == RoundStatus.FINISHED:
-            round_.finished_at = datetime.now(UTC)
-
-    if deadline is not None:
-        if deadline <= date.today():
-            raise RoundError("O prazo deve ser uma data futura.", status_code=422)
-        round_.deadline = deadline
-
-    logger.info("round_updated", round_id=str(round_.id), new_status=new_status)
+    logger.info("round_updated", round_id=str(round_.id), deadline=str(deadline))
     return round_
 
 
 async def delete_round(db: AsyncSession, round_: Round) -> None:
-    """Hard-delete a round. Only allowed when status is NOMINATING."""
-    if round_.status != RoundStatus.NOMINATING:
+    """Hard-delete a round. See DELETABLE_FROM."""
+    if round_.status not in DELETABLE_FROM:
         raise RoundError("Apenas rodadas em fase de indicação podem ser removidas.", status_code=409)
 
     await db.delete(round_)
@@ -277,7 +342,7 @@ async def add_nomination(
     Returns (nomination, refreshed_round) so callers avoid a redundant re-fetch.
     """
     round_ = await verify_round_member(db, round_id, user_id, load_nominations_and_votes=True)
-    _require_status(round_, RoundStatus.NOMINATING, "indicação")
+    _require_phase(round_, RoundStatus.NOMINATING, "indicação")
 
     # Single-pass: count user's nominations and check for duplicate book
     user_count = 0
@@ -325,7 +390,7 @@ async def remove_nomination(
 ) -> None:
     """Remove a nomination. User can only remove their own. Status must be NOMINATING."""
     round_ = await verify_round_member(db, round_id, user_id)
-    _require_status(round_, RoundStatus.NOMINATING, "indicação")
+    _require_phase(round_, RoundStatus.NOMINATING, "indicação")
 
     nom_result = await db.execute(
         select(RoundNomination).where(
@@ -357,17 +422,10 @@ async def start_voting(
     round_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> Round:
-    """Transition round from NOMINATING to VOTING. Requires at least 2 nominations."""
+    """Open voting. See TRANSITIONS for the guard."""
     round_ = await verify_round_admin(db, round_id, user_id, load_nominations_and_votes=True)
-    _require_status(round_, RoundStatus.NOMINATING, "indicação")
 
-    if len(round_.nominations) < 2:
-        raise RoundError(
-            "São necessárias pelo menos 2 indicações para iniciar a votação.",
-            status_code=422,
-        )
-
-    round_.status = RoundStatus.VOTING
+    await _advance(db, round_, RoundStatus.VOTING)
     round_.started_at = datetime.now(UTC)
 
     logger.info("voting_started", round_id=str(round_id))
@@ -385,7 +443,7 @@ async def cast_vote(
     Returns (vote, refreshed_round) so callers avoid a redundant re-fetch.
     """
     round_ = await verify_round_member(db, round_id, user_id, load_nominations_and_votes=True)
-    _require_status(round_, RoundStatus.VOTING, "votação")
+    _require_phase(round_, RoundStatus.VOTING, "votação")
 
     valid_nom_ids = {n.id for n in round_.nominations}
     if nomination_id not in valid_nom_ids:
@@ -432,24 +490,19 @@ async def finalize_round(
 ) -> Round:
     """Count votes, resolve ties, set book fields, transition to READING."""
     round_ = await verify_round_admin(db, round_id, user_id, load_nominations_and_votes=True)
-    _require_status(round_, RoundStatus.VOTING, "votação")
 
-    if not round_.nominations:
-        raise RoundError("Nenhuma indicação registrada.", status_code=422)
-
-    # Validate deadline before any mutations
+    # Validate the deadline before any mutation, including the transition.
     if deadline is not None and deadline <= date.today():
         raise RoundError("O prazo deve ser uma data futura.", status_code=422)
 
-    vote_result = await db.execute(
-        select(RoundVote.nomination_id, func.count())
-        .where(RoundVote.round_id == round_id)
-        .group_by(RoundVote.nomination_id)
-    )
-    vote_counts: dict[uuid.UUID, int] = dict(vote_result.all())
+    # The guard for this pair (>= 1 nomination, >= 1 vote) lives in TRANSITIONS;
+    # _advance runs it before the status moves.
+    await _advance(db, round_, RoundStatus.READING)
 
-    if not vote_counts:
-        raise RoundError("Nenhum voto registrado.", status_code=422)
+    # Votes come from the relationship verify_round_admin already eager-loaded.
+    # This used to be a separate GROUP BY, so the same rows were read twice and
+    # the guard and the tiebreak could disagree about them.
+    vote_counts: dict[uuid.UUID, int] = {n.id: len(n.votes) for n in round_.nominations}
 
     max_votes = max(vote_counts.values())
     tied = [n for n in round_.nominations if vote_counts.get(n.id, 0) == max_votes]
@@ -480,8 +533,6 @@ async def finalize_round(
                 round_.book_genres = detail.genres
         finally:
             await client.aclose()
-
-    round_.status = RoundStatus.READING
 
     if deadline is not None:
         round_.deadline = deadline
@@ -520,11 +571,10 @@ async def start_review(
     round_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> Round:
-    """Transition round from READING to REVIEWING."""
+    """Open the review phase. See TRANSITIONS."""
     round_ = await verify_round_admin(db, round_id, user_id, load_nominations_and_votes=True)
-    _require_status(round_, RoundStatus.READING, "leitura")
 
-    round_.status = RoundStatus.REVIEWING
+    await _advance(db, round_, RoundStatus.REVIEWING)
 
     logger.info("review_phase_started", round_id=str(round_id))
     return round_
@@ -545,19 +595,8 @@ async def finish_round(
     second caller (a cron, a CLI) would have skipped it entirely.
     """
     round_ = await verify_round_admin(db, round_id, user_id, load_nominations_and_votes=True)
-    _require_status(round_, RoundStatus.REVIEWING, "reviews")
 
-    review_count_result = await db.execute(
-        select(func.count()).select_from(BookReview).where(BookReview.round_id == round_id)
-    )
-    review_count: int = review_count_result.scalar_one()
-    if review_count == 0:
-        raise RoundError(
-            "Pelo menos uma review deve ser submetida antes de encerrar a rodada.",
-            status_code=422,
-        )
-
-    round_.status = RoundStatus.FINISHED
+    await _advance(db, round_, RoundStatus.FINISHED)
     round_.finished_at = datetime.now(UTC)
 
     badge_payload = {"group_id": str(round_.group_id), "round_id": str(round_id)}
@@ -569,6 +608,12 @@ async def finish_round(
             "book_finished",
             badge_payload,
         )
+
+    # Stats and the public shelf are derived from finished rounds, so both go
+    # stale the moment this transition happens. Owning them here means a second
+    # caller — a cron, a CLI — can't leave them serving old data.
+    await invalidate_group_stats(round_.group_id)
+    after_commit.schedule(populate_shelf_cache, round_.group_id)
 
     logger.info("round_finished", round_id=str(round_id))
     return round_
