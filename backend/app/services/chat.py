@@ -23,9 +23,9 @@ from app.db.models.hall_of_quote import HallOfQuote
 from app.db.models.message import ContentType, GroupMessage, MessageReaction
 from app.security.sanitizer import sanitize
 from app.security.tiptap import sanitize_tiptap_json
-from app.services import membership
+from app.services import group_events, membership
 from app.services.badge_checker import check_and_award_badges
-from app.services.group_helpers import emit_group_event
+from app.services.group_events import GroupEvent
 
 logger = structlog.get_logger(__name__)
 
@@ -71,26 +71,20 @@ async def _check_flood(user_id: uuid.UUID, group_id: uuid.UUID, content_hash: st
         )
 
 
-async def _emit_chat_event(group_id: uuid.UUID, event_data: dict[str, str]) -> None:
-    """Delegate to shared emit_group_event."""
-    await emit_group_event(group_id, event_data)
-
-
 async def emit_typing_event(
     group_id: uuid.UUID,
     user_id: uuid.UUID,
     display_name: str,
     avatar_url: str,
 ) -> None:
-    """Emit a typing indicator event to the group chat stream."""
-    await _emit_chat_event(
+    """Emit a typing indicator.
+
+    Publica inline, ao contrário dos outros: não há transação para esperar — o
+    endpoint de digitação não escreve nada.
+    """
+    await group_events.publish(
         group_id,
-        {
-            "type": "user_typing",
-            "user_id": str(user_id),
-            "display_name": display_name,
-            "avatar_url": avatar_url,
-        },
+        GroupEvent.user_typing(user_id=user_id, display_name=display_name, avatar_url=avatar_url),
     )
 
 
@@ -159,31 +153,8 @@ async def create_message(
     if data.content_type == ContentType.QUOTE and clean_text:
         await _auto_create_hall_of_quote(db, msg, group_id, user_id, round_id, clean_text)
 
-    await _emit_chat_event(
-        group_id,
-        {
-            "type": "message_created",
-            "message_id": str(msg.id),
-            "user_id": str(user_id),
-        },
-    )
-
-    # Emit to notifications stream for digest worker
-    try:
-        _redis = get_redis()
-        await _redis.xadd(
-            "bookclub:notifications",
-            {
-                "type": "new_message",
-                "group_id": str(group_id),
-                "user_id": str(user_id),
-                "message_id": str(msg.id),
-            },
-            maxlen=50000,
-            approximate=True,
-        )
-    except Exception:
-        logger.warning("notification_xadd_failed", message_id=str(msg.id))
+    after_commit.schedule(group_events.publish, group_id, GroupEvent.message_created(msg.id, user_id))
+    after_commit.schedule(group_events.publish, group_id, GroupEvent.new_message(group_id, user_id, msg.id))
 
     after_commit.schedule(
         check_and_award_badges,
@@ -245,6 +216,8 @@ async def edit_message(
     message_id: uuid.UUID,
     user_id: uuid.UUID,
     data: MessageEditRequest,
+    *,
+    after_commit: AfterCommit,
 ) -> GroupMessage:
     """Edit a message within the 15-minute edit window."""
     result = await db.execute(select(GroupMessage).where(GroupMessage.id == message_id))
@@ -275,10 +248,7 @@ async def edit_message(
     await db.flush()
     await db.refresh(msg)
 
-    await _emit_chat_event(
-        msg.group_id,
-        {"type": "message_edited", "message_id": str(msg.id), "user_id": str(user_id)},
-    )
+    after_commit.schedule(group_events.publish, msg.group_id, GroupEvent.message_edited(msg.id, user_id))
     return msg
 
 
@@ -286,6 +256,8 @@ async def delete_message(
     db: AsyncSession,
     message_id: uuid.UUID,
     user_id: uuid.UUID,
+    *,
+    after_commit: AfterCommit,
 ) -> GroupMessage:
     """Soft-delete a message (sets is_deleted=True)."""
     result = await db.execute(select(GroupMessage).where(GroupMessage.id == message_id))
@@ -307,10 +279,7 @@ async def delete_message(
     await db.flush()
     await db.refresh(msg)
 
-    await _emit_chat_event(
-        msg.group_id,
-        {"type": "message_deleted", "message_id": str(msg.id), "user_id": str(user_id)},
-    )
+    after_commit.schedule(group_events.publish, msg.group_id, GroupEvent.message_deleted(msg.id, user_id))
     return msg
 
 
@@ -380,6 +349,8 @@ async def toggle_reaction(
     message_id: uuid.UUID,
     user_id: uuid.UUID,
     emoji: str,
+    *,
+    after_commit: AfterCommit,
 ) -> tuple[bool, uuid.UUID]:
     """Toggle a reaction on a message. Returns (added, group_id)."""
     msg_result = await db.execute(select(GroupMessage).where(GroupMessage.id == message_id))
@@ -403,28 +374,20 @@ async def toggle_reaction(
     if existing is not None:
         await db.delete(existing)
         await db.flush()
-        await _emit_chat_event(
+        after_commit.schedule(
+            group_events.publish,
             msg.group_id,
-            {
-                "type": "reaction_removed",
-                "message_id": str(message_id),
-                "user_id": str(user_id),
-                "emoji": emoji,
-            },
+            GroupEvent.reaction_removed(message_id, user_id, emoji),
         )
         return False, msg.group_id
 
     reaction = MessageReaction(message_id=message_id, user_id=user_id, emoji=emoji)
     db.add(reaction)
     await db.flush()
-    await _emit_chat_event(
+    after_commit.schedule(
+        group_events.publish,
         msg.group_id,
-        {
-            "type": "reaction_added",
-            "message_id": str(message_id),
-            "user_id": str(user_id),
-            "emoji": emoji,
-        },
+        GroupEvent.reaction_added(message_id, user_id, emoji),
     )
     return True, msg.group_id
 
@@ -434,6 +397,8 @@ async def remove_reaction(
     message_id: uuid.UUID,
     user_id: uuid.UUID,
     emoji: str,
+    *,
+    after_commit: AfterCommit,
 ) -> uuid.UUID:
     """Remove a specific reaction. Returns group_id."""
     result = await db.execute(
@@ -453,14 +418,10 @@ async def remove_reaction(
     await db.delete(reaction)
     await db.flush()
 
-    await _emit_chat_event(
+    after_commit.schedule(
+        group_events.publish,
         group_id,
-        {
-            "type": "reaction_removed",
-            "message_id": str(message_id),
-            "user_id": str(user_id),
-            "emoji": emoji,
-        },
+        GroupEvent.reaction_removed(message_id, user_id, emoji),
     )
     return group_id
 

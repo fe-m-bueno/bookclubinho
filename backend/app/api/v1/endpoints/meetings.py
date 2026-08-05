@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response, status
 
+from app.core.after_commit import BackgroundTasksScheduler
 from app.core.deps import CurrentUser, DBSession, GroupMemberDep  # noqa: TC001
 from app.db.models.meeting import Meeting, MeetingRsvp  # noqa: TC001
 from app.schemas.meeting import (
@@ -130,6 +131,7 @@ async def create_meeting_endpoint(
     _member: GroupMemberDep,
     current_user: CurrentUser,
     db: DBSession,
+    background_tasks: BackgroundTasks,
 ) -> MeetingResponse:
     """Cria um novo encontro para o grupo."""
     try:
@@ -139,6 +141,7 @@ async def create_meeting_endpoint(
             user_id=current_user.id,
             data=body,
             creator_name=current_user.display_name or current_user.username,
+            after_commit=BackgroundTasksScheduler(background_tasks),
         )
     except MeetingError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
@@ -295,6 +298,7 @@ async def delete_meeting_endpoint(
     meeting_id: uuid.UUID,
     current_user: CurrentUser,
     db: DBSession,
+    background_tasks: BackgroundTasks,
 ) -> Response:
     """Cancela (hard delete) um encontro. Apenas criador ou admin."""
     try:
@@ -303,6 +307,7 @@ async def delete_meeting_endpoint(
             meeting_id=meeting_id,
             user_id=current_user.id,
             user_name=current_user.display_name or current_user.username,
+            after_commit=BackgroundTasksScheduler(background_tasks),
         )
     except MeetingError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc

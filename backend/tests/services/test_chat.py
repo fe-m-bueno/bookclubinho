@@ -10,7 +10,6 @@ import pytest
 
 from app.services.chat import (
     ChatError,
-    _emit_chat_event,
     create_message,
     delete_message,
     edit_message,
@@ -120,10 +119,7 @@ async def test_create_text_message_success() -> None:
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 
-    with patch("app.services.chat._emit_chat_event", new=AsyncMock()):
-        msg = await create_message(
-            db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data
-        )
+    msg = await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
 
     db.add.assert_called_once()
     db.flush.assert_called_once()
@@ -165,7 +161,6 @@ async def test_create_message_sanitizes_content_text() -> None:
 
     with (
         patch("app.services.chat.sanitize", return_value="Hello") as mock_sanitize,
-        patch("app.services.chat._emit_chat_event", new=AsyncMock()),
     ):
         await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
 
@@ -217,10 +212,11 @@ async def test_edit_message_success_within_window() -> None:
     db.refresh = AsyncMock()
 
     with (
-        patch("app.services.chat._emit_chat_event", new=AsyncMock()),
         patch("app.services.chat.sanitize", return_value="Updated text"),
     ):
-        result = await edit_message(db, message_id=msg.id, user_id=user_id, data=data)
+        result = await edit_message(
+            db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id, data=data
+        )
 
     assert result is msg
     assert msg.content_text == "Updated text"
@@ -243,7 +239,7 @@ async def test_edit_message_after_15_min_raises() -> None:
     db.execute = AsyncMock(return_value=res)
 
     with pytest.raises(ChatError) as exc_info:
-        await edit_message(db, message_id=msg.id, user_id=user_id, data=data)
+        await edit_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id, data=data)
     assert exc_info.value.status_code == 409
     assert "15" in str(exc_info.value)
 
@@ -261,7 +257,7 @@ async def test_edit_message_wrong_owner_raises_404() -> None:
     data = _make_edit_request()
 
     with pytest.raises(ChatError) as exc_info:
-        await edit_message(db, message_id=msg.id, user_id=other_id, data=data)
+        await edit_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=other_id, data=data)
     assert exc_info.value.status_code == 404
 
 
@@ -291,7 +287,7 @@ async def test_edit_message_by_ex_member_raises_404() -> None:
     db.execute = AsyncMock(side_effect=[res_msg, res_no_member])
 
     with pytest.raises(MembershipError) as exc_info:
-        await edit_message(db, message_id=msg.id, user_id=author_id, data=data)
+        await edit_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=author_id, data=data)
     assert exc_info.value.status_code == 404
     assert msg.content_text == original_text
 
@@ -312,7 +308,7 @@ async def test_edit_deleted_message_raises() -> None:
     db.execute = AsyncMock(return_value=res)
 
     with pytest.raises(ChatError) as exc_info:
-        await edit_message(db, message_id=msg.id, user_id=user_id, data=data)
+        await edit_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id, data=data)
     assert exc_info.value.status_code == 409
 
 
@@ -331,8 +327,7 @@ async def test_delete_message_success() -> None:
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 
-    with patch("app.services.chat._emit_chat_event", new=AsyncMock()):
-        result = await delete_message(db, message_id=msg.id, user_id=user_id)
+    result = await delete_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id)
 
     assert result is msg
     assert msg.is_deleted is True
@@ -351,7 +346,7 @@ async def test_delete_message_wrong_owner_raises_404() -> None:
     db.execute = AsyncMock(return_value=res)
 
     with pytest.raises(ChatError) as exc_info:
-        await delete_message(db, message_id=msg.id, user_id=other_id)
+        await delete_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=other_id)
     assert exc_info.value.status_code == 404
 
 
@@ -370,7 +365,7 @@ async def test_delete_message_by_ex_member_raises_404() -> None:
     db.execute = AsyncMock(side_effect=[res_msg, res_no_member])
 
     with pytest.raises(MembershipError) as exc_info:
-        await delete_message(db, message_id=msg.id, user_id=author_id)
+        await delete_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=author_id)
     assert exc_info.value.status_code == 404
     assert msg.is_deleted is False
 
@@ -386,7 +381,7 @@ async def test_delete_already_deleted_raises() -> None:
     db.execute = AsyncMock(return_value=res)
 
     with pytest.raises(ChatError) as exc_info:
-        await delete_message(db, message_id=msg.id, user_id=user_id)
+        await delete_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id)
     assert exc_info.value.status_code == 409
 
 
@@ -495,8 +490,9 @@ async def test_toggle_reaction_adds_new() -> None:
     db.add = MagicMock()
     db.flush = AsyncMock()
 
-    with patch("app.services.chat._emit_chat_event", new=AsyncMock()):
-        added, returned_group_id = await toggle_reaction(db, message_id=msg.id, user_id=user_id, emoji="👍")
+    added, returned_group_id = await toggle_reaction(
+        db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id, emoji="👍"
+    )
 
     assert added is True
     assert returned_group_id == group_id
@@ -522,8 +518,9 @@ async def test_toggle_reaction_removes_existing() -> None:
     db.delete = AsyncMock()
     db.flush = AsyncMock()
 
-    with patch("app.services.chat._emit_chat_event", new=AsyncMock()):
-        added, returned_group_id = await toggle_reaction(db, message_id=msg.id, user_id=user_id, emoji="👍")
+    added, returned_group_id = await toggle_reaction(
+        db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id, emoji="👍"
+    )
 
     assert added is False
     assert returned_group_id == group_id
@@ -541,7 +538,7 @@ async def test_toggle_reaction_on_deleted_message_raises() -> None:
     db.execute = AsyncMock(return_value=res)
 
     with pytest.raises(ChatError) as exc_info:
-        await toggle_reaction(db, message_id=msg.id, user_id=user_id, emoji="👍")
+        await toggle_reaction(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id, emoji="👍")
     assert exc_info.value.status_code == 409
 
 
@@ -556,7 +553,9 @@ async def test_remove_reaction_not_found_raises_404() -> None:
     db.execute = AsyncMock(return_value=res)
 
     with pytest.raises(ChatError) as exc_info:
-        await remove_reaction(db, message_id=uuid.uuid4(), user_id=uuid.uuid4(), emoji="👍")
+        await remove_reaction(
+            db, after_commit=RecordingAfterCommit(), message_id=uuid.uuid4(), user_id=uuid.uuid4(), emoji="👍"
+        )
     assert exc_info.value.status_code == 404
 
 
@@ -593,20 +592,40 @@ async def test_list_reactions_returns_with_user_details() -> None:
     assert result[0].user.username == "testuser"
 
 
-# ── _emit_chat_event maxlen ────────────────────────────────────────────────────
+# ── Eventos agendados (#204) ──────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_emit_chat_event_uses_maxlen() -> None:
+async def test_create_message_schedules_chat_and_notification_events(after_commit) -> None:
+    """Os eventos vão pelo AfterCommit: quando o outro cliente recebe
+    "mensagem criada" e refaz o fetch, a linha já existe."""
+    user_id = uuid.uuid4()
     group_id = uuid.uuid4()
-    event_data = {"type": "message_created", "message_id": str(uuid.uuid4())}
+    member = _make_member(user_id=user_id, group_id=group_id)
+    data = _make_create_request(content_text="Olá")
 
-    mock_redis = AsyncMock()
-    mock_redis.xadd = AsyncMock()
+    db = AsyncMock()
+    res = MagicMock()
+    res.scalar_one_or_none.return_value = member
+    db.execute = AsyncMock(return_value=res)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.refresh = AsyncMock()
 
-    with patch("app.services.group_helpers.get_redis", return_value=mock_redis):
-        await _emit_chat_event(group_id, event_data)
+    await create_message(db, after_commit=after_commit, group_id=group_id, user_id=user_id, data=data)
 
-    mock_redis.xadd.assert_called_once()
-    call_kwargs = mock_redis.xadd.call_args
-    assert call_kwargs.kwargs.get("maxlen") == 10000 or (len(call_kwargs.args) > 2 and call_kwargs.args[2] == 10000)
+    assert after_commit.published == ["message_created", "new_message"]
+    assert after_commit.event_types == ["message_sent"]  # badge
+
+
+@pytest.mark.asyncio
+async def test_typing_publishes_inline(after_commit) -> None:
+    """Digitação não participa de transação — não há o que esperar commitar."""
+    from app.services.chat import emit_typing_event
+
+    group_id = uuid.uuid4()
+    with patch("app.services.group_events.get_redis", return_value=AsyncMock()) as mock:
+        await emit_typing_event(group_id, uuid.uuid4(), "Felipe", "http://a")
+
+    assert mock.called
+    assert after_commit.scheduled == []
