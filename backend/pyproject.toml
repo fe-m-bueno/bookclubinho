@@ -18,7 +18,11 @@ dependencies = [
     "alembic>=1.14.0",
 
     # Auth / Security
-    "python-jose[cryptography]>=3.3.0",
+    # PyJWT em vez de python-jose: jose arrasta `ecdsa`, que tem CVE sem correção
+    # (PYSEC-2026-1325 / GHSA-h4gh-qq45-vh27) e está sem manutenção.
+    "PyJWT>=2.10.0",
+    # Usada direto em services/integration.py (Fernet) — antes vinha só como extra do jose.
+    "cryptography>=44.0.0",
     "bcrypt>=4.2.0",
     "itsdangerous>=2.2.0",
 

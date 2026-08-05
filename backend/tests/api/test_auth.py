@@ -742,7 +742,7 @@ class TestBlacklistRefreshToken:
 
     @pytest.mark.asyncio
     async def test_jwt_error_returns_silently(self) -> None:
-        from jose import JWTError
+        from jwt import PyJWTError as JWTError
 
         from app.services.auth import blacklist_refresh_token
 
@@ -852,7 +852,7 @@ class TestRotateRefreshToken:
 
     @pytest.mark.asyncio
     async def test_jwt_error_raises_401(self) -> None:
-        from jose import JWTError
+        from jwt import PyJWTError as JWTError
 
         from app.services.auth import rotate_refresh_token
 

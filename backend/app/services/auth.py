@@ -12,8 +12,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import httpx
+import jwt
 import structlog
-from jose import JWTError, jwt
+from jwt import PyJWTError
 from sqlalchemy import select
 
 if TYPE_CHECKING:
@@ -163,7 +164,7 @@ def _extract_jti_from_token(token: str) -> str | None:
             options={"verify_exp": False},
         )
         return payload.get("jti")
-    except JWTError:
+    except PyJWTError:
         return None
 
 
@@ -614,7 +615,7 @@ async def blacklist_refresh_token(token: str) -> None:
     """
     try:
         payload = decode_token(token)
-    except JWTError:
+    except PyJWTError:
         return
 
     jti: str | None = payload.get("jti")
@@ -644,7 +645,7 @@ async def rotate_refresh_token(
     """
     try:
         payload = decode_token(token)
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise AuthError("Token inválido ou expirado.", status_code=401) from exc
 
     if payload.get("type") != "refresh":
