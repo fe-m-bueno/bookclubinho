@@ -239,7 +239,12 @@ async def edit_message(
     result = await db.execute(select(GroupMessage).where(GroupMessage.id == message_id))
     msg = result.scalar_one_or_none()
 
-    if msg is None or msg.user_id != user_id:
+    if msg is None:
+        raise ChatError("Mensagem não encontrada.", status_code=404)
+    # Membership before authorship: leaving the club revokes the right to act on
+    # messages left behind, even one's own.
+    await membership.resolve(db, msg.group_id, user_id)
+    if msg.user_id != user_id:
         raise ChatError("Mensagem não encontrada.", status_code=404)
     if msg.is_deleted:
         raise ChatError("Não é possível editar uma mensagem apagada.", status_code=409)
@@ -275,7 +280,12 @@ async def delete_message(
     result = await db.execute(select(GroupMessage).where(GroupMessage.id == message_id))
     msg = result.scalar_one_or_none()
 
-    if msg is None or msg.user_id != user_id:
+    if msg is None:
+        raise ChatError("Mensagem não encontrada.", status_code=404)
+    # Same rule as edit_message. delete_message has no time window, so without
+    # this an ex-member could keep erasing old messages indefinitely.
+    await membership.resolve(db, msg.group_id, user_id)
+    if msg.user_id != user_id:
         raise ChatError("Mensagem não encontrada.", status_code=404)
     if msg.is_deleted:
         raise ChatError("Mensagem já foi apagada.", status_code=409)
