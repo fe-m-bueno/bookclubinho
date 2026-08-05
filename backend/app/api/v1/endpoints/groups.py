@@ -146,11 +146,6 @@ async def create_group_endpoint(
     except GroupError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
-    # Commit antes do BackgroundTask agendado por create_group rodar: o badge
-    # checker abre sua própria sessão e não vê dados não-commitados. Sem isso,
-    # _check_founder encontra 0 grupos e a badge nunca é concedida.
-    await db.commit()
-
     return GroupCreateResponse(
         id=str(group.id),
         name=group.name,

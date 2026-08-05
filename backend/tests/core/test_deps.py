@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,6 +9,14 @@ from fastapi import HTTPException
 from sqlalchemy.exc import InterfaceError
 
 from tests.conftest import make_user, mock_db_returning
+
+
+def _fake_request() -> MagicMock:
+    """get_session publica a sessão em request.state para o middleware de commit."""
+    request = MagicMock()
+    request.state = SimpleNamespace()
+    return request
+
 
 # ── get_session RLS tests ────────────────────────────────────────────────────
 
@@ -29,7 +38,7 @@ class TestGetSessionRLS:
             patch("app.core.deps.AsyncSessionLocal", return_value=mock_cm),
             patch("app.core.deps.get_rls_user_id", return_value=user_id),
         ):
-            gen = get_session()
+            gen = get_session(_fake_request())
             session = await gen.__anext__()
             assert session is mock_session
 
@@ -55,7 +64,7 @@ class TestGetSessionRLS:
             patch("app.core.deps.AsyncSessionLocal", return_value=mock_cm),
             patch("app.core.deps.get_rls_user_id", return_value=""),
         ):
-            gen = get_session()
+            gen = get_session(_fake_request())
             await gen.__anext__()
 
             mock_session.execute.assert_not_called()
@@ -75,7 +84,7 @@ class TestGetSessionRLS:
             patch("app.core.deps.AsyncSessionLocal", return_value=mock_cm),
             patch("app.core.deps.get_rls_user_id", return_value="'; DROP TABLE users; --"),
         ):
-            gen = get_session()
+            gen = get_session(_fake_request())
             with pytest.raises(ValueError):
                 await gen.__anext__()
 
@@ -108,7 +117,7 @@ class TestGetSession:
             patch("app.core.deps.AsyncSessionLocal", return_value=mock_ctx),
             patch("app.core.deps.get_rls_user_id", return_value=uid),
         ):
-            gen = get_session()
+            gen = get_session(_fake_request())
             session = await gen.__anext__()
             assert session is mock_session
 
@@ -139,7 +148,7 @@ class TestGetSession:
             patch("app.core.deps.AsyncSessionLocal", return_value=mock_ctx),
             patch("app.core.deps.get_rls_user_id", return_value="'; DROP TABLE users; --"),
         ):
-            gen = get_session()
+            gen = get_session(_fake_request())
             with pytest.raises(ValueError):
                 await gen.__anext__()
 
@@ -160,7 +169,7 @@ class TestGetSession:
             patch("app.core.deps.AsyncSessionLocal", return_value=mock_ctx),
             patch("app.core.deps.get_rls_user_id", return_value=""),
         ):
-            gen = get_session()
+            gen = get_session(_fake_request())
             await gen.__anext__()
             mock_session.execute.assert_not_called()
             try:
@@ -190,7 +199,7 @@ class TestGetSession:
             patch("app.core.deps.AsyncSessionLocal", return_value=mock_ctx),
             patch("app.core.deps.get_rls_user_id", return_value=""),
         ):
-            gen = get_session()
+            gen = get_session(_fake_request())
             await gen.__anext__()
             with pytest.raises(StopAsyncIteration):
                 await gen.__anext__()
@@ -219,7 +228,7 @@ class TestGetSession:
             patch("app.core.deps.AsyncSessionLocal", return_value=mock_ctx),
             patch("app.core.deps.get_rls_user_id", return_value=""),
         ):
-            gen = get_session()
+            gen = get_session(_fake_request())
             await gen.__anext__()
 
             with pytest.raises(RuntimeError, match="boom"):
