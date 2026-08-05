@@ -1,8 +1,8 @@
 "use client";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
+import { api } from "@/lib/api";
 import type { ChatMessage, MessageListResponse } from "@/lib/types/chat";
 
 interface UseChatMessagesOptions {
@@ -16,9 +16,6 @@ export function useChatMessages({
   roundId,
   chapterFilter,
 }: UseChatMessagesOptions) {
-  const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
 
   const query = useInfiniteQuery<MessageListResponse, Error>({
     queryKey: ["chat-messages", groupId, { roundId, chapterFilter }],
@@ -31,20 +28,11 @@ export function useChatMessages({
         params.set("reference_type", "chapter");
       }
 
-      const res = await fetch(
-        `/api/v1/groups/${groupId}/messages?${params.toString()}`,
-        { credentials: "include" },
+      // 401/403/404 vinham com mensagem escrita à mão aqui; agora a do backend
+      // chega em ApiError.detail, e o redirect do 401 é do Providers.
+      return api.get<MessageListResponse>(
+        `/groups/${groupId}/messages?${params.toString()}`,
       );
-
-      if (res.status === 401) {
-        routerRef.current.push("/auth/login");
-        throw new Error("Não autenticado");
-      }
-      if (res.status === 403) throw new Error("Sem acesso ao chat");
-      if (res.status === 404) throw new Error("Grupo não encontrado");
-      if (!res.ok) throw new Error("Erro ao carregar mensagens");
-
-      return res.json();
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,

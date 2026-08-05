@@ -1,108 +1,50 @@
-import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useBookSearch } from "../use-book-search";
-import { jsonResponse } from "@/test-utils/http";
+import { useBookSearch } from "@/hooks/use-book-search";
+import { ApiError } from "@/lib/api";
+import { renderApiHook } from "@/test-utils/query";
 
-const mockResults = [
-  {
-    book_id: "b1",
-    title: "O Hobbit",
-    author: "J.R.R. Tolkien",
-    cover_url: null,
-    slug: "o-hobbit",
-    description: null,
-    page_count: 310,
-  },
-];
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+  return { ...actual, api: { get: vi.fn() } };
+});
+
+import { api } from "@/lib/api";
+
+const get = api.get as unknown as ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+});
+afterEach(() => vi.useRealTimers());
 
 describe("useBookSearch", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
-
-  it("returns empty results for empty query", () => {
-    const { result } = renderHook(() => useBookSearch(""));
+  it("menos de 2 caracteres não busca", () => {
+    const { result } = renderApiHook(() => useBookSearch("a"));
+    expect(get).not.toHaveBeenCalled();
     expect(result.current.results).toEqual([]);
     expect(result.current.loading).toBe(false);
   });
 
-  it("returns empty results for query shorter than 2 chars", () => {
-    const { result } = renderHook(() => useBookSearch("a"));
+  it("busca depois do debounce", async () => {
+    get.mockResolvedValue([{ id: "b1", title: "Duna" }]);
+    const { result } = renderApiHook(() => useBookSearch("duna"));
+
+    await vi.advanceTimersByTimeAsync(400);
+    await waitFor(() => expect(result.current.results).toHaveLength(1));
+    expect(get).toHaveBeenCalledWith("/books/search?q=duna&limit=10");
+  });
+
+  it("falha devolve lista vazia, como antes", async () => {
+    // O hook antigo engolia o erro devolvendo []; busca vazia e busca quebrada
+    // são indistinguíveis para o usuário.
+    get.mockRejectedValue(new ApiError(500, "Hardcover fora do ar."));
+    const { result } = renderApiHook(() => useBookSearch("duna"));
+
+    await vi.advanceTimersByTimeAsync(400);
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.results).toEqual([]);
-    expect(result.current.loading).toBe(false);
-  });
-
-  it("does not fetch for short queries", () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-    renderHook(() => useBookSearch("a"));
-
-    vi.runAllTimers();
-
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it("fetches after 300ms debounce", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockResults));
-
-    renderHook(() => useBookSearch("hobbit"));
-
-    expect(fetchSpy).not.toHaveBeenCalled();
-
-    await act(() => vi.advanceTimersByTimeAsync(300));
-
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringContaining("/api/v1/books/search?q=hobbit"),
-      expect.objectContaining({ credentials: "include" }),
-    );
-  });
-
-  it("returns search results on success", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockResults));
-
-    const { result } = renderHook(() => useBookSearch("hobbit"));
-
-    await act(() => vi.advanceTimersByTimeAsync(300));
-
-    expect(result.current.results).toEqual(mockResults);
-    expect(result.current.loading).toBe(false);
-  });
-
-  it("returns empty results on network error", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
-      new Error("Network error"),
-    );
-
-    const { result } = renderHook(() => useBookSearch("hobbit"));
-
-    await act(() => vi.advanceTimersByTimeAsync(300));
-
-    expect(result.current.results).toEqual([]);
-    expect(result.current.loading).toBe(false);
-  });
-
-  it("cancels pending timer on query change", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse([]));
-
-    const { rerender } = renderHook(({ q }) => useBookSearch(q), {
-      initialProps: { q: "hobbit" },
-    });
-
-    await act(() => vi.advanceTimersByTimeAsync(100));
-    rerender({ q: "tolkien" });
-    await act(() => vi.advanceTimersByTimeAsync(300));
-
-    // Should only call once with "tolkien", not "hobbit"
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringContaining("tolkien"),
-      expect.anything(),
-    );
   });
 });

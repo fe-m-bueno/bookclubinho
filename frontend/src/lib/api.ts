@@ -52,7 +52,10 @@ export class UnauthorizedError extends ApiError {
   }
 }
 
-type Body = BodyInit | Record<string, unknown> | unknown[] | null | undefined;
+// `object` e não `Record<string, unknown>`: uma interface declarada não tem
+// index signature, então não é atribuível ao Record e todo caller precisaria de
+// cast.
+type Body = BodyInit | object | null | undefined;
 
 /**
  * `FormData` e `URLSearchParams` trazem o próprio Content-Type (com boundary, no
@@ -111,8 +114,25 @@ async function request<T>(method: string, path: string, body?: Body): Promise<T>
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
+/**
+ * Para respostas que não são JSON — hoje só o `.ics` do calendário. Existe para
+ * que esse caso não precise de um `fetch` cru que lembre do CSRF sozinho.
+ */
+async function requestBlob(method: string, path: string): Promise<Blob> {
+  if (method !== "GET") await ensureCsrf();
+  const res = await fetch(`${PREFIX}${path}`, {
+    method,
+    credentials: "include",
+    headers: method !== "GET" ? withCsrf({}) : {},
+  });
+  if (res.status === 401) throw new UnauthorizedError();
+  if (!res.ok) throw new ApiError(res.status, await readError(res));
+  return res.blob();
+}
+
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
+  blob: (path: string, method = "POST") => requestBlob(method, path),
   post: <T>(path: string, body?: Body) => request<T>("POST", path, body),
   patch: <T>(path: string, body?: Body) => request<T>("PATCH", path, body),
   put: <T>(path: string, body?: Body) => request<T>("PUT", path, body),

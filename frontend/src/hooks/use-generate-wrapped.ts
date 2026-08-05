@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { errorMessage } from "@/hooks/use-api-query";
+import { api } from "@/lib/api";
 import type { WrappedResponse } from "@/lib/types/wrapped";
 
 interface UseGenerateWrappedReturn {
@@ -18,20 +19,9 @@ export function useGenerateWrapped(): UseGenerateWrappedReturn {
     setLoading(true);
     setError(null);
     try {
-      await ensureCsrf();
-      const res = await fetch(`/api/v1/groups/${groupId}/wrapped/${year}`, {
-        method: "POST",
-        credentials: "include",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-      });
-      if (res.ok) {
-        return await res.json() as WrappedResponse;
-      }
-      const data = await res.json().catch(() => ({})) as { detail?: string };
-      setError(data.detail ?? "Erro ao gerar o Wrapped.");
-      return null;
-    } catch {
-      setError("Erro de conexão.");
+      return await api.post<WrappedResponse>(`/groups/${groupId}/wrapped/${year}`);
+    } catch (err) {
+      setError(errorMessage(err));
       return null;
     } finally {
       setLoading(false);

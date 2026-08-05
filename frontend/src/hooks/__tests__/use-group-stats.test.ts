@@ -1,172 +1,31 @@
-import { renderHook, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const pushMock = vi.fn();
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock }),
-}));
+import { useGroupStats } from "@/hooks/use-group-stats";
+import { renderApiHook } from "@/test-utils/query";
 
-import { useGroupStats } from "../use-group-stats";
-import type { GroupStatsResponse } from "@/lib/types/stats";
-import { jsonResponse } from "@/test-utils/http";
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+  return { ...actual, api: { get: vi.fn() } };
+});
 
-const mockStats: GroupStatsResponse = {
-  total_books_read: 5,
-  total_pages_read: 1500,
-  average_rating: 4.2,
-  total_reading_time_minutes: 3000,
-  books_per_genre: [{ genre: "Ficção", count: 3 }],
-  member_leaderboard: [
-    {
-      user_id: "u1",
-      username: "alice",
-      display_name: "Alice",
-      avatar_url: null,
-      books_finished: 5,
-      avg_rating: 4.2,
-      current_streak: 7,
-      reading_time_minutes: 3000,
-      reviews_count: 5,
-      badges_count: 3,
-    },
-  ],
-  rating_distribution: [
-    { stars: 4, count: 3 },
-    { stars: 5, count: 2 },
-  ],
-  emotional_stats: {
-    total_reviews: 5,
-    cried_count: 1,
-    loved_it_count: 4,
-    felt_aroused_count: 0,
-    found_heavy_count: 2,
-    wants_more_count: 3,
-  },
-};
+import { api } from "@/lib/api";
 
+const get = api.get as unknown as ReturnType<typeof vi.fn>;
+
+beforeEach(() => vi.clearAllMocks());
+
+// As mecânicas (loading, erro, refetch, credenciais) são de useApiQuery e
+// lib/api, testadas lá. Aqui fica só o que é deste hook: caminho e formato.
 describe("useGroupStats", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  it("busca as estatísticas do grupo", async () => {
+    const stats = { total_books: 3, total_pages: 900 };
+    get.mockResolvedValue(stats);
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+    const { result } = renderApiHook(() => useGroupStats("g1"));
 
-  it("fetches stats successfully and sets data", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockStats));
-
-    const { result } = renderHook(() => useGroupStats("g1"));
-
-    expect(result.current.loading).toBe(true);
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-
-    expect(result.current.data).toEqual(mockStats);
-    expect(result.current.error).toBeNull();
-  });
-
-  it("starts in loading state", () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockStats));
-
-    const { result } = renderHook(() => useGroupStats("g1"));
-
-    expect(result.current.loading).toBe(true);
-    expect(result.current.data).toBeNull();
-  });
-
-  it("calls API with correct URL and credentials", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockStats));
-
-    renderHook(() => useGroupStats("g1"));
-
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledWith(
-        "/api/v1/groups/g1/stats",
-        expect.objectContaining({ credentials: "include" }),
-      );
-    });
-  });
-
-  it("redirects to login on 401", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 401));
-
-    renderHook(() => useGroupStats("g1"));
-
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith("/auth/login");
-    });
-  });
-
-  it("sets error on non-401 failure", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 500));
-
-    const { result } = renderHook(() => useGroupStats("g1"));
-
-    await waitFor(() => {
-      expect(result.current.error).toBe(
-        "Erro ao carregar as estatísticas. Tente novamente.",
-      );
-    });
-
-    expect(result.current.data).toBeNull();
-  });
-
-  it("sets connection error on network failure", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
-      new Error("Network error"),
-    );
-
-    const { result } = renderHook(() => useGroupStats("g1"));
-
-    await waitFor(() => {
-      expect(result.current.error).toBe(
-        "Erro de conexão. Verifique sua internet.",
-      );
-    });
-  });
-
-  it("ignores AbortError gracefully and does not set error", async () => {
-    const abortError = new DOMException("Aborted", "AbortError");
-    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(abortError);
-
-    const { result } = renderHook(() => useGroupStats("g1"));
-
-    // Wait for the async fetch to settle
-    await waitFor(() => {
-      // Error should never be set for AbortError
-      expect(result.current.error).toBeNull();
-    });
-  });
-
-  it("refetch triggers a new API call", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse(mockStats));
-
-    const { result } = renderHook(() => useGroupStats("g1"));
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-
-    result.current.refetch();
-
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it("uses groupId in the request URL", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(mockStats));
-
-    renderHook(() => useGroupStats("my-group-id-123"));
-
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledWith(
-        "/api/v1/groups/my-group-id-123/stats",
-        expect.any(Object),
-      );
-    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(get).toHaveBeenCalledWith("/groups/g1/stats");
+    expect(result.current.data).toEqual(stats);
   });
 });

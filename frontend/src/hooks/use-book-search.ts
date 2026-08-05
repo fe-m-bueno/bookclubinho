@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { api } from "@/lib/api";
 import type { BookResult } from "@/lib/types/book";
+
+const DEBOUNCE_MS = 300;
+const MIN_LENGTH = 2;
 
 interface UseBookSearchReturn {
   results: BookResult[];
@@ -9,53 +15,24 @@ interface UseBookSearchReturn {
 }
 
 export function useBookSearch(query: string): UseBookSearchReturn {
-  const [results, setResults] = useState<BookResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const debounced = useDebouncedValue(query, DEBOUNCE_MS);
+  const enabled = debounced.length >= MIN_LENGTH;
+  const settling = query !== debounced && query.length >= MIN_LENGTH;
 
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults((prev) => (prev.length === 0 ? prev : []));
-      setLoading(false);
-      return;
-    }
+  const search = useQuery<BookResult[], Error>({
+    queryKey: ["bookSearch", debounced],
+    queryFn: () =>
+      api.get<BookResult[]>(
+        `/books/search?q=${encodeURIComponent(debounced)}&limit=10`,
+      ),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
 
-    const controller = new AbortController();
-
-    const timer = setTimeout(() => {
-      setLoading(true);
-
-      fetch(
-        `/api/v1/books/search?q=${encodeURIComponent(query)}&limit=10`,
-        {
-          credentials: "include",
-          signal: controller.signal,
-        },
-      )
-        .then((res) => {
-          if (res.ok) return res.json() as Promise<BookResult[]>;
-          return [] as BookResult[];
-        })
-        .then((data) => {
-          if (!controller.signal.aborted) setResults(data);
-        })
-        .catch((err) => {
-          if (
-            !(err instanceof DOMException && err.name === "AbortError") &&
-            !controller.signal.aborted
-          ) {
-            setResults([]);
-          }
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    }, 300);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query]);
-
-  return { results, loading };
+  return {
+    // Busca sem resultado e busca que falhou aparecem iguais para o usuário —
+    // era o comportamento anterior, que engolia o erro devolvendo [].
+    results: search.data ?? [],
+    loading: enabled && (settling || search.isPending),
+  };
 }
