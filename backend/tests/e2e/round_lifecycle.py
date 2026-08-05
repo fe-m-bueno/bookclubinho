@@ -88,6 +88,10 @@ async def make_user(client: httpx.AsyncClient, tag: str) -> dict:
     email = f"e2e-{tag}-{uuid.uuid4().hex[:8]}@example.com"
     conn = await asyncpg.connect(DSN)
     try:
+        # A query é literal e todos os valores vão como bind params ($1..$5) —
+        # a regra casa pelo `conn.execute` com string multi-linha, não por
+        # interpolação. Nada aqui vem de input externo.
+        # nosemgrep: python.lang.security.audit.sqli.asyncpg-sqli.asyncpg-sqli
         await conn.execute(
             """
             INSERT INTO users (id, email, hashed_password, display_name, username,
