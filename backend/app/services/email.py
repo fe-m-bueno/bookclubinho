@@ -59,7 +59,7 @@ class EmailService:
 
     def _user_display(self, user: User) -> str:
         """Resolve user's display name with fallback."""
-        return self._user_display(user)
+        return user.display_name or user.username or user.email
 
     def _send_sync(self, to: str, subject: str, html: str) -> str | None:
         """Send email synchronously via Resend. Returns email ID or None."""
@@ -268,47 +268,83 @@ email_service = EmailService()
 
 
 # ── Backward-compatible sync wrappers (callers unchanged) ─────────────────────
+#
+# Rodam via `asyncio.to_thread` a partir de código async. Antes chamavam
+# `_send_sync` direto, pulando o try/except que `_send` tem — então uma
+# indisponibilidade do Resend virava exceção no caller. `auth.register_user`
+# devolvia 500 depois de já ter commitado a conta, e como login exige
+# `email_verified` e reenviar é no-op silencioso, o endereço ficava travado.
+#
+# Contrato agora: **nunca levantam**. Logam e seguem. Quem precisa saber se
+# entregou usa o retorno.
+
+
+def _send_sync_guarded(
+    *,
+    kind: str,
+    to_email: str,
+    template: str,
+    subject: str,
+    **ctx: object,
+) -> str | None:
+    """Renderiza e envia, engolindo qualquer falha. Retorna o id do Resend ou None.
+
+    Cobre `_render` também: o Environment usa StrictUndefined, então uma variável
+    faltando no template levanta — e isso não pode chegar ao caller.
+    """
+    try:
+        html = email_service._render(template, **ctx)
+        email_id = email_service._send_sync(to_email, subject, html)
+    except Exception:
+        logger.exception("email_send_failed", kind=kind, to=to_email)
+        return None
+    logger.info(f"{kind}_email_sent", to=to_email, resend_id=email_id)
+    return email_id
 
 
 def send_verification_email(to_email: str, display_name: str, verify_url: str) -> None:
     """Send email verification link — sync wrapper for asyncio.to_thread callers."""
-    html = email_service._render(
-        "emails/verification.html",
+    _send_sync_guarded(
+        kind="verification",
+        to_email=to_email,
+        template="emails/verification.html",
+        subject="Bookclub — confirme seu e-mail",
         display_name=display_name,
         verify_url=verify_url,
     )
-    email_id = email_service._send_sync(to_email, "Bookclub — confirme seu e-mail", html)
-    logger.info("verification_email_sent", to=to_email, resend_id=email_id)
 
 
 def send_magic_link_email(to_email: str, display_name: str, magic_url: str) -> None:
     """Envia magic link — síncrona, rodar via asyncio.to_thread."""
-    html = email_service._render(
-        "emails/magic_link.html",
+    _send_sync_guarded(
+        kind="magic_link",
+        to_email=to_email,
+        template="emails/magic_link.html",
+        subject="Bookclub — seu link de acesso",
         display_name=display_name,
         magic_url=magic_url,
     )
-    email_id = email_service._send_sync(to_email, "Bookclub — seu link de acesso", html)
-    logger.info("magic_link_email_sent", to=to_email, resend_id=email_id)
 
 
 def send_email_change_email(to_email: str, display_name: str, confirm_url: str) -> None:
     """Envia link de confirmação de troca de e-mail — síncrona, rodar via asyncio.to_thread."""
-    html = email_service._render(
-        "emails/email_change.html",
+    _send_sync_guarded(
+        kind="email_change",
+        to_email=to_email,
+        template="emails/email_change.html",
+        subject="Bookclub — confirme seu novo e-mail",
         display_name=display_name,
         confirm_url=confirm_url,
     )
-    email_id = email_service._send_sync(to_email, "Bookclub — confirme seu novo e-mail", html)
-    logger.info("email_change_email_sent", to=to_email, resend_id=email_id)
 
 
 def send_data_export_email(to_email: str, display_name: str, download_url: str) -> None:
     """Envia link de download do export de dados — síncrona, rodar via asyncio.to_thread."""
-    html = email_service._render(
-        "emails/data_export.html",
+    _send_sync_guarded(
+        kind="data_export",
+        to_email=to_email,
+        template="emails/data_export.html",
+        subject="Bookclub — seus dados estão prontos",
         display_name=display_name,
         download_url=download_url,
     )
-    email_id = email_service._send_sync(to_email, "Bookclub — seus dados estão prontos", html)
-    logger.info("data_export_email_sent", to=to_email, resend_id=email_id)

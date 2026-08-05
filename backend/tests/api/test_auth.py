@@ -127,6 +127,43 @@ class TestRegisterUser:
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_email_failure_does_not_fail_registration(self) -> None:
+        """#212: register devolvia 500 quando a entrega falhava, **depois** de já
+        ter commitado a conta.
+
+        Como login exige `email_verified` e um segundo register com o mesmo email é
+        no-op silencioso, o endereço ficava travado — a pessoa via "erro interno" e
+        uma conta que não loga.
+
+        O envio real passa por `send_verification_email`, que agora engole e loga
+        (#213). Este teste usa o wrapper de verdade, não um dublê, para que a
+        garantia seja verificada de ponta a ponta.
+        """
+        from app.services.auth import register_user
+
+        mock_db = mock_db_returning(None)
+
+        with (
+            patch("app.services.auth.hash_password", return_value="hashed"),
+            patch("app.services.auth.get_redis") as mock_redis_factory,
+            patch(
+                "app.services.email.email_service._send_sync",
+                side_effect=RuntimeError("Resend fora do ar"),
+            ),
+        ):
+            mock_redis_factory.return_value = AsyncMock()
+
+            # não deve levantar
+            await register_user(
+                db=mock_db,
+                email="quebrado@example.com",
+                password="securepass",
+                display_name="Quebrado",
+            )
+
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_silently_no_ops_on_duplicate_email(self) -> None:
         from app.services.auth import register_user
 
