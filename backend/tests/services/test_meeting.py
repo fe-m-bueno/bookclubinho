@@ -16,6 +16,7 @@ from app.services.meeting import (
     update_meeting,
     update_rsvp,
 )
+from tests.conftest import RecordingAfterCommit
 
 # Patch target for shared helpers imported into meeting module
 _EMIT = "app.services.meeting.emit_group_event"
@@ -109,8 +110,9 @@ async def test_create_meeting_success() -> None:
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
 
-    with patch("app.services.meeting.emit_group_event", new=AsyncMock()):
-        meeting = await create_meeting(db, group_id=group_id, user_id=user_id, data=data, creator_name="Test")
+    meeting = await create_meeting(
+        db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data, creator_name="Test"
+    )
 
     # Meeting + creator RSVP + system message = at least 3 adds
     assert db.add.call_count >= 2
@@ -130,7 +132,9 @@ async def test_create_meeting_past_date_raises_422() -> None:
     db.execute = AsyncMock(return_value=res_member)
 
     with pytest.raises(MeetingError) as exc_info:
-        await create_meeting(db, group_id=group_id, user_id=user_id, data=data, creator_name="Test")
+        await create_meeting(
+            db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data, creator_name="Test"
+        )
     assert exc_info.value.status_code == 422
 
 
@@ -237,8 +241,9 @@ async def test_delete_meeting_by_creator() -> None:
     db.add = MagicMock()
     db.refresh = AsyncMock()
 
-    with patch("app.services.meeting.emit_group_event", new=AsyncMock()):
-        result = await delete_meeting(db, meeting_id=meeting.id, user_id=user_id, user_name="Test")
+    result = await delete_meeting(
+        db, after_commit=RecordingAfterCommit(), meeting_id=meeting.id, user_id=user_id, user_name="Test"
+    )
 
     assert result == group_id
     db.delete.assert_called_once_with(meeting)
@@ -260,7 +265,9 @@ async def test_delete_meeting_by_regular_member_raises_403() -> None:
     db.execute = AsyncMock(side_effect=[res_meeting, res_member, res_member])
 
     with pytest.raises(MeetingError) as exc_info:
-        await delete_meeting(db, meeting_id=meeting.id, user_id=member_id, user_name="Test")
+        await delete_meeting(
+            db, after_commit=RecordingAfterCommit(), meeting_id=meeting.id, user_id=member_id, user_name="Test"
+        )
     assert exc_info.value.status_code == 403
 
 

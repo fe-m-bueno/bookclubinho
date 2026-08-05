@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import structlog
-from redis.exceptions import RedisError
 from sqlalchemy import func, select, update
 
 if TYPE_CHECKING:
@@ -16,20 +15,19 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ServiceError
-from app.core.redis import get_redis
 from app.db.models.group import GroupMember
 from app.db.models.reading_progress import ReadingProgress
 from app.db.models.round import Round, RoundStatus
 from app.db.models.user import User
+from app.services import group_events
 from app.services.badge_checker import check_and_award_badges
+from app.services.group_events import GroupEvent
 from app.services.round import verify_round_member
 
 if TYPE_CHECKING:
     from app.core.after_commit import AfterCommit
 
 logger = structlog.get_logger(__name__)
-
-_STREAK_MILESTONES = {7, 14, 30, 60, 100}
 
 
 class ReadingProgressError(ServiceError):
@@ -327,7 +325,7 @@ async def _fan_out(
     (badges), so any second writer silently did a fraction of it.
     """
     await _update_streak(db, user_id=user_id, round_=round_)
-    await _emit_progress_events(round_=round_, user_id=user_id, percentage=percentage)
+    await _notify_approaching_end(round_=round_, user_id=user_id, percentage=percentage, after_commit=after_commit)
 
     after_commit.schedule(check_and_award_badges, str(user_id), "streak_updated", {})
 
@@ -403,93 +401,33 @@ async def _update_streak(
         streak_last_update=str(today),
     )
 
-    await _emit_streak_events(db=db, user=user, round_=round_)
 
-
-async def _emit_progress_events(
+async def _notify_approaching_end(
     round_: Round,
     user_id: uuid.UUID,
     percentage: float,
+    *,
+    after_commit: AfterCommit,
 ) -> None:
-    """Emit progress_updated (and approaching_end if >= 80%) to the group stream."""
-    try:
-        redis = get_redis()
-        stream_key = f"bookclub:group:{round_.group_id}:events"
-        await redis.xadd(
-            stream_key,
-            {
-                "type": "progress_updated",
-                "round_id": str(round_.id),
-                "user_id": str(user_id),
-                "percentage": str(percentage),
-            },
-            maxlen=10000,
-            approximate=True,
-        )
-        if percentage >= 80.0:
-            await redis.xadd(
-                stream_key,
-                {
-                    "type": "approaching_end",
-                    "round_id": str(round_.id),
-                    "user_id": str(user_id),
-                    "percentage": str(percentage),
-                },
-                maxlen=10000,
-                approximate=True,
-            )
-            # Also notify the notifications worker
-            await redis.xadd(
-                "bookclub:notifications",
-                {
-                    "type": "approaching_end",
-                    "round_id": str(round_.id),
-                    "group_id": str(round_.group_id),
-                    "user_id": str(user_id),
-                    "percentage": str(percentage),
-                },
-                maxlen=50000,
-                approximate=True,
-            )
-    except RedisError:
-        logger.warning("redis_event_emission_failed", round_id=str(round_.id))
+    """Avisa o worker de digest quando alguém passa de 80% do livro.
 
+    Daqui também saíam `progress_updated` e `approaching_end` para o stream
+    `:events` do grupo, e de `_emit_streak_events` saíam `streak_updated` e
+    `streak_milestone` — um XADD por clube do usuário, depois de uma query para
+    listá-los. Nenhum cliente consumia: o EventSource do frontend só registra
+    listener para os seis tipos de chat. Abaixo de 80% este caminho não toca o
+    Redis.
+    """
+    if percentage < 80.0:
+        return
 
-async def _emit_streak_events(
-    db: AsyncSession,
-    user: User,
-    round_: Round,
-) -> None:
-    """Emit streak_updated (and streak_milestone when applicable) to all user groups."""
-    try:
-        redis = get_redis()
-        # Fetch all active groups the user belongs to
-        groups_result = await db.execute(select(GroupMember.group_id).where(GroupMember.user_id == user.id))
-        group_ids = [str(row[0]) for row in groups_result.all()]
-
-        for group_id in group_ids:
-            stream_key = f"bookclub:group:{group_id}:events"
-            await redis.xadd(
-                stream_key,
-                {
-                    "type": "streak_updated",
-                    "user_id": str(user.id),
-                    "streak_current": str(user.streak_current),
-                    "streak_longest": str(user.streak_longest),
-                },
-                maxlen=10000,
-                approximate=True,
-            )
-            if user.streak_current in _STREAK_MILESTONES:
-                await redis.xadd(
-                    stream_key,
-                    {
-                        "type": "streak_milestone",
-                        "user_id": str(user.id),
-                        "milestone": str(user.streak_current),
-                    },
-                    maxlen=10000,
-                    approximate=True,
-                )
-    except RedisError:
-        logger.warning("redis_streak_event_failed", user_id=str(user.id))
+    after_commit.schedule(
+        group_events.publish,
+        round_.group_id,
+        GroupEvent.approaching_end(
+            group_id=round_.group_id,
+            round_id=round_.id,
+            user_id=user_id,
+            percentage=percentage,
+        ),
+    )

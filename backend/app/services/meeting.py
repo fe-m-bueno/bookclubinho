@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.core.after_commit import AfterCommit
     from app.schemas.meeting import MeetingCreateRequest, MeetingUpdateRequest
 
 from app.core.exceptions import ServiceError
@@ -21,11 +22,8 @@ from app.db.models.group import GroupMember, GroupRole
 from app.db.models.meeting import Meeting, MeetingRsvp, RsvpStatus
 from app.db.models.message import ContentType, GroupMessage
 from app.security.sanitizer import sanitize
-from app.services import membership
-from app.services.group_helpers import (
-    emit_group_event,
-    validate_round_in_group,
-)
+from app.services import group_events, membership
+from app.services.group_events import GroupEvent
 
 logger = structlog.get_logger(__name__)
 
@@ -66,6 +64,8 @@ async def _insert_system_message(
     group_id: uuid.UUID,
     user_id: uuid.UUID,
     text: str,
+    *,
+    after_commit: AfterCommit,
 ) -> None:
     """Insert a system message in the group chat."""
     msg = GroupMessage(
@@ -77,14 +77,19 @@ async def _insert_system_message(
     db.add(msg)
     await db.flush()
 
-    await emit_group_event(
-        group_id,
-        {
-            "type": "message_created",
-            "message_id": str(msg.id),
-            "user_id": str(user_id),
-        },
-    )
+    after_commit.schedule(group_events.publish, group_id, GroupEvent.message_created(msg.id, user_id))
+
+
+async def _validate_round_in_group(db: AsyncSession, round_id_str: str, group_id: uuid.UUID) -> uuid.UUID:
+    """Validate that round belongs to group. Returns parsed round UUID."""
+    from app.db.models.round import Round
+
+    round_uuid = uuid.UUID(round_id_str)
+    result = await db.execute(select(Round).where(Round.id == round_uuid))
+    round_ = result.scalar_one_or_none()
+    if round_ is None or round_.group_id != group_id:
+        raise ServiceError("Rodada não encontrada neste grupo.", status_code=404)
+    return round_uuid
 
 
 def _load_meeting_with_relations() -> list:
@@ -130,6 +135,8 @@ async def create_meeting(
     user_id: uuid.UUID,
     data: MeetingCreateRequest,
     creator_name: str,
+    *,
+    after_commit: AfterCommit,
 ) -> Meeting:
     """Create a meeting and auto-insert pending RSVPs for all group members."""
     if data.scheduled_at.tzinfo is None:
@@ -140,7 +147,7 @@ async def create_meeting(
 
     round_id: uuid.UUID | None = None
     if data.round_id:
-        round_id = await validate_round_in_group(db, data.round_id, group_id)
+        round_id = await _validate_round_in_group(db, data.round_id, group_id)
 
     meeting = Meeting(
         group_id=group_id,
@@ -194,6 +201,7 @@ async def create_meeting(
         group_id,
         user_id,
         f"📅 {creator_name} marcou um encontro: {meeting.title} — {scheduled_str}",
+        after_commit=after_commit,
     )
 
     logger.info("meeting_created", meeting_id=str(meeting.id), group_id=str(group_id))
@@ -312,7 +320,7 @@ async def update_meeting(
     if data.duration_minutes is not None:
         meeting.duration_minutes = data.duration_minutes
     if data.round_id is not None:
-        meeting.round_id = await validate_round_in_group(db, data.round_id, meeting.group_id)
+        meeting.round_id = await _validate_round_in_group(db, data.round_id, meeting.group_id)
 
     await db.flush()
     await db.refresh(meeting)
@@ -326,6 +334,8 @@ async def delete_meeting(
     meeting_id: uuid.UUID,
     user_id: uuid.UUID,
     user_name: str,
+    *,
+    after_commit: AfterCommit,
 ) -> uuid.UUID:
     """Delete a meeting. Only creator or admin. Returns group_id."""
     meeting = await _get_meeting_or_404(db, meeting_id)
@@ -350,6 +360,7 @@ async def delete_meeting(
         group_id,
         user_id,
         f"📅 {user_name} cancelou o encontro: {title}",
+        after_commit=after_commit,
     )
 
     logger.info("meeting_deleted", meeting_id=str(meeting_id), group_id=str(group_id))

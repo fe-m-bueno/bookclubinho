@@ -22,7 +22,6 @@ from app.db.models.book_review import BookReview
 from app.db.models.round import RoundStatus
 from app.security.sanitizer import sanitize
 from app.services.badge_checker import check_and_award_badges
-from app.services.group_helpers import emit_group_event
 from app.services.reading_progress import mark_finished
 from app.services.round import verify_round_member
 
@@ -99,17 +98,6 @@ async def submit_review(
     review = result.scalar_one()
 
     logger.info("review_submitted", round_id=str(round_id), user_id=str(user_id))
-
-    # Emit Redis event (fire-and-forget)
-    await emit_group_event(
-        round_.group_id,
-        {
-            "type": "review_submitted",
-            "round_id": str(round_id),
-            "user_id": str(user_id),
-        },
-        stream="events",
-    )
 
     return review
 

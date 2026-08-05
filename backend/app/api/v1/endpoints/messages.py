@@ -231,10 +231,17 @@ async def edit_message_endpoint(
     body: MessageEditRequest,
     current_user: CurrentUser,
     db: DBSession,
+    background_tasks: BackgroundTasks,
 ) -> ChatMessageResponse:
     """Edita o conteúdo de uma mensagem (janela de 15 minutos)."""
     try:
-        msg = await edit_message(db, message_id=message_id, user_id=current_user.id, data=body)
+        msg = await edit_message(
+            db,
+            message_id=message_id,
+            user_id=current_user.id,
+            data=body,
+            after_commit=BackgroundTasksScheduler(background_tasks),
+        )
     except ChatError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -252,10 +259,16 @@ async def delete_message_endpoint(
     message_id: uuid.UUID,
     current_user: CurrentUser,
     db: DBSession,
+    background_tasks: BackgroundTasks,
 ) -> ChatMessageResponse:
     """Soft-delete de mensagem (marca como apagada, não remove do banco)."""
     try:
-        msg = await delete_message(db, message_id=message_id, user_id=current_user.id)
+        msg = await delete_message(
+            db,
+            message_id=message_id,
+            user_id=current_user.id,
+            after_commit=BackgroundTasksScheduler(background_tasks),
+        )
     except ChatError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -274,10 +287,17 @@ async def toggle_reaction_endpoint(
     body: ReactionRequest,
     current_user: CurrentUser,
     db: DBSession,
+    background_tasks: BackgroundTasks,
 ) -> ChatMessageResponse:
     """Adiciona ou remove uma reaction (toggle). Retorna a mensagem atualizada."""
     try:
-        await toggle_reaction(db, message_id=message_id, user_id=current_user.id, emoji=body.emoji)
+        await toggle_reaction(
+            db,
+            message_id=message_id,
+            user_id=current_user.id,
+            emoji=body.emoji,
+            after_commit=BackgroundTasksScheduler(background_tasks),
+        )
     except ChatError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -296,10 +316,17 @@ async def remove_reaction_endpoint(
     emoji: str,
     current_user: CurrentUser,
     db: DBSession,
+    background_tasks: BackgroundTasks,
 ) -> ChatMessageResponse:
     """Remove uma reaction específica do usuário."""
     try:
-        await remove_reaction(db, message_id=message_id, user_id=current_user.id, emoji=emoji)
+        await remove_reaction(
+            db,
+            message_id=message_id,
+            user_id=current_user.id,
+            emoji=emoji,
+            after_commit=BackgroundTasksScheduler(background_tasks),
+        )
     except ChatError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 

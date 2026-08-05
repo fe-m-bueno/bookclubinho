@@ -8,7 +8,6 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 import structlog
-from redis.exceptions import RedisError
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
@@ -21,7 +20,6 @@ if TYPE_CHECKING:
     from app.schemas.round import NominationCreateRequest
 
 from app.core.exceptions import ServiceError
-from app.core.redis import get_redis
 from app.db.models.book_review import BookReview
 from app.db.models.group import GroupMember, GroupRole
 from app.db.models.round import Round, RoundNomination, RoundStatus, RoundVote
@@ -543,22 +541,6 @@ async def finalize_round(
         winner_book=winner.book_title,
         had_tiebreak=was_tiebreak,
     )
-
-    try:
-        redis = get_redis()
-        await redis.xadd(
-            f"bookclub:group:{round_.group_id}:events",
-            {
-                "type": "round_finalized",
-                "round_id": str(round_.id),
-                "book_title": winner.book_title or "",
-                "was_tiebreak": str(was_tiebreak).lower(),
-            },
-            maxlen=10000,
-            approximate=True,
-        )
-    except RedisError:
-        logger.warning("redis_event_emission_failed", round_id=str(round_id))
 
     return round_
 

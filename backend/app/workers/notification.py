@@ -22,10 +22,13 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.db.engine import AsyncSessionLocal
+from app.services import group_events
 
 logger = structlog.get_logger(__name__)
 
-STREAM_KEY = "bookclub:notifications"
+# A chave é declarada em app.services.group_events, junto dos eventos
+# que este worker consome.
+STREAM_KEY = group_events.NOTIFICATIONS_KEY
 CONSUMER_GROUP = "notification-workers"
 CONSUMER_NAME = "worker-1"
 HEARTBEAT_KEY = "worker:notifications:heartbeat"
