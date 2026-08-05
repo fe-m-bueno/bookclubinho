@@ -36,19 +36,24 @@ def test_round_create_request_with_deadline() -> None:
 def test_round_update_request_empty() -> None:
     req = RoundUpdateRequest()
     assert req.deadline is None
-    assert req.status is None
 
 
-def test_round_update_request_status_only() -> None:
-    req = RoundUpdateRequest(status="voting")
-    assert req.status == "voting"
-    assert req.deadline is None
-
-
-def test_round_update_request_both_fields() -> None:
-    req = RoundUpdateRequest(deadline=date(2030, 6, 1), status="reading")
+def test_round_update_request_deadline_only() -> None:
+    req = RoundUpdateRequest(deadline=date(2030, 6, 1))
     assert req.deadline == date(2030, 6, 1)
-    assert req.status == "reading"
+
+
+def test_round_update_request_has_no_status_field() -> None:
+    """`status` saiu: pelo PATCH ele transicionava sem rodar guarda nenhuma.
+
+    Seguindo a convenção do projeto (nenhum schema usa extra="forbid"), um
+    cliente que ainda mande status é ignorado em vez de receber 422.
+    """
+    assert "status" not in RoundUpdateRequest.model_fields
+
+    req = RoundUpdateRequest(status="reading", deadline=date(2030, 6, 1))
+    assert not hasattr(req, "status")
+    assert req.deadline == date(2030, 6, 1)
 
 
 # ── NominationSummary ─────────────────────────────────────────────────────────
