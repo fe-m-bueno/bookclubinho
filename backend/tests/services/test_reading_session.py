@@ -15,6 +15,7 @@ from app.services.reading_session import (
     start_session,
     stop_session,
 )
+from tests.conftest import RecordingAfterCommit
 
 # ── Mock factories ─────────────────────────────────────────────────────────────
 
@@ -153,7 +154,7 @@ async def test_stop_session_success_calculates_duration() -> None:
 
     with patch("app.services.reading_session.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(2026, 3, 19, 10, 30, 0, tzinfo=UTC)
-        result = await stop_session(db, session_id=session.id, user_id=user_id)
+        result = await stop_session(db, after_commit=RecordingAfterCommit(), session_id=session.id, user_id=user_id)
 
     assert session.ended_at is not None
     assert session.duration_minutes == 30
@@ -168,7 +169,9 @@ async def test_stop_session_with_duration_override() -> None:
     user.total_reading_time_minutes = 10
     db = _db_for_stop(session, user)
 
-    await stop_session(db, session_id=session.id, user_id=user_id, duration_override_minutes=45)
+    await stop_session(
+        db, after_commit=RecordingAfterCommit(), session_id=session.id, user_id=user_id, duration_override_minutes=45
+    )
 
     assert session.duration_minutes == 45
     assert user.total_reading_time_minutes == 55
@@ -182,7 +185,7 @@ async def test_stop_session_not_found_raises_404() -> None:
     db.execute = AsyncMock(return_value=res)
 
     with pytest.raises(ReadingSessionError) as exc_info:
-        await stop_session(db, session_id=uuid.uuid4(), user_id=uuid.uuid4())
+        await stop_session(db, after_commit=RecordingAfterCommit(), session_id=uuid.uuid4(), user_id=uuid.uuid4())
     assert exc_info.value.status_code == 404
 
 
@@ -197,7 +200,7 @@ async def test_stop_session_wrong_owner_raises_404() -> None:
     db.execute = AsyncMock(return_value=res)
 
     with pytest.raises(ReadingSessionError) as exc_info:
-        await stop_session(db, session_id=session.id, user_id=other_id)
+        await stop_session(db, after_commit=RecordingAfterCommit(), session_id=session.id, user_id=other_id)
     assert exc_info.value.status_code == 404
 
 
@@ -214,7 +217,7 @@ async def test_stop_session_already_ended_raises_409() -> None:
     db.execute = AsyncMock(return_value=res)
 
     with pytest.raises(ReadingSessionError) as exc_info:
-        await stop_session(db, session_id=session.id, user_id=user_id)
+        await stop_session(db, after_commit=RecordingAfterCommit(), session_id=session.id, user_id=user_id)
     assert exc_info.value.status_code == 409
 
 

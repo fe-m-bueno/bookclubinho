@@ -11,6 +11,7 @@ import uuid  # noqa: TC003
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 
+from app.core.after_commit import BackgroundTasksScheduler
 from app.core.deps import (  # noqa: TC001
     CurrentUser,
     DBSession,
@@ -37,7 +38,6 @@ from app.schemas.group import (
     RegenerateCodeResponse,
     RoundSummary,
 )
-from app.services.badge_checker import check_and_award_badges
 from app.services.group import (
     GroupError,
     create_group,
@@ -141,21 +141,15 @@ async def create_group_endpoint(
             description=description,
             photo_data=photo_data,
             photo_content_type=photo_content_type,
+            after_commit=BackgroundTasksScheduler(background_tasks),
         )
     except GroupError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
-    # Commit antes de agendar o BackgroundTask: o badge checker abre sua própria
-    # sessão e não consegue ver dados não-commitados de outras transações.
-    # Sem isso, _check_founder encontra 0 grupos e a badge nunca é concedida.
+    # Commit antes do BackgroundTask agendado por create_group rodar: o badge
+    # checker abre sua própria sessão e não vê dados não-commitados. Sem isso,
+    # _check_founder encontra 0 grupos e a badge nunca é concedida.
     await db.commit()
-
-    background_tasks.add_task(
-        check_and_award_badges,
-        str(user.id),
-        "group_created",
-        {"group_id": str(group.id)},
-    )
 
     return GroupCreateResponse(
         id=str(group.id),

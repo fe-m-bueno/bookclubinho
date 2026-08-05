@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.core.after_commit import AfterCommit
     from app.db.models.user import User
 
 import qrcode
@@ -27,6 +28,7 @@ from app.db.models.message import GroupMessage
 from app.db.models.reading_progress import ReadingProgress
 from app.db.models.round import Round, RoundStatus
 from app.security.sanitizer import sanitize
+from app.services.badge_checker import check_and_award_badges
 from app.storage.s3_storage import get_public_url, upload_file
 
 logger = structlog.get_logger(__name__)
@@ -206,6 +208,8 @@ async def create_group(
     description: str | None = None,
     photo_data: bytes | None = None,
     photo_content_type: str | None = None,
+    *,
+    after_commit: AfterCommit,
 ) -> Group:
     """Create a new group and add the creator as admin."""
     name = _validate_name(name)
@@ -235,6 +239,13 @@ async def create_group(
     db.add(group)
     db.add(member)
     await db.flush()
+
+    after_commit.schedule(
+        check_and_award_badges,
+        str(user.id),
+        "group_created",
+        {"group_id": str(group_id)},
+    )
 
     logger.info("group_created", group_id=str(group_id), user_id=str(user.id))
     return group
