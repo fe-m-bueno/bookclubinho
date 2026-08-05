@@ -96,8 +96,6 @@ class TestSubmitReviewFinishesTheBook:
         with (
             patch("app.services.review.verify_round_member", new=AsyncMock(return_value=round_)),
             patch("app.services.review.sanitize", side_effect=lambda v: v),
-            patch("app.services.review.emit_group_event", new=AsyncMock()),
-            patch("app.services.reading_progress.get_redis", return_value=AsyncMock()),
         ):
             await submit_review(
                 db,
@@ -122,8 +120,6 @@ class TestSubmitReviewFinishesTheBook:
         with (
             patch("app.services.review.verify_round_member", new=AsyncMock(return_value=round_)),
             patch("app.services.review.sanitize", side_effect=lambda v: v),
-            patch("app.services.review.emit_group_event", new=AsyncMock()),
-            patch("app.services.reading_progress.get_redis", return_value=AsyncMock()),
         ):
             await submit_review(
                 db,
@@ -144,8 +140,6 @@ class TestSubmitReviewFinishesTheBook:
         with (
             patch("app.services.review.verify_round_member", new=AsyncMock(return_value=round_)),
             patch("app.services.review.sanitize", side_effect=lambda v: v),
-            patch("app.services.review.emit_group_event", new=AsyncMock()),
-            patch("app.services.reading_progress.get_redis", return_value=AsyncMock()),
         ):
             await submit_review(
                 db,
@@ -171,8 +165,6 @@ class TestSubmitReviewFinishesTheBook:
         with (
             patch("app.services.review.verify_round_member", new=AsyncMock(return_value=round_)),
             patch("app.services.review.sanitize", side_effect=lambda v: v),
-            patch("app.services.review.emit_group_event", new=AsyncMock()),
-            patch("app.services.reading_progress.get_redis", return_value=AsyncMock()),
         ):
             await submit_review(
                 db,

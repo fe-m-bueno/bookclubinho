@@ -10,11 +10,9 @@ import uuid
 from typing import Any
 
 import structlog
-from redis.exceptions import RedisError
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.core.redis import get_redis
 from app.core.rls import apply_rls_user
 from app.db.engine import AsyncSessionLocal
 from app.db.models.badge import Badge, UserBadge
@@ -114,33 +112,6 @@ async def _check_and_award(
         .on_conflict_do_nothing()
     )
     logger.info("badge_awarded", user_id=str(user_id), slug=slug)
-
-    # Emit event to group stream if group context available
-    if group_id:
-        await _emit_badge_event(group_id, user_id, slug)
-
-
-async def _emit_badge_event(
-    group_id: uuid.UUID,
-    user_id: uuid.UUID,
-    slug: str,
-) -> None:
-    """Fire badge_earned event to the group's events Redis stream."""
-    try:
-        redis = get_redis()
-        stream_key = f"bookclub:group:{group_id}:events"
-        await redis.xadd(
-            stream_key,
-            {
-                "type": "badge_earned",
-                "user_id": str(user_id),
-                "badge_slug": slug,
-            },
-            maxlen=10000,
-            approximate=True,
-        )
-    except RedisError:
-        logger.warning("badge_event_emit_failed", group_id=str(group_id))
 
 
 # ── Individual badge checkers ─────────────────────────────────────────────────

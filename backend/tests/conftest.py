@@ -24,8 +24,23 @@ class RecordingAfterCommit:
 
     @property
     def event_types(self) -> list[str]:
-        """The badge event names scheduled, in order — the usual assertion."""
-        return [args[1] for _fn, args, _kw in self.scheduled if len(args) > 1]
+        """Os nomes de evento de badge agendados, em ordem.
+
+        Filtra por `str` porque o mesmo port carrega dois tipos de agendamento:
+        `check_and_award_badges(user_id, "book_finished", ctx)`, cujo args[1] é o
+        nome do evento, e `group_events.publish(group_id, GroupEvent(...))`, cujo
+        args[1] é o evento. Para esse último use `published`.
+        """
+        return [args[1] for _fn, args, _kw in self.scheduled if len(args) > 1 and isinstance(args[1], str)]
+
+    @property
+    def published(self) -> list[str]:
+        """Os tipos de GroupEvent agendados para publicação, em ordem."""
+        return [
+            args[1].type
+            for _fn, args, _kw in self.scheduled
+            if len(args) > 1 and hasattr(args[1], "type") and hasattr(args[1], "stream")
+        ]
 
 
 @pytest.fixture

@@ -22,6 +22,7 @@ from sse_starlette.sse import EventSourceResponse
 from app.core.deps import CurrentUser, GroupMemberDep  # noqa: TC001
 from app.core.redis import get_redis
 from app.security.rate_limit import limiter
+from app.services import group_events
 
 logger = structlog.get_logger(__name__)
 
@@ -49,26 +50,24 @@ async def group_chat_stream(
 ) -> EventSourceResponse:
     """Abre um stream SSE que entrega eventos de chat e progresso em tempo real.
 
-    Streams consumidos:
-    - ``bookclub:group:{group_id}:chat``   — message_created/edited/deleted,
-                                             reaction_added/removed
-    - ``bookclub:group:{group_id}:events`` — progress_updated, streak_updated,
-                                             approaching_end, streak_milestone,
-                                             round_finalized
+    Entrega o stream ``bookclub:group:{group_id}:chat``, cujos tipos estão
+    declarados em ``app.services.group_events``: message_created, message_edited,
+    message_deleted, reaction_added, reaction_removed e user_typing.
 
-    Reconexão automática: o browser envia ``Last-Event-ID`` e o stream retoma
-    a partir desse ponto nos dois streams.
+    Havia um segundo stream, ``:events``, com sete tipos que nenhum cliente
+    consumia — o EventSource do frontend só registra listener para os seis acima.
+    Foi removido junto com os produtores.
+
+    Reconexão automática: o browser envia ``Last-Event-ID`` e o stream retoma a
+    partir desse ponto.
     """
 
     async def _event_generator() -> AsyncGenerator[dict[str, Any], None]:
         redis = get_redis()
-        chat_key = f"bookclub:group:{group_id}:chat"
-        events_key = f"bookclub:group:{group_id}:events"
+        chat_key = group_events.stream_key(group_id, "chat")
 
         # Resume from Last-Event-ID if provided; otherwise only new events
-        last_event_id: str = request.headers.get("Last-Event-ID", "$")
-        chat_last_id = last_event_id
-        events_last_id = last_event_id
+        chat_last_id: str = request.headers.get("Last-Event-ID", "$")
 
         # Immediate handshake so the client knows connection is alive
         yield {"event": "connected", "data": json.dumps({"status": "ok"})}
@@ -79,7 +78,7 @@ async def group_chat_stream(
 
             try:
                 results = await redis.xread(
-                    {chat_key: chat_last_id, events_key: events_last_id},
+                    {chat_key: chat_last_id},
                     count=_BATCH_COUNT,
                     block=_BLOCK_MS,
                 )
@@ -98,7 +97,7 @@ async def group_chat_stream(
                 yield {"comment": "ping"}
                 continue
 
-            for stream_name, messages in results:
+            for _stream_name, messages in results:
                 for msg_id, fields in messages:
                     event_type = fields.get("type", "event")
                     # Remove "type" from payload data (it's the event name)
@@ -108,10 +107,6 @@ async def group_chat_stream(
                         "data": json.dumps(payload),
                         "id": msg_id,
                     }
-                    # Update last-seen ID per stream
-                    if stream_name == chat_key:
-                        chat_last_id = msg_id
-                    else:
-                        events_last_id = msg_id
+                    chat_last_id = msg_id
 
     return EventSourceResponse(_event_generator(), headers=_SSE_HEADERS)
