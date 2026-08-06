@@ -19,13 +19,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ensureCsrf, withCsrf } from "@/lib/csrf";
 import { AUTH_PROVIDER_LABELS } from "@/lib/auth-provider-labels";
+import { passwordField } from "@/lib/password";
 
 // ── Password form ─────────────────────────────────────────────────────────────
 
 const passwordSchema = z
   .object({
     current_password: z.string().min(1, "Informe a senha atual"),
-    new_password: z.string().min(8, "Mínimo 8 caracteres"),
+    new_password: passwordField,
     confirm_password: z.string(),
   })
   .refine((d) => d.new_password === d.confirm_password, {
