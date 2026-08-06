@@ -18,12 +18,12 @@ function BubbleSkeleton({ side, width }: BubbleSkeletonProps) {
       {!isRight && <Skeleton className="size-7 shrink-0 rounded-full" />}
       {isRight && <div className="w-7 shrink-0" />}
 
-      <div className={`flex flex-col gap-1 ${isRight ? "items-end" : "items-start"}`}>
+      <div
+        className={`flex flex-col gap-1 ${isRight ? "items-end" : "items-start"}`}
+      >
         {/* Name placeholder — only for left bubbles */}
         {!isRight && <Skeleton className="mb-1 h-3 w-16 rounded" />}
-        <Skeleton
-          className={`h-10 rounded-2xl ${width}`}
-        />
+        <Skeleton className={`h-10 rounded-2xl ${width}`} />
       </div>
     </div>
   );

@@ -2,13 +2,7 @@
 
 import { useRef, type ReactNode } from "react";
 import { ContextMenu } from "radix-ui";
-import {
-  SmilePlus,
-  Reply,
-  Copy,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { SmilePlus, Reply, Copy, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type ChatMessage } from "@/lib/types/chat";
 
@@ -37,7 +31,13 @@ interface MenuItemProps {
   className?: string;
 }
 
-function MenuItem({ icon, label, onClick, destructive, className }: MenuItemProps) {
+function MenuItem({
+  icon,
+  label,
+  onClick,
+  destructive,
+  className,
+}: MenuItemProps) {
   return (
     <ContextMenu.Item
       onSelect={onClick}
@@ -130,19 +130,11 @@ export function MessageContextMenu({
           )}
         >
           {!message.is_deleted && (
-            <MenuItem
-              icon={<SmilePlus />}
-              label="Reagir"
-              onClick={onReact}
-            />
+            <MenuItem icon={<SmilePlus />} label="Reagir" onClick={onReact} />
           )}
 
           {!message.is_deleted && (
-            <MenuItem
-              icon={<Reply />}
-              label="Responder"
-              onClick={onReply}
-            />
+            <MenuItem icon={<Reply />} label="Responder" onClick={onReply} />
           )}
 
           {!message.is_deleted && message.content_text && (
@@ -158,11 +150,7 @@ export function MessageContextMenu({
           )}
 
           {canEdit && (
-            <MenuItem
-              icon={<Pencil />}
-              label="Editar"
-              onClick={onEdit}
-            />
+            <MenuItem icon={<Pencil />} label="Editar" onClick={onEdit} />
           )}
 
           {isOwn && !message.is_deleted && (

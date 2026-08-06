@@ -18,8 +18,8 @@ describe("LinkPreviewCard", () => {
           image: null,
           site_name: "Example",
         }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
     );
 
     const queryClient = new QueryClient();
@@ -27,7 +27,7 @@ describe("LinkPreviewCard", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <LinkPreviewCard url="https://example.com/post" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     await waitFor(() => {
@@ -38,7 +38,7 @@ describe("LinkPreviewCard", () => {
     // responsabilidade de `lib/api.ts`, que tem os próprios testes.
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/v1/link-preview?url=https%3A%2F%2Fexample.com%2Fpost",
-      expect.objectContaining({ method: "GET", credentials: "include" })
+      expect.objectContaining({ method: "GET", credentials: "include" }),
     );
   });
 });

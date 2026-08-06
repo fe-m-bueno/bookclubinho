@@ -5,11 +5,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Reply } from "lucide-react";
 import { type ChatMessage } from "@/lib/types/chat";
-import {
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { MessageContent } from "./message-content";
 import { MessageDeleted } from "./message-deleted";
@@ -33,8 +29,7 @@ interface MessageBubbleProps {
 }
 
 function ReplyPreview({ message }: { message: ChatMessage }) {
-  const authorName =
-    message.author.display_name ?? message.author.username;
+  const authorName = message.author.display_name ?? message.author.username;
   const preview = message.content_text?.slice(0, 80) ?? "[mídia]";
 
   return (
@@ -65,8 +60,7 @@ export function MessageBubble({
   onDelete,
   onToggleReaction,
 }: MessageBubbleProps) {
-  const authorName =
-    message.author.display_name ?? message.author.username;
+  const authorName = message.author.display_name ?? message.author.username;
 
   const timeLabel = format(parseISO(message.created_at), "HH:mm", {
     locale: ptBR,
@@ -92,7 +86,12 @@ export function MessageBubble({
     useChatStore.getState().openReactionPicker({
       messageId: message.id,
       isOwn,
-      rect: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right },
+      rect: {
+        top: rect.top,
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+      },
     });
   }, [message.id, isOwn]);
   // no-op: copy is handled inside the context-menu component
@@ -123,10 +122,7 @@ export function MessageBubble({
             aria-label={authorName}
           >
             {message.author.avatar_url && (
-              <AvatarImage
-                src={message.author.avatar_url}
-                alt={authorName}
-              />
+              <AvatarImage src={message.author.avatar_url} alt={authorName} />
             )}
             <AvatarFallback className="text-xs">{avatarInitial}</AvatarFallback>
           </Avatar>

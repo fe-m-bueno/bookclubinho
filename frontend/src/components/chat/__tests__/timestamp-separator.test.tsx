@@ -42,7 +42,8 @@ describe("TimestampSeparator", () => {
     render(<TimestampSeparator timestamp={timestamp} />);
 
     // The rendered label should start with "Hoje"
-    const label = screen.getByRole("separator").getAttribute("aria-label") ?? "";
+    const label =
+      screen.getByRole("separator").getAttribute("aria-label") ?? "";
     expect(label).toMatch(/^Hoje \d{2}:\d{2}$/);
     expect(label).toContain("Hoje");
   });
@@ -51,7 +52,8 @@ describe("TimestampSeparator", () => {
     const timestamp = yesterdayAt(15, 30);
     render(<TimestampSeparator timestamp={timestamp} />);
 
-    const label = screen.getByRole("separator").getAttribute("aria-label") ?? "";
+    const label =
+      screen.getByRole("separator").getAttribute("aria-label") ?? "";
     expect(label).toMatch(/^Ontem \d{2}:\d{2}$/);
     expect(label).toContain("Ontem");
   });
@@ -60,7 +62,8 @@ describe("TimestampSeparator", () => {
     const timestamp = daysAgoAt(5, 8, 45);
     render(<TimestampSeparator timestamp={timestamp} />);
 
-    const label = screen.getByRole("separator").getAttribute("aria-label") ?? "";
+    const label =
+      screen.getByRole("separator").getAttribute("aria-label") ?? "";
     expect(label).not.toContain("Hoje");
     expect(label).not.toContain("Ontem");
     // Should contain a digit-month-time pattern, e.g. "14 jan 08:45"
@@ -91,7 +94,8 @@ describe("TimestampSeparator", () => {
     const timestamp = todayAt(8, 5);
     render(<TimestampSeparator timestamp={timestamp} />);
 
-    const label = screen.getByRole("separator").getAttribute("aria-label") ?? "";
+    const label =
+      screen.getByRole("separator").getAttribute("aria-label") ?? "";
     // HH:mm must have zero-padded minutes, e.g. "08:05" not "8:5"
     expect(label).toMatch(/\d{2}:0\d/);
   });

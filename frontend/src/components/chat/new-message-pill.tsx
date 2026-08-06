@@ -27,7 +27,8 @@ export function NewMessagePill({ count, onClick }: NewMessagePillProps) {
             aria-label={`${count} nova(s) mensagem(ns) — rolar para o final`}
           >
             <span>
-              {count} nova{count !== 1 ? "s" : ""} mensagem{count !== 1 ? "ns" : ""}
+              {count} nova{count !== 1 ? "s" : ""} mensagem
+              {count !== 1 ? "ns" : ""}
             </span>
             <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
           </button>

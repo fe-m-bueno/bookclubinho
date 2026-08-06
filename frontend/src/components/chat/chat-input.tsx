@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import type { MessageCreatePayload } from "@/lib/types/chat";
 
 interface ChatInputProps {
-  groupId: string;
   onSend: (text: string, richJson: Record<string, unknown>) => void;
   onTyping: () => void;
   onImageSelect: (file: File) => void;
@@ -21,7 +20,6 @@ interface ChatInputProps {
 }
 
 export function ChatInput({
-  groupId,
   onSend,
   onTyping,
   onImageSelect,
@@ -68,12 +66,17 @@ export function ChatInput({
             transition={{ duration: 0.15, ease: "easeOut" }}
           >
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
-              <Reply className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <Reply
+                className="size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-foreground">
                   {replyTo.authorName}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">{replyTo.preview}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {replyTo.preview}
+                </p>
               </div>
               <button
                 type="button"
@@ -123,7 +126,6 @@ export function ChatInput({
       <div className="flex items-end gap-2">
         {/* Toolbar toggle + expanded action buttons */}
         <InputToolbar
-          groupId={groupId}
           onImageSelect={onImageSelect}
           onSendSpecial={onSendSpecial}
           onSpoilerChange={onSpoilerChange}

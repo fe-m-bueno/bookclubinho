@@ -82,9 +82,7 @@ export function MessageContent({ message }: MessageContentProps) {
 
     case "video_link":
       return (
-        <VideoEmbedCard
-          url={message.media_url ?? message.content_text ?? ""}
-        />
+        <VideoEmbedCard url={message.media_url ?? message.content_text ?? ""} />
       );
 
     case "quote":

@@ -38,9 +38,7 @@ export function VideoEmbedCard({ url }: VideoEmbedCardProps) {
         </span>
       </span>
 
-      <span className="shrink-0 text-xs text-muted-foreground">
-        Abrir ↗
-      </span>
+      <span className="shrink-0 text-xs text-muted-foreground">Abrir ↗</span>
     </a>
   );
 }
