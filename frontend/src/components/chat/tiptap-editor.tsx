@@ -4,7 +4,6 @@ import React, { useEffect, useRef, type RefObject } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import Link from "@tiptap/extension-link";
 import { cn } from "@/lib/utils";
 
 export interface TiptapEditorHandle {
@@ -50,18 +49,23 @@ export function TiptapEditor({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
+      // O link vai configurado por dentro do StarterKit, que desde a v3 já o
+      // inclui. Registrar `@tiptap/extension-link` além dele criava duas
+      // extensões chamadas "link", e o Tiptap avisava que isso "can lead to
+      // issues": qual configuração vale — o autolink, o openOnClick, os
+      // atributos — passava a depender da ordem de registro.
       StarterKit.configure({
         heading: false,
-      }),
-      Placeholder.configure({ placeholder }),
-      Link.configure({
-        autolink: true,
-        openOnClick: false,
-        HTMLAttributes: {
-          rel: "noopener noreferrer",
-          target: "_blank",
+        link: {
+          autolink: true,
+          openOnClick: false,
+          HTMLAttributes: {
+            rel: "noopener noreferrer",
+            target: "_blank",
+          },
         },
       }),
+      Placeholder.configure({ placeholder }),
     ],
     content: initialContent ?? "",
     editable: !disabled,
