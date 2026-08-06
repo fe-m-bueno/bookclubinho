@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -91,6 +92,9 @@ export function EditMeetingDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Editar Encontro</DialogTitle>
+          <DialogDescription>
+            As mudanças valem para quem já confirmou presença.
+          </DialogDescription>
         </DialogHeader>
 
         <form

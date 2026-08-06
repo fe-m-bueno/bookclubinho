@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -56,6 +57,9 @@ export function JoinGroupDialog({ open, onOpenChange }: JoinGroupDialogProps) {
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Entrar em um clube</DialogTitle>
+          <DialogDescription>
+            Peça o código de 8 caracteres a quem já é do clube.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-2">

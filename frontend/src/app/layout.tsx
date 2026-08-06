@@ -37,9 +37,15 @@ export default async function RootLayout({
   const theme = themeCookie?.value ?? "system";
 
   return (
+    // `data-scroll-behavior` diz ao Next que o `scroll-behavior: smooth` do
+    // `globals.css` é intencional. Sem isso ele avisa em dev, e por um motivo:
+    // ao trocar de rota o scroll para o topo herda a animação, então a página
+    // nova entra deslizando de onde a antiga estava. Com o atributo, o Next usa
+    // scroll instantâneo na navegação e mantém o suave nos âncoras da página.
     <html
       lang="pt-BR"
       className={theme !== "system" ? theme : undefined}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body

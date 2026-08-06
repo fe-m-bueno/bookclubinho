@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -74,6 +75,9 @@ export function CreateQuoteDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Nova Quote</DialogTitle>
+          <DialogDescription>
+            Um trecho que valeu a pena marcar, para o mural do clube.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>

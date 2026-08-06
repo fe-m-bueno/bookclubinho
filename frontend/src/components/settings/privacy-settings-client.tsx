@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -200,6 +201,9 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
             <>
               <DialogHeader>
                 <DialogTitle>Excluir conta</DialogTitle>
+                <DialogDescription>
+                  Leia o que se perde antes de continuar. Não há como desfazer.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 text-sm">
                 <p className="text-muted-foreground">
@@ -232,7 +236,10 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
           {dialog.step === 2 && (
             <>
               <DialogHeader>
-                <DialogTitle>Confirmar exclusao</DialogTitle>
+                <DialogTitle>Confirmar exclusão</DialogTitle>
+                <DialogDescription>
+                  Digite sua senha para confirmar a exclusão da conta.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
