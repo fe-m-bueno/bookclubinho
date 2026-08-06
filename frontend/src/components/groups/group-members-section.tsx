@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { errorMessage } from "@/hooks/use-api-query";
+import { api } from "@/lib/api";
 import type { GroupDetailResponse, MemberSummary } from "@/lib/types/group";
 
 interface GroupMembersSectionProps {
@@ -38,27 +39,15 @@ export function GroupMembersSection({
     async (member: MemberSummary, newRole: "admin" | "member") => {
       setActionLoading(true);
       try {
-        await ensureCsrf();
-        const res = await fetch(
-          `/api/v1/groups/${group.id}/members/${member.user_id}`,
-          {
-            method: "PATCH",
-            headers: withCsrf({ "Content-Type": "application/json" }),
-            body: JSON.stringify({ role: newRole }),
-            credentials: "include",
-          },
+        await api.patch(`/groups/${group.id}/members/${member.user_id}`, {
+          role: newRole,
+        });
+        toast.success(
+          newRole === "admin" ? "Membro promovido!" : "Membro rebaixado!",
         );
-        if (res.ok) {
-          toast.success(
-            newRole === "admin" ? "Membro promovido!" : "Membro rebaixado!",
-          );
-          refetch();
-        } else {
-          const data = await res.json().catch(() => null);
-          toast.error(data?.detail ?? "Erro ao atualizar role.");
-        }
-      } catch {
-        toast.error("Erro de conexão.");
+        refetch();
+      } catch (err) {
+        toast.error(errorMessage(err));
       } finally {
         setActionLoading(false);
         setConfirming(null);
@@ -71,24 +60,11 @@ export function GroupMembersSection({
     async (member: MemberSummary) => {
       setActionLoading(true);
       try {
-        await ensureCsrf();
-        const res = await fetch(
-          `/api/v1/groups/${group.id}/members/${member.user_id}`,
-          {
-            method: "DELETE",
-            headers: withCsrf(),
-            credentials: "include",
-          },
-        );
-        if (res.ok) {
-          toast.success("Membro removido!");
-          refetch();
-        } else {
-          const data = await res.json().catch(() => null);
-          toast.error(data?.detail ?? "Erro ao remover membro.");
-        }
-      } catch {
-        toast.error("Erro de conexão.");
+        await api.del(`/groups/${group.id}/members/${member.user_id}`);
+        toast.success("Membro removido!");
+        refetch();
+      } catch (err) {
+        toast.error(errorMessage(err));
       } finally {
         setActionLoading(false);
         setConfirming(null);

@@ -5,6 +5,7 @@ import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 
 interface LinkPreviewData {
@@ -19,13 +20,8 @@ interface LinkPreviewCardProps {
   url: string;
 }
 
-async function fetchPreview(url: string): Promise<LinkPreviewData> {
-  const res = await fetch(`/api/v1/link-preview?url=${encodeURIComponent(url)}`, {
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error("preview unavailable");
-  return res.json();
-}
+const fetchPreview = (url: string) =>
+  api.get<LinkPreviewData>(`/link-preview?url=${encodeURIComponent(url)}`);
 
 /**
  * Renders an Open Graph preview card for a URL.

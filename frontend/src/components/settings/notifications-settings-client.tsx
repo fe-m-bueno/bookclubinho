@@ -8,7 +8,8 @@ import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Switch } from "@/components/ui/switch";
 import { NotificationsSettingsSkeleton } from "./notifications-settings-skeleton";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { errorMessage } from "@/hooks/use-api-query";
+import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import type { EmailNotificationPreferences, UserMe } from "@/lib/types/user";
 
@@ -69,23 +70,14 @@ export function NotificationsSettingsClient() {
     });
 
     try {
-      await ensureCsrf();
-      const res = await fetch("/api/v1/users/me/notifications", {
-        method: "PATCH",
-        credentials: "include",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ [key]: newValue }),
-      });
-
-      if (!res.ok) throw new Error("Erro ao atualizar preferência");
-
+      await api.patch("/users/me/notifications", { [key]: newValue });
       toast.success(
         newValue ? "Notificação ativada." : "Notificação desativada.",
       );
-    } catch {
+    } catch (err) {
       // Rollback
       queryClient.setQueryData<UserMe>(queryKeys.user.me(), prevUser);
-      toast.error("Erro ao atualizar preferência. Tente novamente.");
+      toast.error(errorMessage(err));
     }
   }
 

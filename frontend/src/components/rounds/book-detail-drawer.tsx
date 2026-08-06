@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 import type { BookResult, BookDetail } from "@/lib/types/book";
 import type { NominationCreatePayload } from "@/lib/types/round";
 
@@ -49,11 +50,10 @@ export function BookDetailDrawer({
     setLoadingDetail(true);
     const controller = new AbortController();
 
-    fetch(`/api/v1/books/${encodeURIComponent(book.slug)}`, {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then((res) => (res.ok ? (res.json() as Promise<BookDetail>) : null))
+    api
+      .get<BookDetail>(`/books/${encodeURIComponent(book.slug)}`, {
+        signal: controller.signal,
+      })
       .then((data) => {
         if (!controller.signal.aborted) setDetail(data);
       })

@@ -17,7 +17,8 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { errorMessage } from "@/hooks/use-api-query";
+import { ApiError, api } from "@/lib/api";
 import { AUTH_PROVIDER_LABELS } from "@/lib/auth-provider-labels";
 import { passwordField } from "@/lib/password";
 
@@ -61,29 +62,23 @@ function ChangePasswordCard({ authProvider }: { authProvider: string }) {
 
   async function onSubmit(values: PasswordFormValues) {
     try {
-      await ensureCsrf();
-      const res = await fetch("/api/v1/auth/password", {
-        method: "PATCH",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-        credentials: "include",
-        body: JSON.stringify({
-          current_password: values.current_password,
-          new_password: values.new_password,
-        }),
+      await api.patch("/auth/password", {
+        current_password: values.current_password,
+        new_password: values.new_password,
       });
-
-      if (res.ok) {
-        reset();
-        toast.success("Senha alterada!");
-      } else if (res.status === 403) {
+      reset();
+      toast.success("Senha alterada!");
+    } catch (err) {
+      // 403 e 400 continuam com rótulo próprio: o backend responde igual para
+      // "conta não usa senha" e "senha errada" de propósito, e o status é o
+      // único jeito de dizer qual é qual.
+      if (err instanceof ApiError && err.status === 403) {
         toast.error("Conta não usa senha.");
-      } else if (res.status === 400) {
+      } else if (err instanceof ApiError && err.status === 400) {
         toast.error("Senha atual incorreta.");
       } else {
-        toast.error("Erro ao alterar senha. Tente novamente.");
+        toast.error(errorMessage(err));
       }
-    } catch {
-      toast.error("Erro de conexão. Tente novamente.");
     }
   }
 
@@ -136,30 +131,21 @@ function ChangeEmailCard({
 
   async function onSubmit(values: EmailFormValues) {
     try {
-      await ensureCsrf();
-      const res = await fetch("/api/v1/auth/email", {
-        method: "PATCH",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-        credentials: "include",
-        body: JSON.stringify({
-          new_email: values.new_email,
-          current_password: values.current_password || null,
-        }),
+      await api.patch("/auth/email", {
+        new_email: values.new_email,
+        current_password: values.current_password || null,
       });
-
-      if (res.ok) {
-        reset();
-        setExpanded(false);
-        toast.success(`E-mail de confirmação enviado para ${values.new_email}.`);
-      } else if (res.status === 400) {
+      reset();
+      setExpanded(false);
+      toast.success(`E-mail de confirmação enviado para ${values.new_email}.`);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 400) {
         toast.error("Senha atual incorreta.");
-      } else if (res.status === 409) {
+      } else if (err instanceof ApiError && err.status === 409) {
         toast.error("E-mail já está em uso.");
       } else {
-        toast.error("Erro ao solicitar troca de e-mail.");
+        toast.error(errorMessage(err));
       }
-    } catch {
-      toast.error("Erro de conexão. Tente novamente.");
     }
   }
 

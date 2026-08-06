@@ -164,12 +164,31 @@ describe("StepGenresForm", () => {
     expect(body.preferred_genres).toContain("fantasy");
   });
 
-  it("shows error toast when genre fetch fails with non-OK response", async () => {
+  /**
+   * A mensagem do backend chega à UI. O idioma copiado à mão descartava o
+   * `detail` e mostrava um genérico — o ganho de passar pelo cliente.
+   */
+  it("mostra o detail do backend quando a busca de gêneros falha", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      jsonResponse({ detail: "Catálogo de gêneros indisponível." }, 503),
+    );
+    render(<StepGenresForm onNext={vi.fn()} onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Catálogo de gêneros indisponível.",
+      );
+    });
+  });
+
+  it("cai no genérico do cliente quando o backend não manda detail", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({}, 500));
     render(<StepGenresForm onNext={vi.fn()} onBack={vi.fn()} />);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("Erro ao carregar gêneros.");
+      expect(toast.error).toHaveBeenCalledWith(
+        "Erro ao processar a requisição (500)",
+      );
     });
   });
 

@@ -1,11 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UserMenu } from "../user-menu";
 import type { UserMe } from "@/lib/types/user";
+import { errorResponse, jsonResponse } from "@/test-utils/http";
 
 // Mock next/navigation
+const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 // Mock next-themes
@@ -66,6 +68,43 @@ const mockUser: UserMe = {
 };
 
 describe("UserMenu", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    global.fetch = vi.fn().mockImplementation(async () => jsonResponse({}));
+  });
+
+  describe("sair", () => {
+    it("chama o logout pelo cliente e vai para o login", async () => {
+      render(<UserMenu user={mockUser} />);
+      fireEvent.click(screen.getAllByRole("button", { name: "Sair" })[0]);
+
+      await waitFor(() =>
+        expect(global.fetch).toHaveBeenCalledWith(
+          "/api/v1/auth/logout",
+          expect.objectContaining({ method: "POST" }),
+        ),
+      );
+      expect(mockPush).toHaveBeenCalledWith("/auth/login");
+    });
+
+    /**
+     * O backend fora do ar não deve prender o usuário no menu: a sessão local
+     * sai de qualquer jeito e o login é a tela certa para reautenticar.
+     */
+    it("vai para o login mesmo se o backend recusar", async () => {
+      global.fetch = vi
+        .fn()
+        .mockImplementation(async () => errorResponse(500, "Indisponível."));
+
+      render(<UserMenu user={mockUser} />);
+      fireEvent.click(screen.getAllByRole("button", { name: "Sair" })[0]);
+
+      await waitFor(() =>
+        expect(mockPush).toHaveBeenCalledWith("/auth/login"),
+      );
+    });
+  });
+
   it("renders the user avatar trigger button", () => {
     render(<UserMenu user={mockUser} />);
     const buttons = screen.getAllByRole("button", { name: /menu do usuário/i });

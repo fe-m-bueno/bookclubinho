@@ -30,7 +30,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { errorMessage } from "@/hooks/use-api-query";
+import { ApiError, api } from "@/lib/api";
+import type { UserMe } from "@/lib/types/user";
 import { AUTH_PROVIDER_LABELS } from "@/lib/auth-provider-labels";
 
 const schema = z.object({
@@ -125,44 +127,31 @@ export function ProfileSettingsClient() {
 
   async function onSubmit(values: FormValues) {
     try {
-      await ensureCsrf();
-      const res = await fetch("/api/v1/users/me", {
-        method: "PATCH",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-        credentials: "include",
-        body: JSON.stringify({
-          display_name: values.display_name,
-          username: values.username,
-          status_text: values.status_text || null,
-          preferred_genres: values.preferred_genres,
-          timezone: values.timezone,
-        }),
+      const updated = await api.patch<UserMe>("/users/me", {
+        display_name: values.display_name,
+        username: values.username,
+        status_text: values.status_text || null,
+        preferred_genres: values.preferred_genres,
+        timezone: values.timezone,
       });
-
-      if (res.ok) {
-        const updated = await res.json();
-        await queryClient.invalidateQueries({ queryKey: queryKeys.user.me() });
-        reset({
-          display_name: updated.display_name ?? "",
-          username: updated.username ?? "",
-          status_text: updated.status_text ?? "",
-          preferred_genres: updated.preferred_genres,
-          timezone: updated.timezone,
-        });
-        toast.success("Perfil atualizado!");
-      } else if (res.status === 409) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.user.me() });
+      reset({
+        display_name: updated.display_name ?? "",
+        username: updated.username ?? "",
+        status_text: updated.status_text ?? "",
+        preferred_genres: updated.preferred_genres,
+        timezone: updated.timezone,
+      });
+      toast.success("Perfil atualizado!");
+    } catch (err) {
+      // 409 tem rótulo próprio porque o backend não diz qual username colidiu.
+      // O 422 do FastAPI já é desembrulhado pelo cliente, que devolve a primeira
+      // mensagem de validação em `detail`.
+      if (err instanceof ApiError && err.status === 409) {
         toast.error("Username já está em uso.");
-      } else if (res.status === 422) {
-        const body = await res.json();
-        const msg = Array.isArray(body.detail)
-          ? body.detail.map((e: { msg?: string }) => e.msg).join(", ")
-          : (body.detail ?? "Erro de validação");
-        toast.error(msg);
       } else {
-        toast.error("Erro ao salvar. Tente novamente.");
+        toast.error(errorMessage(err));
       }
-    } catch {
-      toast.error("Erro de conexão. Tente novamente.");
     }
   }
 

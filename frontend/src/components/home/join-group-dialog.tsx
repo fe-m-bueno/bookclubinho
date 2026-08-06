@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useGroupCodeCheck } from "@/hooks/use-group-code-check";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { errorMessage } from "@/hooks/use-api-query";
+import { api } from "@/lib/api";
 
 interface JoinGroupDialogProps {
   open: boolean;
@@ -33,25 +34,13 @@ export function JoinGroupDialog({ open, onOpenChange }: JoinGroupDialogProps) {
     setJoining(true);
     setJoinError(null);
     try {
-      await ensureCsrf();
-      const res = await fetch("/api/v1/groups/join", {
-        method: "POST",
-        credentials: "include",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ invite_code: code }),
+      const data = await api.post<{ group_id: string }>("/groups/join", {
+        invite_code: code,
       });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setJoinError(data.detail ?? "Erro ao entrar no clube.");
-        return;
-      }
-
-      const data = await res.json();
       onOpenChange(false);
       router.push(`/groups/${data.group_id}`);
-    } catch {
-      setJoinError("Erro de conexão. Tente novamente.");
+    } catch (err) {
+      setJoinError(errorMessage(err));
     } finally {
       setJoining(false);
     }
