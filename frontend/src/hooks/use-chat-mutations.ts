@@ -30,8 +30,10 @@ function makeOptimisticMessage(
     content_type: payload.content_type,
     content_text: payload.content_text ?? null,
     content_rich_json: payload.content_rich_json ?? null,
-    media_url: payload.media_url ?? null,
-    thumbnail_url: payload.thumbnail_url ?? null,
+    // O preview local cobre o intervalo até a resposta do servidor, que traz a
+    // URL resolvida a partir da chave.
+    media_url: payload.previewUrl ?? payload.media_url ?? null,
+    thumbnail_url: payload.previewUrl ?? null,
     reference_type: payload.reference_type ?? null,
     reference_value: payload.reference_value ?? null,
     is_spoiler: payload.is_spoiler ?? false,
@@ -57,7 +59,9 @@ export function useSendMessage(
 
   return useMutation<ChatMessage, Error, MessageCreatePayload, SendMessageContext>({
     mutationFn: async (payload) => {
-      const res = await api.post<ChatMessage>(`/groups/${groupId}/messages`, payload);
+      // previewUrl é local: o servidor rejeita URL de mídia vinda do cliente.
+      const { previewUrl: _previewUrl, ...body } = payload;
+      const res = await api.post<ChatMessage>(`/groups/${groupId}/messages`, body);
       return res;
     },
     onMutate: async (payload) => {
