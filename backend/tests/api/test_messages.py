@@ -7,11 +7,14 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from app.api.v1.endpoints.messages import group_messages_router, messages_router
 from app.core.deps import get_current_active_user, get_group_membership, get_session
+from app.core.exceptions import ServiceError
 from app.services.chat import ChatError
+from app.services.membership import MembershipError
 from tests.conftest import make_user
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────
@@ -34,7 +37,24 @@ def _make_app() -> FastAPI:
     app.dependency_overrides[get_current_active_user] = lambda: FAKE_USER
     app.dependency_overrides[get_session] = lambda: FAKE_DB
     app.dependency_overrides[get_group_membership] = lambda: FAKE_MEMBER
+
+    # Espelha o handler de main.py: MembershipError não é ChatError, então quem
+    # a levanta de dentro do serviço passa direto pelo `except ChatError` do
+    # endpoint. Sem isto o 404 do não-membro apareceria como 500 aqui.
+    async def _service_error_handler(_request: object, exc: ServiceError) -> JSONResponse:
+        return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
+
+    app.add_exception_handler(ServiceError, _service_error_handler)
     return app
+
+
+def _reload_execute(msg: MagicMock, reply_count: int = 0) -> AsyncMock:
+    """`db.execute` de `_reload_and_respond`: o SELECT da mensagem, depois o COUNT de respostas."""
+    msg_result = MagicMock()
+    msg_result.scalar_one.return_value = msg
+    count_result = MagicMock()
+    count_result.scalar_one.return_value = reply_count
+    return AsyncMock(side_effect=[msg_result, count_result])
 
 
 def _make_chat_msg_response(**overrides: object) -> MagicMock:
@@ -150,15 +170,12 @@ class TestSendMessage:
         msg = _make_group_message_orm()
 
         # Mock both create_message and the reload query
-        mock_result = MagicMock()
-        mock_result.scalar_one.return_value = msg
-
         with (
             patch(
                 "app.api.v1.endpoints.messages.create_message",
                 new=AsyncMock(return_value=msg),
             ),
-            patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)),
+            patch.object(FAKE_DB, "execute", new=_reload_execute(msg)),
         ):
             response = client.post(
                 f"/api/v1/groups/{FAKE_GROUP_ID}/messages",
@@ -197,6 +214,55 @@ class TestSendMessage:
         assert response.status_code == 404
 
 
+# ── GET /messages/{message_id} ────────────────────────────────────────────────
+
+
+class TestGetMessage:
+    def test_get_message_returns_200_with_reply_count(self) -> None:
+        app = _make_app()
+        client = TestClient(app)
+        message_id = uuid.uuid4()
+        msg = _make_group_message_orm(id=message_id, content_text="Editada")
+
+        with patch(
+            "app.api.v1.endpoints.messages.get_message",
+            new=AsyncMock(return_value=(msg, 4)),
+        ):
+            response = client.get(f"/api/v1/messages/{message_id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(message_id)
+        assert data["content_text"] == "Editada"
+        assert data["reply_count"] == 4
+
+    def test_get_message_not_found_returns_404(self) -> None:
+        app = _make_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.messages.get_message",
+            new=AsyncMock(side_effect=ChatError("Mensagem não encontrada.", status_code=404)),
+        ):
+            response = client.get(f"/api/v1/messages/{uuid.uuid4()}")
+
+        assert response.status_code == 404
+
+    def test_get_message_non_member_returns_404(self) -> None:
+        """Quem não é do clube não descobre por aqui que a mensagem existe."""
+        app = _make_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.messages.get_message",
+            new=AsyncMock(side_effect=MembershipError("Mensagem não encontrada.", status_code=404)),
+        ):
+            response = client.get(f"/api/v1/messages/{uuid.uuid4()}")
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Mensagem não encontrada."
+
+
 # ── PATCH /messages/{message_id} ──────────────────────────────────────────────
 
 
@@ -206,15 +272,13 @@ class TestEditMessage:
         client = TestClient(app)
         message_id = uuid.uuid4()
         msg = _make_group_message_orm(id=message_id, content_text="Updated!")
-        mock_result = MagicMock()
-        mock_result.scalar_one.return_value = msg
 
         with (
             patch(
                 "app.api.v1.endpoints.messages.edit_message",
                 new=AsyncMock(return_value=msg),
             ),
-            patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)),
+            patch.object(FAKE_DB, "execute", new=_reload_execute(msg)),
         ):
             response = client.patch(
                 f"/api/v1/messages/{message_id}",
@@ -222,6 +286,28 @@ class TestEditMessage:
             )
 
         assert response.status_code == 200
+
+    def test_edit_message_keeps_reply_count(self) -> None:
+        """Editar uma mensagem com respostas não pode devolver `reply_count: 0`."""
+        app = _make_app()
+        client = TestClient(app)
+        message_id = uuid.uuid4()
+        msg = _make_group_message_orm(id=message_id, content_text="Updated!")
+
+        with (
+            patch(
+                "app.api.v1.endpoints.messages.edit_message",
+                new=AsyncMock(return_value=msg),
+            ),
+            patch.object(FAKE_DB, "execute", new=_reload_execute(msg, reply_count=5)),
+        ):
+            response = client.patch(
+                f"/api/v1/messages/{message_id}",
+                json={"content_text": "Updated!"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["reply_count"] == 5
 
     def test_edit_expired_returns_409(self) -> None:
         app = _make_app()
@@ -249,21 +335,38 @@ class TestDeleteMessage:
         client = TestClient(app)
         message_id = uuid.uuid4()
         msg = _make_group_message_orm(id=message_id, is_deleted=True)
-        mock_result = MagicMock()
-        mock_result.scalar_one.return_value = msg
 
         with (
             patch(
                 "app.api.v1.endpoints.messages.delete_message",
                 new=AsyncMock(return_value=msg),
             ),
-            patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)),
+            patch.object(FAKE_DB, "execute", new=_reload_execute(msg)),
         ):
             response = client.delete(f"/api/v1/messages/{message_id}")
 
         assert response.status_code == 200
         data = response.json()
         assert data["is_deleted"] is True
+
+    def test_delete_message_keeps_reply_count(self) -> None:
+        """Apagar a mensagem-pai não apaga as respostas — o contador segue real."""
+        app = _make_app()
+        client = TestClient(app)
+        message_id = uuid.uuid4()
+        msg = _make_group_message_orm(id=message_id, is_deleted=True)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.messages.delete_message",
+                new=AsyncMock(return_value=msg),
+            ),
+            patch.object(FAKE_DB, "execute", new=_reload_execute(msg, reply_count=2)),
+        ):
+            response = client.delete(f"/api/v1/messages/{message_id}")
+
+        assert response.status_code == 200
+        assert response.json()["reply_count"] == 2
 
     def test_delete_not_found_returns_404(self) -> None:
         app = _make_app()
@@ -288,15 +391,13 @@ class TestToggleReaction:
         client = TestClient(app)
         message_id = uuid.uuid4()
         msg = _make_group_message_orm(id=message_id)
-        mock_result = MagicMock()
-        mock_result.scalar_one.return_value = msg
 
         with (
             patch(
                 "app.api.v1.endpoints.messages.toggle_reaction",
                 new=AsyncMock(return_value=(True, FAKE_GROUP_ID)),
             ),
-            patch.object(FAKE_DB, "execute", new=AsyncMock(return_value=mock_result)),
+            patch.object(FAKE_DB, "execute", new=_reload_execute(msg)),
         ):
             response = client.post(
                 f"/api/v1/messages/{message_id}/reactions",
@@ -304,6 +405,28 @@ class TestToggleReaction:
             )
 
         assert response.status_code == 200
+
+    def test_toggle_reaction_keeps_reply_count(self) -> None:
+        """Reagir a uma mensagem com 3 respostas devolve 3, não 0 — o bug do #249."""
+        app = _make_app()
+        client = TestClient(app)
+        message_id = uuid.uuid4()
+        msg = _make_group_message_orm(id=message_id)
+
+        with (
+            patch(
+                "app.api.v1.endpoints.messages.toggle_reaction",
+                new=AsyncMock(return_value=(True, FAKE_GROUP_ID)),
+            ),
+            patch.object(FAKE_DB, "execute", new=_reload_execute(msg, reply_count=3)),
+        ):
+            response = client.post(
+                f"/api/v1/messages/{message_id}/reactions",
+                json={"emoji": "👍"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["reply_count"] == 3
 
     def test_toggle_reaction_invalid_emoji_returns_422(self) -> None:
         app = _make_app()

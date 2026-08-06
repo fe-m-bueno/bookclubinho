@@ -309,6 +309,52 @@ async def delete_message(
     return msg
 
 
+async def count_replies(db: AsyncSession, message_id: uuid.UUID) -> int:
+    """Quantas respostas vivas uma mensagem tem.
+
+    Mesma regra do `GROUP BY` de `list_messages` — respostas apagadas não contam
+    —, só que para uma mensagem só. As rotas que devolvem uma mensagem depois de
+    mutá-la precisam disso: sem ele o `reply_count` sai no default `0` e apaga o
+    "3 respostas" da tela de quem confiar na resposta.
+    """
+    result = await db.execute(
+        select(func.count(GroupMessage.id)).where(
+            GroupMessage.parent_message_id == message_id,
+            GroupMessage.is_deleted.is_(False),
+        )
+    )
+    return result.scalar_one()
+
+
+async def get_message(
+    db: AsyncSession,
+    message_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> tuple[GroupMessage, int]:
+    """Carrega uma mensagem só, com reações e autor. Returns (message, reply_count).
+
+    Existe para o cliente aplicar um evento SSE — que traz só o `message_id` —
+    sem refetchar a página inteira. Não-membro recebe 404 com a mesma mensagem de
+    "não encontrada" que uma mensagem inexistente: quem não está no clube não
+    descobre por aqui que a mensagem existe.
+    """
+    result = await db.execute(
+        select(GroupMessage)
+        .options(
+            selectinload(GroupMessage.reactions).selectinload(MessageReaction.user),
+            selectinload(GroupMessage.user),
+        )
+        .where(GroupMessage.id == message_id)
+    )
+    msg = result.scalar_one_or_none()
+    if msg is None:
+        raise ChatError("Mensagem não encontrada.", status_code=404)
+
+    await membership.resolve(db, msg.group_id, user_id, not_found_message="Mensagem não encontrada.")
+
+    return msg, await count_replies(db, message_id)
+
+
 async def list_messages(
     db: AsyncSession,
     group_id: uuid.UUID,

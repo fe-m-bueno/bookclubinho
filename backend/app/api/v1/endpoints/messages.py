@@ -6,6 +6,7 @@ group_messages_router — montado em /groups/{group_id}/messages
   POST /   — membro envia mensagem
 
 messages_router — montado em /messages
+  GET    /{message_id}                    — busca uma mensagem
   PATCH  /{message_id}                    — edita mensagem (janela 15min)
   DELETE /{message_id}                    — soft-delete de mensagem
   POST   /{message_id}/reactions          — toggle reaction
@@ -16,10 +17,14 @@ messages_router — montado em /messages
 from __future__ import annotations
 
 import uuid  # noqa: TC003
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.after_commit import BackgroundTasksScheduler
 from app.core.deps import CurrentUser, DBSession, GroupMemberDep  # noqa: TC001
@@ -39,10 +44,12 @@ from app.schemas.report import MessageReportRequest, MessageReportResponse
 from app.security.rate_limit import limiter
 from app.services.chat import (
     ChatError,
+    count_replies,
     create_message,
     delete_message,
     edit_message,
     emit_typing_event,
+    get_message,
     list_messages,
     list_reactions,
     remove_reaction,
@@ -120,11 +127,16 @@ def _message_to_response(
 
 
 async def _reload_and_respond(
-    db: object,
+    db: AsyncSession,
     message_id: uuid.UUID,
     current_user_id: uuid.UUID,
 ) -> ChatMessageResponse:
-    """Reload a GroupMessage with relationships and convert to response."""
+    """Reload a GroupMessage with relationships and convert to response.
+
+    O `reply_count` é recontado aqui: uma reação ou uma edição não muda quantas
+    respostas a mensagem tem, mas a resposta HTTP precisa trazer o número certo
+    — quem confiar nela sobrescreve o contador que tinha na tela.
+    """
     result = await db.execute(
         select(GroupMessage)
         .options(
@@ -133,7 +145,8 @@ async def _reload_and_respond(
         )
         .where(GroupMessage.id == message_id)
     )
-    return _message_to_response(result.scalar_one(), current_user_id)
+    msg = result.scalar_one()
+    return _message_to_response(msg, current_user_id, reply_count=await count_replies(db, message_id))
 
 
 # ── /groups/{group_id}/messages ───────────────────────────────────────────────
@@ -230,6 +243,31 @@ async def send_message(
 
 
 # ── /messages ─────────────────────────────────────────────────────────────────
+
+
+@messages_router.get(
+    "/{message_id}",
+    response_model=ChatMessageResponse,
+    summary="Buscar mensagem",
+)
+@limiter.limit("60/minute")
+async def get_message_endpoint(
+    request: Request,
+    message_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> ChatMessageResponse:
+    """Busca uma mensagem pelo id. Exige ser membro do clube dela.
+
+    O evento SSE de edição traz só o `message_id`; é por aqui que o cliente
+    aplica a edição de outro membro numa linha só, em vez de refetchar a página.
+    """
+    try:
+        msg, reply_count = await get_message(db, message_id=message_id, user_id=current_user.id)
+    except ChatError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return _message_to_response(msg, current_user.id, reply_count=reply_count)
 
 
 @messages_router.patch(
