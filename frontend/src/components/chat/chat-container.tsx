@@ -28,7 +28,8 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
   const { group } = useGroup();
   const currentUserId = group.current_user_id;
   const currentMember = group.members.find((m) => m.user_id === currentUserId);
-  const currentUserName = currentMember?.display_name || currentMember?.username || "Você";
+  const currentUserName =
+    currentMember?.display_name || currentMember?.username || "Você";
   const currentUserAvatar = currentMember?.avatar_url ?? null;
 
   const chapterFilter = useChatStore((s) => s.chapterFilter);
@@ -47,7 +48,10 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
   } = useChatMessages({ groupId, chapterFilter });
 
   const { connected } = useChatSSE({ groupId, currentUserId });
-  const { sendTyping, typingUsers } = useTypingIndicator(groupId, currentUserId);
+  const { sendTyping, typingUsers } = useTypingIndicator(
+    groupId,
+    currentUserId,
+  );
 
   const sendMutation = useSendMessage(groupId, {
     id: currentUserId,

@@ -37,8 +37,12 @@ export function TiptapEditor({
   // latest onSend/onTyping without being recreated.
   const onSendRef = useRef(onSend);
   const onTypingRef = useRef(onTyping);
-  useEffect(() => { onSendRef.current = onSend; }, [onSend]);
-  useEffect(() => { onTypingRef.current = onTyping; }, [onTyping]);
+  useEffect(() => {
+    onSendRef.current = onSend;
+  }, [onSend]);
+  useEffect(() => {
+    onTypingRef.current = onTyping;
+  }, [onTyping]);
 
   // editorRef lets handleKeyDown reach the Editor instance without closure staleness.
   const editorRef = useRef<Editor | null>(null);
@@ -144,7 +148,7 @@ export function TiptapEditor({
         setTimeout(() => ed.commands.clearContent(true), 0);
       },
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleRef]);
 
   const charCount = editor?.state.doc.textContent.length ?? 0;
@@ -172,7 +176,8 @@ export function TiptapEditor({
           )}
           aria-live="polite"
         >
-          {charCount.toLocaleString("pt-BR")}/{MAX_CHARS.toLocaleString("pt-BR")}
+          {charCount.toLocaleString("pt-BR")}/
+          {MAX_CHARS.toLocaleString("pt-BR")}
         </p>
       )}
     </div>

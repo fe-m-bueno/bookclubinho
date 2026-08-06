@@ -46,7 +46,9 @@ interface MessageGroupData {
   messages: ChatMessage[];
 }
 
-function groupMessages(messages: ChatMessage[]): Array<
+function groupMessages(
+  messages: ChatMessage[],
+): Array<
   | { type: "separator"; timestamp: string; key: string }
   | { type: "marker"; message: ChatMessage; key: string }
   | { type: "group"; group: MessageGroupData; key: string }
@@ -105,8 +107,7 @@ function groupMessages(messages: ChatMessage[]): Array<
 
     // Group consecutive messages from the same sender within 2 minutes
     if (currentGroup) {
-      const lastMsg =
-        currentGroup.messages[currentGroup.messages.length - 1];
+      const lastMsg = currentGroup.messages[currentGroup.messages.length - 1];
       const sameAuthor = msg.author.user_id === currentGroup.authorId;
       const withinWindow =
         differenceInMinutes(
@@ -264,28 +265,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
           {items.map((item) => {
             if (item.type === "separator") {
               return (
-                <TimestampSeparator
-                  key={item.key}
-                  timestamp={item.timestamp}
-                />
+                <TimestampSeparator key={item.key} timestamp={item.timestamp} />
               );
             }
             if (item.type === "marker") {
               if (item.message.content_type === "chapter_marker") {
                 return (
-                  <ChapterMarkerCard
-                    key={item.key}
-                    message={item.message}
-                  />
+                  <ChapterMarkerCard key={item.key} message={item.message} />
                 );
               }
-              return (
-                <PageMarkerCard key={item.key} message={item.message} />
-              );
+              return <PageMarkerCard key={item.key} message={item.message} />;
             }
             // type === "group"
-            const isOwn =
-              item.group.authorId === currentUserId;
+            const isOwn = item.group.authorId === currentUserId;
             return (
               <MessageGroup
                 key={item.key}

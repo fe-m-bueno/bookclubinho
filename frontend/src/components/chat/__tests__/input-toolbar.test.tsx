@@ -160,6 +160,50 @@ describe("InputToolbar", () => {
     });
   });
 
+  it("preserva o rascunho da citação ao recolher e reabrir a toolbar", async () => {
+    const { user } = setup();
+    await openToolbar(user);
+    await user.click(
+      screen.getByRole("button", { name: "Compartilhar citação" }),
+    );
+
+    await user.type(
+      await screen.findByPlaceholderText("Citação do livro…"),
+      "três linhas que eu não quero digitar de novo",
+    );
+    await user.type(screen.getByPlaceholderText("Página (opcional)"), "31");
+
+    await user.click(
+      screen.getByRole("button", { name: "Fechar ferramentas" }),
+    );
+    await openToolbar(user);
+    await user.click(
+      screen.getByRole("button", { name: "Compartilhar citação" }),
+    );
+
+    expect(await screen.findByPlaceholderText("Citação do livro…")).toHaveValue(
+      "três linhas que eu não quero digitar de novo",
+    );
+    expect(screen.getByPlaceholderText("Página (opcional)")).toHaveValue(31);
+  });
+
+  it("limpa o rascunho do marcador depois de enviar", async () => {
+    const { user } = setup();
+    await openToolbar(user);
+    await user.click(screen.getByRole("button", { name: "Marcar capítulo" }));
+    await user.type(
+      await screen.findByPlaceholderText("Número do capítulo"),
+      "9{Enter}",
+    );
+
+    await openToolbar(user);
+    await user.click(screen.getByRole("button", { name: "Marcar capítulo" }));
+
+    expect(
+      await screen.findByPlaceholderText("Número do capítulo"),
+    ).toHaveValue(null);
+  });
+
   it("confirma spoiler com capítulo e mantém o botão destacado ao reabrir", async () => {
     const { user, onSpoilerChange } = setup();
     await openToolbar(user);

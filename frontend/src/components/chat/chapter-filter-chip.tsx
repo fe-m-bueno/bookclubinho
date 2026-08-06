@@ -8,7 +8,10 @@ interface ChapterFilterChipProps {
   onClear: () => void;
 }
 
-export function ChapterFilterChip({ chapter, onClear }: ChapterFilterChipProps) {
+export function ChapterFilterChip({
+  chapter,
+  onClear,
+}: ChapterFilterChipProps) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.85 }}

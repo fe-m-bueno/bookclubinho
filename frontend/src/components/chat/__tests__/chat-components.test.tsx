@@ -133,7 +133,10 @@ describe("ChapterMarkerCard", () => {
   });
 
   it("shows em-dash when reference_value is null", () => {
-    const msg = makeMessage({ content_type: "chapter_marker", reference_value: null });
+    const msg = makeMessage({
+      content_type: "chapter_marker",
+      reference_value: null,
+    });
     render(<ChapterMarkerCard message={msg} />);
     expect(screen.getByText("—")).toBeInTheDocument();
   });
@@ -157,7 +160,10 @@ describe("PageMarkerCard", () => {
   });
 
   it("renders em-dash when reference_value is null", () => {
-    const msg = makeMessage({ content_type: "page_marker", reference_value: null });
+    const msg = makeMessage({
+      content_type: "page_marker",
+      reference_value: null,
+    });
     render(<PageMarkerCard message={msg} />);
     expect(screen.getByText("—")).toBeInTheDocument();
   });
@@ -320,7 +326,9 @@ describe("SpoilerConfirmDialog", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: /^não$/i }));
-    expect(useChatStore.getState().isSpoilerRevealed("msg-no-reveal")).toBe(false);
+    expect(useChatStore.getState().isSpoilerRevealed("msg-no-reveal")).toBe(
+      false,
+    );
   });
 });
 
@@ -393,7 +401,11 @@ describe("SpoilerOverlay", () => {
   });
 
   it("renders children directly after spoiler is revealed in store", () => {
-    const msg = makeMessage({ id: "msg-revealed", is_spoiler: true, spoiler_chapter: 4 });
+    const msg = makeMessage({
+      id: "msg-revealed",
+      is_spoiler: true,
+      spoiler_chapter: 4,
+    });
     useChatStore.getState().revealSpoiler("msg-revealed");
     render(
       <SpoilerOverlay message={msg} currentUserId="u2" viewerChapter={1}>

@@ -22,7 +22,11 @@ interface ReactionPickerProps {
   style: React.CSSProperties;
 }
 
-export function ReactionPicker({ onSelect, onClose, style }: ReactionPickerProps) {
+export function ReactionPicker({
+  onSelect,
+  onClose,
+  style,
+}: ReactionPickerProps) {
   const [showFullPicker, setShowFullPicker] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 

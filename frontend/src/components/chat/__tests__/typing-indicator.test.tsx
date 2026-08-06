@@ -9,11 +9,7 @@ import { TypingIndicator } from "../typing-indicator";
 // Shared factory
 // ---------------------------------------------------------------------------
 
-function makeUser(
-  id: string,
-  displayName: string,
-  avatarUrl = "",
-) {
+function makeUser(id: string, displayName: string, avatarUrl = "") {
   return { userId: id, displayName, avatarUrl };
 }
 

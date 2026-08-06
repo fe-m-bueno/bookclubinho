@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import { ToolbarButton } from "./toolbar-button";
 import { ToolbarPopoverContent, onEnterKey } from "./toolbar-popover";
+import type { DraftField } from "./toolbar-drafts";
 import type { MessageCreatePayload } from "@/lib/types/chat";
 
 export interface NumericMarkerSpec {
@@ -53,6 +54,8 @@ export const NUMERIC_MARKERS: NumericMarkerSpec[] = [
 
 interface NumericMarkerPopoverProps {
   spec: NumericMarkerSpec;
+  /** Rascunho guardado na toolbar — sobrevive ao recolher. */
+  draft: DraftField;
   onSend: (payload: Partial<MessageCreatePayload>) => void;
   /** Chamado depois de enviar, para a toolbar se recolher. */
   onSubmitted?: () => void;
@@ -60,11 +63,11 @@ interface NumericMarkerPopoverProps {
 
 export function NumericMarkerPopover({
   spec,
+  draft: [value, setValue],
   onSend,
   onSubmitted,
 }: NumericMarkerPopoverProps) {
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState("");
 
   const parsed = parseInt(value, 10);
   const isValid = !isNaN(parsed) && parsed >= 1;
@@ -80,11 +83,7 @@ export function NumericMarkerPopover({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <ToolbarButton
-        label={spec.label}
-        tooltip={spec.tooltip}
-        asPopoverTrigger
-      >
+      <ToolbarButton label={spec.label} tooltip={spec.tooltip} asPopoverTrigger>
         <Icon className="size-5" aria-hidden="true" />
       </ToolbarButton>
       <ToolbarPopoverContent>

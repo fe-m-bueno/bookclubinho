@@ -7,10 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import { ToolbarButton } from "./toolbar-button";
 import { ToolbarPopoverContent } from "./toolbar-popover";
+import type { DraftField } from "./toolbar-drafts";
 
 interface SpoilerPopoverProps {
   /** Fica na toolbar: o botão continua destacado depois que o popover fecha. */
   isSpoiler: boolean;
+  /** Rascunho guardado na toolbar — sobrevive ao recolher. */
+  chapterDraft: DraftField;
   onIsSpoilerChange: (isSpoiler: boolean) => void;
   onConfirm: (chapter: number | null) => void;
   /** Chamado depois de confirmar, para a toolbar se recolher. */
@@ -19,12 +22,12 @@ interface SpoilerPopoverProps {
 
 export function SpoilerPopover({
   isSpoiler,
+  chapterDraft: [chapter, setChapter],
   onIsSpoilerChange,
   onConfirm,
   onSubmitted,
 }: SpoilerPopoverProps) {
   const [open, setOpen] = useState(false);
-  const [chapter, setChapter] = useState("");
 
   function handleConfirm() {
     const parsed = parseInt(chapter, 10);

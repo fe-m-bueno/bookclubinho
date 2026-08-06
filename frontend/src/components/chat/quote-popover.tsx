@@ -8,18 +8,25 @@ import { Popover } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { ToolbarButton } from "./toolbar-button";
 import { ToolbarPopoverContent, onEnterKey } from "./toolbar-popover";
+import type { DraftField } from "./toolbar-drafts";
 import type { MessageCreatePayload } from "@/lib/types/chat";
 
 interface QuotePopoverProps {
+  /** Rascunhos guardados na toolbar — sobrevivem ao recolher. */
+  textDraft: DraftField;
+  pageDraft: DraftField;
   onSend: (payload: Partial<MessageCreatePayload>) => void;
   /** Chamado depois de enviar, para a toolbar se recolher. */
   onSubmitted?: () => void;
 }
 
-export function QuotePopover({ onSend, onSubmitted }: QuotePopoverProps) {
+export function QuotePopover({
+  textDraft: [text, setText],
+  pageDraft: [page, setPage],
+  onSend,
+  onSubmitted,
+}: QuotePopoverProps) {
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [page, setPage] = useState("");
 
   const isValid = text.trim().length > 0;
 

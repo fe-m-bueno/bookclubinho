@@ -66,12 +66,17 @@ export function ChatInput({
             transition={{ duration: 0.15, ease: "easeOut" }}
           >
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
-              <Reply className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <Reply
+                className="size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-foreground">
                   {replyTo.authorName}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">{replyTo.preview}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {replyTo.preview}
+                </p>
               </div>
               <button
                 type="button"

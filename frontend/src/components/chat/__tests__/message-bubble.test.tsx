@@ -84,7 +84,12 @@ describe("MessageBubble", () => {
   it("renders own message with flex-row-reverse alignment class", () => {
     const msg = makeMessage();
     const { container } = render(
-      <MessageBubble {...defaultProps} message={msg} isOwn currentUserId="u1" />,
+      <MessageBubble
+        {...defaultProps}
+        message={msg}
+        isOwn
+        currentUserId="u1"
+      />,
     );
     // The outer row div should have flex-row-reverse for own messages
     const row = container.querySelector(".flex-row-reverse");
@@ -103,7 +108,12 @@ describe("MessageBubble", () => {
   it("applies sage color classes to own message bubble", () => {
     const msg = makeMessage();
     const { container } = render(
-      <MessageBubble {...defaultProps} message={msg} isOwn currentUserId="u1" />,
+      <MessageBubble
+        {...defaultProps}
+        message={msg}
+        isOwn
+        currentUserId="u1"
+      />,
     );
     // Own bubbles use bg-sage-100
     const bubble = container.querySelector(".bg-sage-100");
@@ -123,7 +133,12 @@ describe("MessageBubble", () => {
   it("shows avatar when showAvatar is true and message is not own", () => {
     const msg = makeMessage();
     render(
-      <MessageBubble {...defaultProps} message={msg} isOwn={false} showAvatar />,
+      <MessageBubble
+        {...defaultProps}
+        message={msg}
+        isOwn={false}
+        showAvatar
+      />,
     );
     // Avatar renders with aria-label matching the author name
     expect(screen.getByLabelText("Alice")).toBeInTheDocument();
@@ -267,7 +282,12 @@ describe("MessageBubble", () => {
     it("sets isOwn=true for own messages", () => {
       const msg = makeMessage();
       render(
-        <MessageBubble {...defaultProps} message={msg} isOwn currentUserId="u1" />,
+        <MessageBubble
+          {...defaultProps}
+          message={msg}
+          isOwn
+          currentUserId="u1"
+        />,
       );
       fireEvent.click(screen.getByText("Reagir"));
       expect(useChatStore.getState().reactionPickerState?.isOwn).toBe(true);

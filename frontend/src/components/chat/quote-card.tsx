@@ -13,7 +13,9 @@ export function QuoteCard({ message }: QuoteCardProps) {
   const quoteText = message.content_text;
   const page = message.reference_value;
   const bookTitle = message.content_rich_json?.book_title as string | undefined;
-  const bookAuthor = message.content_rich_json?.book_author as string | undefined;
+  const bookAuthor = message.content_rich_json?.book_author as
+    | string
+    | undefined;
 
   return (
     <div className="w-full rounded-xl border border-border bg-card p-4">
@@ -42,9 +44,13 @@ export function QuoteCard({ message }: QuoteCardProps) {
         <div className="mt-2 flex items-start gap-1.5">
           <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
           <div className="min-w-0">
-            <p className="text-xs font-medium truncate text-foreground">{bookTitle}</p>
+            <p className="text-xs font-medium truncate text-foreground">
+              {bookTitle}
+            </p>
             {bookAuthor && (
-              <p className="text-xs text-muted-foreground truncate">{bookAuthor}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {bookAuthor}
+              </p>
             )}
           </div>
         </div>

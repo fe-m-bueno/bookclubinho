@@ -11,6 +11,7 @@ import {
 import { QuotePopover } from "./quote-popover";
 import { SpoilerPopover } from "./spoiler-popover";
 import { ToolbarButton } from "./toolbar-button";
+import { useToolbarDrafts } from "./toolbar-drafts";
 import type { MessageCreatePayload } from "@/lib/types/chat";
 
 interface InputToolbarProps {
@@ -26,6 +27,7 @@ export function InputToolbar({
 }: InputToolbarProps) {
   const [open, setOpen] = useState(false);
   const [isSpoiler, setIsSpoiler] = useState(false);
+  const draft = useToolbarDrafts();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -102,15 +104,22 @@ export function InputToolbar({
                   <NumericMarkerPopover
                     key={spec.key}
                     spec={spec}
+                    draft={draft(spec.key)}
                     onSend={onSendSpecial}
                     onSubmitted={collapse}
                   />
                 ))}
 
-                <QuotePopover onSend={onSendSpecial} onSubmitted={collapse} />
+                <QuotePopover
+                  textDraft={draft("quote:text")}
+                  pageDraft={draft("quote:page")}
+                  onSend={onSendSpecial}
+                  onSubmitted={collapse}
+                />
 
                 <SpoilerPopover
                   isSpoiler={isSpoiler}
+                  chapterDraft={draft("spoiler:chapter")}
                   onIsSpoilerChange={setIsSpoiler}
                   onConfirm={(chapter) => onSpoilerChange?.(isSpoiler, chapter)}
                   onSubmitted={collapse}
