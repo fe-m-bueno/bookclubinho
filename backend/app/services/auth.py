@@ -34,6 +34,7 @@ from app.core.security import (
 from app.db.models.user import User
 from app.db.models.user_session import UserSession
 from app.security.sanitizer import sanitize
+from app.services.audit import ACCOUNT_LOCKED, log_event
 from app.services.email import email_service, send_magic_link_email, send_verification_email
 
 logger = structlog.get_logger(__name__)
@@ -393,13 +394,11 @@ async def send_magic_link(db: AsyncSession, email: str) -> None:
     logger.info("magic_link_sent", user_id=str(user.id))
 
 
-async def consume_magic_token(
-    db: AsyncSession,
-    token: str,
-    user_agent: str | None = None,
-    client_ip: str | None = None,
-) -> tuple[str, str, bool]:
-    """Consome um magic token e retorna (access_token, refresh_token, onboarding_completed).
+async def consume_magic_token(db: AsyncSession, token: str) -> User:
+    """Consome um magic token e devolve o usuário autenticado.
+
+    Não emite tokens nem grava sessão: quem estabelece a sessão é
+    `login_session.establish_session`, um lugar só para os três flows.
 
     Raises AuthError(400) para token inválido/expirado, UUID corrompido ou usuário inativo.
     """
@@ -426,16 +425,8 @@ async def consume_magic_token(
 
     user.last_login_at = datetime.now(UTC)
 
-    access_token, refresh_token = create_token_pair(
-        str(user.id),
-        onboarding_completed=user.onboarding_completed,
-    )
-
-    await _create_session(db, user.id, refresh_token, user_agent, client_ip)
-    await db.commit()
-
     logger.info("magic_link_authenticated", user_id=str(user.id))
-    return access_token, refresh_token, user.onboarding_completed
+    return user
 
 
 # ── Google OAuth2 ─────────────────────────────────────────────────────────────
@@ -444,15 +435,12 @@ _GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
 
-async def google_oauth_callback(
-    code: str,
-    db: AsyncSession,
-    user_agent: str | None = None,
-    client_ip: str | None = None,
-) -> tuple[str, str, bool]:
-    """Troca o authorization code do Google por tokens, faz upsert do usuário.
+async def google_oauth_callback(code: str, db: AsyncSession) -> User:
+    """Troca o authorization code do Google, faz upsert do usuário e o devolve.
 
-    Returns (access_token, refresh_token, onboarding_completed).
+    O usuário novo entra por `db.add` + `flush`, sem commit: quem commita é
+    `login_session.establish_session`, junto com a sessão e a linha de audit.
+
     Raises AuthError(400) para falhas no OAuth ou e-mail não verificado.
     """
     async with httpx.AsyncClient() as client:
@@ -518,28 +506,17 @@ async def google_oauth_callback(
 
     user.last_login_at = datetime.now(UTC)
 
-    access_token, refresh_token = create_token_pair(
-        str(user.id),
-        onboarding_completed=user.onboarding_completed,
-    )
-
-    await _create_session(db, user.id, refresh_token, user_agent, client_ip)
-    await db.commit()
-
-    return access_token, refresh_token, user.onboarding_completed
+    return user
 
 
 # ── Login ─────────────────────────────────────────────────────────────────────
 
 
-async def authenticate_user(
-    db: AsyncSession,
-    email: str,
-    password: str,
-    user_agent: str | None = None,
-    client_ip: str | None = None,
-) -> tuple[str, str]:
-    """Authenticate user and return (access_token, refresh_token).
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
+    """Autentica por senha e devolve o usuário.
+
+    Não emite tokens nem grava sessão: quem estabelece a sessão é
+    `login_session.establish_session`, um lugar só para os três flows.
 
     Raises AuthError for any auth failure (single generic message to prevent enumeration).
     Implements brute force protection: progressive delays and account lockout after 10 failures.
@@ -576,6 +553,16 @@ async def authenticate_user(
         elif fail_count >= _LOGIN_MAX_FAILS:
             await _lock_account(email_hash)
             logger.warning("login_account_locked", email_hash=email_hash)
+            # O lockout é o evento de segurança mais forte deste caminho e não
+            # deixava rastro: `ACCOUNT_LOCKED` era constante definida e nunca
+            # chamada. Sem `request` aqui — o service não o tem —, mas com o
+            # `user_id` quando dá para identificar, que é o que falta na busca.
+            await log_event(
+                db,
+                ACCOUNT_LOCKED,
+                user_id=user.id if user is not None else None,
+                metadata={"email_hash": email_hash, "fail_count": fail_count},
+            )
             # Fire-and-forget warning email — only when we can identify the user
             if user is not None and user.is_active:
                 asyncio.create_task(  # noqa: RUF006
@@ -593,16 +580,8 @@ async def authenticate_user(
 
     user.last_login_at = datetime.now(UTC)
 
-    access_token, refresh_token = create_token_pair(
-        str(user.id),
-        onboarding_completed=user.onboarding_completed,
-    )
-
-    await _create_session(db, user.id, refresh_token, user_agent, client_ip)
-    await db.commit()
-
     logger.info("user_logged_in", user_id=str(user.id))
-    return access_token, refresh_token
+    return user
 
 
 # ── Token Blacklist & Rotation ────────────────────────────────────────────────
@@ -632,16 +611,15 @@ async def blacklist_refresh_token(token: str) -> None:
     await redis_client.set(f"{_TOKEN_BLACKLIST_PREFIX}{jti}", "1", ex=remaining_ttl)
 
 
-async def rotate_refresh_token(
-    token: str,
-    db: AsyncSession | None = None,
-) -> tuple[str, str]:
+async def rotate_refresh_token(token: str, *, db: AsyncSession) -> tuple[str, str]:
     """Valida o refresh token, verifica blacklist e emite novo par access+refresh.
 
     Raises AuthError(401) para token inválido, expirado, tipo errado ou revogado.
     Returns (new_access_token, new_refresh_token).
 
-    When db is provided, updates the session's last_active_at and refresh_token_jti.
+    O `db` era opcional e o endpoint chamava sem — então o trecho que atualiza
+    `last_active_at` e o `refresh_token_jti` da sessão nunca rodava pelo caminho
+    HTTP, e os testes também não o cobriam. Agora é obrigatório.
     """
     try:
         payload = decode_token(token)
@@ -674,22 +652,21 @@ async def rotate_refresh_token(
         onboarding_completed=payload.get("onb", False),
     )
 
-    # Update session record if db is available (best-effort — no crash on failure)
-    if db is not None:
-        try:
-            new_jti = _extract_jti_from_token(new_refresh)
-            if new_jti:
-                result = await db.execute(
-                    select(UserSession).where(
-                        UserSession.refresh_token_jti == jti,
-                        UserSession.revoked_at.is_(None),
-                    )
+    # Update session record (best-effort — no crash on failure)
+    try:
+        new_jti = _extract_jti_from_token(new_refresh)
+        if new_jti:
+            result = await db.execute(
+                select(UserSession).where(
+                    UserSession.refresh_token_jti == jti,
+                    UserSession.revoked_at.is_(None),
                 )
-                session = result.scalar_one_or_none()
-                if session is not None:
-                    session.refresh_token_jti = new_jti
-                    session.last_active_at = datetime.now(UTC)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("session_rotate_failed", jti=jti, error=str(exc))
+            )
+            session = result.scalar_one_or_none()
+            if session is not None:
+                session.refresh_token_jti = new_jti
+                session.last_active_at = datetime.now(UTC)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("session_rotate_failed", jti=jti, error=str(exc))
 
     return new_access, new_refresh
