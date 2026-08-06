@@ -16,10 +16,14 @@ messages_router — montado em /messages
 from __future__ import annotations
 
 import uuid  # noqa: TC003
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.after_commit import BackgroundTasksScheduler
 from app.core.deps import CurrentUser, DBSession, GroupMemberDep  # noqa: TC001
@@ -39,6 +43,7 @@ from app.schemas.report import MessageReportRequest, MessageReportResponse
 from app.security.rate_limit import limiter
 from app.services.chat import (
     ChatError,
+    count_replies,
     create_message,
     delete_message,
     edit_message,
@@ -120,11 +125,16 @@ def _message_to_response(
 
 
 async def _reload_and_respond(
-    db: object,
+    db: AsyncSession,
     message_id: uuid.UUID,
     current_user_id: uuid.UUID,
 ) -> ChatMessageResponse:
-    """Reload a GroupMessage with relationships and convert to response."""
+    """Reload a GroupMessage with relationships and convert to response.
+
+    O `reply_count` é recontado aqui: uma reação ou uma edição não muda quantas
+    respostas a mensagem tem, mas a resposta HTTP precisa trazer o número certo
+    — quem confiar nela sobrescreve o contador que tinha na tela.
+    """
     result = await db.execute(
         select(GroupMessage)
         .options(
@@ -133,7 +143,8 @@ async def _reload_and_respond(
         )
         .where(GroupMessage.id == message_id)
     )
-    return _message_to_response(result.scalar_one(), current_user_id)
+    msg = result.scalar_one()
+    return _message_to_response(msg, current_user_id, reply_count=await count_replies(db, message_id))
 
 
 # ── /groups/{group_id}/messages ───────────────────────────────────────────────

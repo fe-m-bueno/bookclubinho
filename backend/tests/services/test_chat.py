@@ -12,6 +12,7 @@ from app.db.models.hall_of_quote import HallOfQuote
 from app.db.models.message import ContentType
 from app.services.chat import (
     ChatError,
+    count_replies,
     create_message,
     delete_message,
     edit_message,
@@ -478,6 +479,24 @@ async def test_delete_already_deleted_raises() -> None:
     with pytest.raises(ChatError) as exc_info:
         await delete_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id)
     assert exc_info.value.status_code == 409
+
+
+# ── count_replies ──────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_count_replies_ignores_deleted() -> None:
+    """O COUNT filtra `is_deleted`, igual ao GROUP BY de list_messages."""
+    db = AsyncMock()
+    res = MagicMock()
+    res.scalar_one.return_value = 2
+    db.execute = AsyncMock(return_value=res)
+
+    assert await count_replies(db, uuid.uuid4()) == 2
+
+    stmt = str(db.execute.await_args.args[0])
+    assert "is_deleted" in stmt
+    assert "parent_message_id" in stmt
 
 
 # ── list_messages ──────────────────────────────────────────────────────────────
