@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -82,6 +83,9 @@ export function CreateMeetingDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Novo Encontro</DialogTitle>
+          <DialogDescription>
+            Escolha data, hora e onde vai ser. Todo mundo do clube é avisado.
+          </DialogDescription>
         </DialogHeader>
 
         <form

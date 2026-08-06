@@ -23,7 +23,6 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.config import settings
-from app.core.cookies import clear_auth_cookies, set_auth_cookies
 from app.core.deps import CurrentRefreshJTI, CurrentUser, DBSession  # noqa: TC001
 from app.core.redis import get_redis
 from app.schemas.account import ChangeEmailRequest, ChangePasswordRequest, MessageResponse
@@ -49,23 +48,28 @@ from app.services.account import (
 )
 from app.services.audit import (
     LOGIN_FAILED,
-    LOGIN_SUCCESS,
-    MAGIC_LINK_USED,
-    OAUTH_LOGIN,
+    MAGIC_LINK_SENT,
     PASSWORD_CHANGED,
+    REGISTER,
+    SESSION_REVOKED,
     log_event,
+    log_event_now,
 )
 from app.services.auth import (
     AuthError,
     authenticate_user,
-    blacklist_refresh_token,
     consume_magic_token,
     google_oauth_callback,
     register_user,
     resend_verification_email,
-    rotate_refresh_token,
     send_magic_link,
     verify_email_token,
+)
+from app.services.login_session import (
+    LoginFlow,
+    end_session,
+    establish_session,
+    renew_session,
 )
 from app.services.session import (
     SessionError,
@@ -120,6 +124,11 @@ async def register(
         password=body.password,
         display_name=body.display_name,
     )
+    # Sem `user_id`: a resposta é a mesma para e-mail novo e já cadastrado
+    # (anti-enumeration), e o handler não sabe qual dos dois foi. A linha registra
+    # a tentativa e sua origem, que é o que faltava — `REGISTER` era constante
+    # definida e nunca chamada.
+    await log_event(db, REGISTER, request=request)
     return RegisterResponse(message="Conta criada. Verifique seu e-mail para ativar o acesso.")
 
 
@@ -186,20 +195,20 @@ async def login(
     Rate limit: 10 requisições por minuto por IP.
     """
     try:
-        access_token, refresh_token = await authenticate_user(
-            db=db,
-            email=form_data.username,
-            password=form_data.password,
-            user_agent=request.headers.get("User-Agent"),
-            client_ip=request.client.host if request.client else None,
-        )
+        user = await authenticate_user(db=db, email=form_data.username, password=form_data.password)
     except AuthError as exc:
-        await log_event(db, LOGIN_FAILED, request=request)
+        # `log_event_now` e não `log_event`: o `raise` abaixo faz o `get_session`
+        # dar rollback, e a linha ia com ele — a tabela tinha zero `login_failed`.
+        await log_event_now(db, LOGIN_FAILED, request=request)
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
-    set_auth_cookies(response, access_token, refresh_token)
-    await log_event(db, LOGIN_SUCCESS, request=request)
-
+    await establish_session(
+        db=db,
+        response=response,
+        request=request,
+        user=user,
+        flow=LoginFlow.PASSWORD,
+    )
     return LoginResponse(message="Login realizado com sucesso.")
 
 
@@ -219,6 +228,8 @@ async def request_magic_link(
     Rate limit: 10 por hora por IP (complementa rate limit por e-mail no service layer).
     """
     await send_magic_link(db=db, email=body.email)
+    # Também sem `user_id`, pelo mesmo motivo anti-enumeration do register.
+    await log_event(db, MAGIC_LINK_SENT, request=request)
     return MagicLinkResponse(message="Se o e-mail estiver cadastrado, você receberá um link em breve.")
 
 
@@ -230,17 +241,21 @@ async def magic_link_callback(
 ) -> RedirectResponse:
     """Valida magic token, autentica o usuário e redireciona."""
     try:
-        access_token, refresh_token, onboarding_completed = await consume_magic_token(db=db, token=token)
+        user = await consume_magic_token(db=db, token=token)
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
-    await log_event(db, MAGIC_LINK_USED, request=request)
-
     base_url = settings.APP_URL.rstrip("/")
-    redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
+    redirect_url = f"{base_url}/" if user.onboarding_completed else f"{base_url}/onboarding"
 
     response = RedirectResponse(url=redirect_url, status_code=303)
-    set_auth_cookies(response, access_token, refresh_token)
+    await establish_session(
+        db=db,
+        response=response,
+        request=request,
+        user=user,
+        flow=LoginFlow.MAGIC_LINK,
+    )
     return response
 
 
@@ -249,13 +264,17 @@ async def magic_link_callback(
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(
+    request: Request,
     response: Response,
+    db: DBSession,  # noqa: TC001
     refresh_token: Annotated[str | None, Cookie(alias="refresh_token")] = None,
 ) -> LogoutResponse:
-    """Invalida o refresh token (blacklist no Redis) e limpa os cookies de auth."""
-    if refresh_token:
-        await blacklist_refresh_token(refresh_token)
-    clear_auth_cookies(response)
+    """Invalida o refresh token (blacklist no Redis) e limpa os cookies de auth.
+
+    O handler não tinha `db`, e por isso a saída não deixava rastro: `LOGOUT` era
+    constante definida e nunca chamada.
+    """
+    await end_session(db=db, response=response, request=request, refresh_token=refresh_token)
     return LogoutResponse(message="Logout realizado com sucesso.")
 
 
@@ -267,16 +286,16 @@ async def logout(
 async def refresh(
     request: Request,
     response: Response,
+    db: DBSession,  # noqa: TC001
     refresh_token: Annotated[str | None, Cookie(alias="refresh_token")] = None,
 ) -> RefreshResponse:
     """Valida o refresh token, verifica blacklist e emite novo par de tokens (rotação)."""
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Não autenticado.")
     try:
-        new_access, new_refresh = await rotate_refresh_token(refresh_token)
+        await renew_session(db=db, response=response, request=request, refresh_token=refresh_token)
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-    set_auth_cookies(response, new_access, new_refresh)
     return RefreshResponse(message="Tokens renovados com sucesso.")
 
 
@@ -310,6 +329,7 @@ async def google_login() -> RedirectResponse:
 
 @router.get("/google/callback", response_class=RedirectResponse)
 async def google_callback(
+    request: Request,
     db: DBSession,  # noqa: TC001
     code: str | None = None,
     state: str | None = None,
@@ -329,15 +349,21 @@ async def google_callback(
     await redis.delete(f"oauth_state:{state}")
 
     try:
-        access_token, refresh_token, onboarding_completed = await google_oauth_callback(code=code, db=db)
+        user = await google_oauth_callback(code=code, db=db)
     except AuthError:
         return error_redirect
 
-    await log_event(db, OAUTH_LOGIN, request=None)  # sem request disponível em redirect
-
-    redirect_url = f"{base_url}/" if onboarding_completed else f"{base_url}/onboarding"
+    redirect_url = f"{base_url}/" if user.onboarding_completed else f"{base_url}/onboarding"
     response = RedirectResponse(url=redirect_url, status_code=303)
-    set_auth_cookies(response, access_token, refresh_token)
+    # O `request` estava faltando aqui, e o audit era chamado com `request=None`:
+    # login via OAuth era o único flow sem `ip_hash` nem `user_agent`.
+    await establish_session(
+        db=db,
+        response=response,
+        request=request,
+        user=user,
+        flow=LoginFlow.GOOGLE_OAUTH,
+    )
     return response
 
 
@@ -460,6 +486,14 @@ async def revoke_specific_session(
         await revoke_session(db=db, redis=redis, user_id=user.id, session_id=session_id)
     except SessionError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    await log_event(
+        db,
+        SESSION_REVOKED,
+        user_id=user.id,
+        resource_type="user_session",
+        resource_id=session_id,
+        request=request,
+    )
     return {"detail": "Sessão revogada com sucesso."}
 
 
@@ -486,4 +520,5 @@ async def revoke_other_sessions(
         )
     redis = get_redis()
     count = await revoke_all_other_sessions(db=db, redis=redis, user_id=user.id, current_jti=current_jti)
+    await log_event(db, SESSION_REVOKED, user_id=user.id, metadata={"count": count}, request=request)
     return {"detail": f"{count} sessão(ões) revogada(s) com sucesso.", "count": count}

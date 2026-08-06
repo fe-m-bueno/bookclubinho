@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -69,6 +70,9 @@ export function QuoteFullView({ quote, open, onOpenChange }: QuoteFullViewProps)
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="sr-only">Quote de {authorName}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Trecho marcado por {authorName}, com opções de compartilhar.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Shareable card */}

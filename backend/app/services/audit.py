@@ -112,3 +112,43 @@ async def log_event(
             user_id=str(user_id) if user_id else None,
             error=str(exc),
         )
+
+
+async def log_event_now(
+    db: AsyncSession,
+    action: str,
+    *,
+    user_id: uuid.UUID | None = None,
+    resource_type: str | None = None,
+    resource_id: uuid.UUID | None = None,
+    metadata: dict[str, Any] | None = None,
+    request: Request | None = None,
+) -> None:
+    """Registra um evento e **commita**, para os caminhos que terminam em exceção.
+
+    `log_event` não commita de propósito: o caller é dono da transação. Só que
+    num caminho de erro não existe caller que commite — `get_session` faz
+    rollback quando a exceção sobe, e a linha vai com ele.
+
+    Foi o que aconteceu com `login_failed`: o handler chamava `log_event` e
+    levantava `HTTPException` na linha seguinte, e a tabela ficou com **zero**
+    linhas dessa ação desde sempre, enquanto `login_success` e as outras
+    persistiam pelo commit do caminho de sucesso. `account_locked` nasceu com o
+    mesmo problema, no mesmo `raise`.
+
+    Nunca levanta: o commit também é protegido. Um audit que derruba a resposta
+    troca um registro perdido por uma requisição perdida.
+    """
+    await log_event(
+        db,
+        action,
+        user_id=user_id,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        metadata=metadata,
+        request=request,
+    )
+    try:
+        await db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("audit_log_commit_failed", action=action, error=str(exc))

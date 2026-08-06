@@ -20,6 +20,29 @@ from app.schemas.auth import (
 from app.services.auth import AuthError
 from tests.conftest import mock_db_returning
 
+
+def _fake_request(*, user_agent: str = "pytest", client_ip: str = "198.51.100.9") -> Request:
+    """Request mínimo — `establish_session` lê User-Agent e IP dele.
+
+    O `google_callback` não recebia `request`, e por isso auditava com
+    `request=None`: era o único flow sem `ip_hash` nem `user_agent`.
+    """
+    return Request(
+        {
+            "type": "http",
+            "headers": [(b"user-agent", user_agent.encode())],
+            "client": (client_ip, 5000),
+        }
+    )
+
+
+def _oauth_user(*, onboarding_completed: bool) -> MagicMock:
+    user = MagicMock()
+    user.id = uuid.uuid4()
+    user.onboarding_completed = onboarding_completed
+    return user
+
+
 # ── Schema tests ───────────────────────────────────────────────────────────────
 
 
@@ -405,7 +428,7 @@ def _mock_redis_unlocked() -> AsyncMock:
 
 class TestAuthenticateUser:
     @pytest.mark.asyncio
-    async def test_valid_credentials_return_tokens(self) -> None:
+    async def test_valid_credentials_return_the_user(self) -> None:
         from app.services.auth import authenticate_user
 
         mock_user = MagicMock()
@@ -419,17 +442,14 @@ class TestAuthenticateUser:
         with (
             patch("app.services.auth.get_redis", return_value=_mock_redis_unlocked()),
             patch("app.services.auth.verify_password", return_value=True),
-            patch(
-                "app.services.auth.create_token_pair",
-                return_value=("access.tok", "refresh.tok"),
-            ) as mtp,
         ):
-            access, refresh = await authenticate_user(db=mock_db, email="user@example.com", password="pass")
+            user = await authenticate_user(db=mock_db, email="user@example.com", password="pass")
 
-        assert access == "access.tok"
-        assert refresh == "refresh.tok"
-        mtp.assert_called_once_with(str(mock_user.id), onboarding_completed=True)
-        mock_db.commit.assert_called_once()
+        # O service prova a identidade e para aí. Tokens, sessão, audit e commit
+        # são de `login_session.establish_session`, um lugar só para os 3 flows.
+        assert user is mock_user
+        assert user.last_login_at is not None
+        mock_db.commit.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_wrong_password_raises_auth_error(self) -> None:
@@ -630,7 +650,7 @@ class TestSendMagicLink:
 
 class TestConsumeMagicToken:
     @pytest.mark.asyncio
-    async def test_valid_token_returns_tokens_and_onboarding(self) -> None:
+    async def test_valid_token_returns_the_user(self) -> None:
         from app.services.auth import consume_magic_token
 
         user_id = uuid.uuid4()
@@ -640,20 +660,16 @@ class TestConsumeMagicToken:
         mock_user.onboarding_completed = True
         mock_db = mock_db_returning(mock_user)
 
-        with (
-            patch("app.services.auth.get_redis") as mock_redis_factory,
-            patch("app.services.auth.create_token_pair", return_value=("acc.tok", "ref.tok")),
-        ):
+        with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
             mock_redis.get.return_value = str(user_id)
             mock_redis_factory.return_value = mock_redis
 
-            access, refresh, onboarding = await consume_magic_token(db=mock_db, token="validtoken")
+            user = await consume_magic_token(db=mock_db, token="validtoken")
 
-        assert access == "acc.tok"
-        assert refresh == "ref.tok"
-        assert onboarding is True
-        mock_db.commit.assert_called_once()
+        # Quem emite tokens e commita é `establish_session`; aqui só a identidade.
+        assert user is mock_user
+        mock_db.commit.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_missing_token_raises_auth_error(self) -> None:
@@ -752,7 +768,7 @@ class TestConsumeMagicToken:
         assert call_order.index("redis_delete") < call_order.index("db_execute")
 
     @pytest.mark.asyncio
-    async def test_onboarding_not_completed_returns_false(self) -> None:
+    async def test_user_carries_the_onboarding_flag_for_the_redirect(self) -> None:
         from app.services.auth import consume_magic_token
 
         user_id = uuid.uuid4()
@@ -761,17 +777,15 @@ class TestConsumeMagicToken:
         mock_user.onboarding_completed = False
         mock_db = mock_db_returning(mock_user)
 
-        with (
-            patch("app.services.auth.get_redis") as mock_redis_factory,
-            patch("app.services.auth.create_token_pair", return_value=("a", "r")),
-        ):
+        with patch("app.services.auth.get_redis") as mock_redis_factory:
             mock_redis = AsyncMock()
             mock_redis.get.return_value = str(user_id)
             mock_redis_factory.return_value = mock_redis
 
-            _, _, onboarding = await consume_magic_token(db=mock_db, token="tok")
+            user = await consume_magic_token(db=mock_db, token="tok")
 
-        assert onboarding is False
+        # O handler lê isso do usuário para escolher o destino do redirect.
+        assert user.onboarding_completed is False
 
 
 # ── Service: blacklist_refresh_token ──────────────────────────────────────────
@@ -883,7 +897,7 @@ class TestRotateRefreshToken:
             mock_redis.get.return_value = None  # não blacklistado
             mock_redis_factory.return_value = mock_redis
 
-            new_access, new_refresh = await rotate_refresh_token("old.token")
+            new_access, new_refresh = await rotate_refresh_token("old.token", db=mock_db_returning(None))
 
         assert new_access == "new.access"
         assert new_refresh == "new.refresh"
@@ -905,7 +919,7 @@ class TestRotateRefreshToken:
             mock_redis.get.return_value = "1"  # blacklistado
             mock_redis_factory.return_value = mock_redis
 
-            await rotate_refresh_token("revoked.token")
+            await rotate_refresh_token("revoked.token", db=mock_db_returning(None))
 
         assert exc_info.value.status_code == 401
         assert "revogado" in str(exc_info.value)
@@ -920,7 +934,7 @@ class TestRotateRefreshToken:
             patch("app.services.auth.decode_token", side_effect=JWTError("bad")),
             pytest.raises(AuthError) as exc_info,
         ):
-            await rotate_refresh_token("bad.token")
+            await rotate_refresh_token("bad.token", db=mock_db_returning(None))
 
         assert exc_info.value.status_code == 401
 
@@ -935,7 +949,7 @@ class TestRotateRefreshToken:
             patch("app.services.auth.decode_token", return_value=payload),
             pytest.raises(AuthError) as exc_info,
         ):
-            await rotate_refresh_token("access.token.used.as.refresh")
+            await rotate_refresh_token("access.token.used.as.refresh", db=mock_db_returning(None))
 
         assert exc_info.value.status_code == 401
 
@@ -951,12 +965,20 @@ class TestLogoutEndpoint:
         from app.api.v1.endpoints.auth import logout
 
         mock_response = MagicMock(spec=Response)
+        mock_request = MagicMock(spec=Request)
+        mock_db = AsyncMock()
+        mock_db.add = MagicMock()
 
         with patch(
-            "app.api.v1.endpoints.auth.blacklist_refresh_token",
+            "app.services.login_session.blacklist_refresh_token",
             new_callable=AsyncMock,
         ) as mock_blacklist:
-            result = await logout(response=mock_response, refresh_token="some.refresh.token")
+            result = await logout(
+                request=mock_request,
+                response=mock_response,
+                db=mock_db,
+                refresh_token="some.refresh.token",
+            )
 
         mock_blacklist.assert_called_once_with("some.refresh.token")
         mock_response.delete_cookie.assert_any_call("access_token", path="/")
@@ -971,13 +993,22 @@ class TestLogoutEndpoint:
         from app.api.v1.endpoints.auth import logout
 
         mock_response = MagicMock(spec=Response)
+        mock_request = MagicMock(spec=Request)
+        mock_db = AsyncMock()
+        mock_db.add = MagicMock()
 
         with patch(
-            "app.api.v1.endpoints.auth.blacklist_refresh_token",
+            "app.services.login_session.blacklist_refresh_token",
             new_callable=AsyncMock,
         ) as mock_blacklist:
-            result = await logout(response=mock_response, refresh_token=None)
+            result = await logout(
+                request=mock_request,
+                response=mock_response,
+                db=mock_db,
+                refresh_token=None,
+            )
 
+        # Sem token não há o que blacklistar, mas os cookies saem igual.
         mock_blacklist.assert_not_called()
         mock_response.delete_cookie.assert_any_call("access_token", path="/")
         mock_response.delete_cookie.assert_any_call("refresh_token", path="/")
@@ -997,12 +1028,20 @@ class TestRefreshEndpoint:
         mock_response = MagicMock(spec=Response)
         mock_request = MagicMock(spec=Request)
 
+        mock_db = AsyncMock()
+        mock_db.add = MagicMock()
+
         with patch(
-            "app.api.v1.endpoints.auth.rotate_refresh_token",
+            "app.services.login_session.rotate_refresh_token",
             new_callable=AsyncMock,
             return_value=("new.access", "new.refresh"),
         ):
-            result = await refresh(request=mock_request, response=mock_response, refresh_token="valid.refresh.token")
+            result = await refresh(
+                request=mock_request,
+                response=mock_response,
+                db=mock_db,
+                refresh_token="valid.refresh.token",
+            )
 
         assert isinstance(result, RefreshResponse)
         assert "renovados" in result.message
@@ -1018,7 +1057,12 @@ class TestRefreshEndpoint:
         mock_request = MagicMock(spec=Request)
 
         with pytest.raises(HTTPException) as exc_info:
-            await refresh(request=mock_request, response=mock_response, refresh_token=None)
+            await refresh(
+                request=mock_request,
+                response=mock_response,
+                db=AsyncMock(),
+                refresh_token=None,
+            )
 
         assert exc_info.value.status_code == 401
 
@@ -1033,13 +1077,18 @@ class TestRefreshEndpoint:
 
         with (
             patch(
-                "app.api.v1.endpoints.auth.rotate_refresh_token",
+                "app.services.login_session.rotate_refresh_token",
                 new_callable=AsyncMock,
                 side_effect=AuthError("Token inválido ou expirado.", status_code=401),
             ),
             pytest.raises(HTTPException) as exc_info,
         ):
-            await refresh(request=mock_request, response=mock_response, refresh_token="invalid.token")
+            await refresh(
+                request=mock_request,
+                response=mock_response,
+                db=AsyncMock(),
+                refresh_token="invalid.token",
+            )
 
         assert exc_info.value.status_code == 401
 
@@ -1083,16 +1132,17 @@ class TestGoogleOAuthCallback:
         with (
             patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
             patch("app.services.auth.uuid.uuid4", return_value=user_id),
-            patch("app.services.auth.create_token_pair", return_value=("acc", "ref")),
         ):
-            access, refresh, onboarding = await google_oauth_callback(code="authcode", db=mock_db)
+            user = await google_oauth_callback(code="authcode", db=mock_db)
 
-        assert access == "acc"
-        assert refresh == "ref"
+        # `flush` para ter o id; o commit é de `establish_session`, junto com a
+        # sessão e a linha de audit — o usuário novo e o registro dele numa
+        # transação só.
         mock_db.flush.assert_called_once()
-        mock_db.commit.assert_called_once()
+        mock_db.commit.assert_not_called()
 
         added_user = mock_db.add.call_args[0][0]
+        assert user is added_user
         assert added_user.auth_provider == "google"
         assert added_user.email_verified is True
         assert added_user.hashed_password is None
@@ -1110,15 +1160,13 @@ class TestGoogleOAuthCallback:
         mock_db = mock_db_returning(existing_user)
         mock_client = _mock_httpx_client()
 
-        with (
-            patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
-            patch("app.services.auth.create_token_pair", return_value=("a", "r")),
-        ):
-            await google_oauth_callback(code="code", db=mock_db)
+        with patch("app.services.auth.httpx.AsyncClient", return_value=mock_client):
+            user = await google_oauth_callback(code="code", db=mock_db)
 
+        assert user is existing_user
         assert existing_user.auth_provider == "google"
         mock_db.flush.assert_not_called()
-        mock_db.commit.assert_called_once()
+        mock_db.commit.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_merges_existing_magic_link_user(self) -> None:
@@ -1132,10 +1180,7 @@ class TestGoogleOAuthCallback:
         mock_db = mock_db_returning(existing_user)
         mock_client = _mock_httpx_client()
 
-        with (
-            patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
-            patch("app.services.auth.create_token_pair", return_value=("a", "r")),
-        ):
+        with patch("app.services.auth.httpx.AsyncClient", return_value=mock_client):
             await google_oauth_callback(code="code", db=mock_db)
 
         assert existing_user.auth_provider == "google"
@@ -1152,10 +1197,7 @@ class TestGoogleOAuthCallback:
         mock_db = mock_db_returning(existing_user)
         mock_client = _mock_httpx_client()
 
-        with (
-            patch("app.services.auth.httpx.AsyncClient", return_value=mock_client),
-            patch("app.services.auth.create_token_pair", return_value=("a", "r")),
-        ):
+        with patch("app.services.auth.httpx.AsyncClient", return_value=mock_client):
             await google_oauth_callback(code="code", db=mock_db)
 
         # avatar existente deve ser preservado
@@ -1241,7 +1283,9 @@ class TestGoogleOAuthEndpoints:
         mock_redis.get.return_value = None  # state não encontrado
 
         with patch("app.api.v1.endpoints.auth.get_redis", return_value=mock_redis):
-            response = await google_callback(db=mock_db, code="somecode", state="invalidstate", error=None)
+            response = await google_callback(
+                request=_fake_request(), db=mock_db, code="somecode", state="invalidstate", error=None
+            )
 
         assert response.status_code == 303
         assert "login?error=oauth_failed" in response.headers["location"]
@@ -1259,10 +1303,14 @@ class TestGoogleOAuthEndpoints:
             patch(
                 "app.api.v1.endpoints.auth.google_oauth_callback",
                 new_callable=AsyncMock,
-                return_value=("acc.tok", "ref.tok", True),
+                return_value=_oauth_user(onboarding_completed=True),
             ),
+            patch("app.services.login_session.create_token_pair", return_value=("acc.tok", "ref.tok")),
+            patch("app.services.login_session._create_session", new_callable=AsyncMock),
         ):
-            response = await google_callback(db=mock_db, code="validcode", state="validstate", error=None)
+            response = await google_callback(
+                request=_fake_request(), db=mock_db, code="validcode", state="validstate", error=None
+            )
 
         assert response.status_code == 303
         # redireciona para / quando onboarding_completed=True
@@ -1276,7 +1324,9 @@ class TestGoogleOAuthEndpoints:
 
         mock_db = AsyncMock()
 
-        response = await google_callback(db=mock_db, code=None, state=None, error="access_denied")
+        response = await google_callback(
+            request=_fake_request(), db=mock_db, code=None, state=None, error="access_denied"
+        )
 
         assert response.status_code == 303
         assert "login?error=oauth_failed" in response.headers["location"]
@@ -1297,7 +1347,9 @@ class TestGoogleOAuthEndpoints:
                 side_effect=AuthError("Falha OAuth", status_code=400),
             ),
         ):
-            response = await google_callback(db=mock_db, code="badcode", state="validstate", error=None)
+            response = await google_callback(
+                request=_fake_request(), db=mock_db, code="badcode", state="validstate", error=None
+            )
 
         assert response.status_code == 303
         assert "login?error=oauth_failed" in response.headers["location"]

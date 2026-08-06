@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -248,6 +249,45 @@ class TestAuthenticateUserBruteForce:
             await authenticate_user(db=db, email="user@example.com", password="wrong")
 
         sleep_mock.assert_called_once_with(2.0)
+
+    @pytest.mark.asyncio
+    async def test_lockout_leaves_an_audit_row(self) -> None:
+        """`ACCOUNT_LOCKED` era constante definida e nunca chamada.
+
+        É o evento de segurança mais forte deste caminho — dez falhas seguidas
+        contra a mesma conta — e não deixava rastro nenhum no audit log.
+        """
+        from app.db.models.audit_log import AuditLog
+        from app.services.audit import ACCOUNT_LOCKED
+
+        user = MagicMock()
+        user.id = uuid.uuid4()
+        user.email = "user@example.com"
+        user.display_name = "User"
+        user.is_active = True
+        user.hashed_password = "hashed"
+        user.email_verified = True
+
+        mock_redis = _make_redis(locked=False, fail_count=9)
+        db = AsyncMock()
+        db.add = MagicMock()
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = user
+        db.execute = AsyncMock(return_value=result)
+
+        with (
+            patch("app.services.auth.get_redis", return_value=mock_redis),
+            patch("app.services.auth.verify_password", return_value=False),
+            patch("app.services.auth.asyncio.create_task"),
+            pytest.raises(AuthError),
+        ):
+            await authenticate_user(db=db, email="user@example.com", password="wrong")
+
+        rows = [c[0][0] for c in db.add.call_args_list if isinstance(c[0][0], AuditLog)]
+        assert len(rows) == 1
+        assert rows[0].action == ACCOUNT_LOCKED
+        # Atribuível quando dá para identificar — é o que falta numa investigação.
+        assert rows[0].user_id == user.id
 
 
 # ── Cookie max_age ────────────────────────────────────────────────────────────

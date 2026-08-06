@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -141,9 +142,12 @@ export function ProgressUpdateModal({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Atualizar Progresso</DialogTitle>
-          <p className="text-sm text-muted-foreground">
+          {/* Era um `<p>` com este mesmo texto e as mesmas classes, mas solto:
+              sem `aria-describedby`, o leitor de tela anunciava só o título e o
+              Radix avisava no console. `DialogDescription` renderiza igual. */}
+          <DialogDescription>
             Progresso atual: {Math.round(currentPercentage)}%
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>

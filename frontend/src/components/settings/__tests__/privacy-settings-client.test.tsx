@@ -109,7 +109,7 @@ describe("PrivacySettingsClient", () => {
     const deleteButtons = screen.getAllByRole("button", { name: /excluir conta/i });
     fireEvent.click(deleteButtons[0]);
     fireEvent.click(screen.getByRole("button", { name: /continuar/i }));
-    expect(screen.getByText("Confirmar exclusao")).toBeTruthy();
+    expect(screen.getByText("Confirmar exclusão")).toBeTruthy();
     expect(screen.getByPlaceholderText("EXCLUIR")).toBeTruthy();
   });
 
