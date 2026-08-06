@@ -1,5 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  installVirtualLayout,
+  type VirtualLayoutHarness,
+} from "./virtual-layout-harness";
 
 vi.mock("framer-motion");
 
@@ -120,9 +125,19 @@ function renderChat() {
   );
 }
 
+// A lista virtualizada só monta as linhas que couberem no viewport, e jsdom não
+// faz layout: sem o harness o container tem altura 0, nenhuma linha é montada, e
+// estes testes falhariam por ausência de DOM em vez de por comportamento.
+let layout: VirtualLayoutHarness;
+
 beforeEach(() => {
   vi.clearAllMocks();
   useChatStore.getState().reset();
+  layout = installVirtualLayout();
+});
+
+afterEach(() => {
+  layout.restore();
 });
 
 describe("ChatContainer — auto-reveal de spoiler", () => {
