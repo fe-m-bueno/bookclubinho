@@ -1,13 +1,20 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import {
+  dropChatMessage,
+  listChatWindows,
+  markChatMessageDeleted,
+  patchChatMessage,
+  prependChatMessage,
+  replaceChatMessage,
+} from "@/lib/chat-cache";
 import { queryKeys } from "@/lib/query-keys";
 import type {
   ChatMessage,
   MessageCreatePayload,
   MessageEditPayload,
-  MessageListResponse,
   ReactionPayload,
 } from "@/lib/types/chat";
 
@@ -48,7 +55,23 @@ function makeOptimisticMessage(
 }
 
 interface SendMessageContext {
-  previousData: { pages: MessageListResponse[]; pageParams: unknown[] } | undefined;
+  optimisticId: string;
+}
+
+/**
+ * Guarda a mensagem que o servidor devolveu, preservando `reply_count`.
+ *
+ * Editar, apagar e reagir respondem com a mensagem atualizada — mas o backend
+ * monta essa resposta por `_reload_and_respond`, que não recalcula
+ * `reply_count` e manda sempre `0`. Só a listagem calcula. Sobrescrever com a
+ * resposta zeraria o "3 respostas" de uma mensagem só porque alguém reagiu
+ * nela, então o valor que já está em cache vence.
+ */
+function storeServerMessage(queryClient: QueryClient, message: ChatMessage): void {
+  patchChatMessage(queryClient, message.group_id, message.id, (previous) => ({
+    ...message,
+    reply_count: previous.reply_count,
+  }));
 }
 
 export function useSendMessage(
@@ -65,39 +88,28 @@ export function useSendMessage(
       return res;
     },
     onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.chat.ofGroup(groupId) });
-      const previousData = queryClient.getQueryData<{
-        pages: MessageListResponse[];
-        pageParams: unknown[];
-      }>(["chat-messages", groupId]);
-
-      // Optimistic update: prepend to first page (newest)
-      if (previousData && previousData.pages.length > 0) {
-        const optimistic = makeOptimisticMessage(
-          payload,
-          currentUser.id,
-          currentUser.name,
-          currentUser.avatar,
-        );
-        const firstPage = previousData.pages[0];
-        queryClient.setQueryData(
-          queryKeys.chat.ofGroup(groupId),
-          {
-            ...previousData,
-            pages: [
-              { ...firstPage, messages: [optimistic, ...firstPage.messages] },
-              ...previousData.pages.slice(1),
-            ],
-          },
-        );
+      // Só cancela se há janela carregada para receber a mensagem otimista.
+      // Cancelar o primeiro fetch de um chat que ainda está abrindo deixaria a
+      // lista vazia e sem nada para prepender.
+      if (listChatWindows(queryClient, groupId).length > 0) {
+        await queryClient.cancelQueries(queryKeys.chat.ofGroup(groupId));
       }
 
-      return { previousData };
+      const optimistic = makeOptimisticMessage(
+        payload,
+        currentUser.id,
+        currentUser.name,
+        currentUser.avatar,
+      );
+      prependChatMessage(queryClient, groupId, optimistic);
+
+      return { optimisticId: optimistic.id };
+    },
+    onSuccess: (message, _payload, context) => {
+      replaceChatMessage(queryClient, groupId, context.optimisticId, message);
     },
     onError: (_err, _payload, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.chat.ofGroup(groupId), context.previousData);
-      }
+      if (context) dropChatMessage(queryClient, groupId, context.optimisticId);
     },
   });
 }
@@ -110,9 +122,7 @@ export function useEditMessage() {
       const res = await api.patch<ChatMessage>(`/messages/${messageId}`, payload);
       return res;
     },
-    onSuccess: (msg) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chat.ofGroup(msg.group_id) });
-    },
+    onSuccess: (msg) => storeServerMessage(queryClient, msg),
   });
 }
 
@@ -124,9 +134,7 @@ export function useDeleteMessage() {
       const res = await api.del<ChatMessage>(`/messages/${messageId}`);
       return res;
     },
-    onSuccess: (msg) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chat.ofGroup(msg.group_id) });
-    },
+    onSuccess: (msg) => markChatMessageDeleted(queryClient, msg.group_id, msg.id),
   });
 }
 
@@ -138,8 +146,6 @@ export function useToggleReaction() {
       const res = await api.post<ChatMessage>(`/messages/${messageId}/reactions`, payload);
       return res;
     },
-    onSuccess: (msg) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chat.ofGroup(msg.group_id) });
-    },
+    onSuccess: (msg) => storeServerMessage(queryClient, msg),
   });
 }

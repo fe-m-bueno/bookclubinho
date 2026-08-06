@@ -2,7 +2,7 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { api } from "@/lib/api";
+import { fetchChatMessagesPage } from "@/lib/chat-api";
 import { queryKeys } from "@/lib/query-keys";
 import type { ChatMessage, MessageListResponse } from "@/lib/types/chat";
 
@@ -20,21 +20,12 @@ export function useChatMessages({
 
   const query = useInfiniteQuery<MessageListResponse, Error>({
     queryKey: queryKeys.chat.messages(groupId, { roundId, chapterFilter }),
-    queryFn: async ({ pageParam }) => {
-      const params = new URLSearchParams();
-      params.set("limit", "30");
-      if (pageParam) params.set("cursor", pageParam as string);
-      if (roundId) params.set("round_id", roundId);
-      if (chapterFilter != null) {
-        params.set("reference_type", "chapter");
-      }
-
-      // 401/403/404 vinham com mensagem escrita à mão aqui; agora a do backend
-      // chega em ApiError.detail, e o redirect do 401 é do Providers.
-      return api.get<MessageListResponse>(
-        `/groups/${groupId}/messages?${params.toString()}`,
-      );
-    },
+    queryFn: ({ pageParam }) =>
+      fetchChatMessagesPage(
+        groupId,
+        { roundId, chapterFilter },
+        pageParam as string | undefined,
+      ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
   });
