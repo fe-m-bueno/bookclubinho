@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.db.models.hall_of_quote import HallOfQuote
+from app.db.models.message import ContentType
 from app.services.chat import (
     ChatError,
     create_message,
@@ -19,7 +21,7 @@ from app.services.chat import (
     toggle_reaction,
 )
 from app.services.membership import MembershipError
-from tests.conftest import RecordingAfterCommit
+from tests.conftest import RecordingAfterCommit, SavepointMixin
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -722,3 +724,64 @@ async def test_typing_publishes_inline(after_commit) -> None:
 
     assert mock.called
     assert after_commit.scheduled == []
+
+
+# ── Savepoint do Hall of Quotes (#233) ────────────────────────────────────────
+
+
+class _SessionRejectingQuotes(SavepointMixin):
+    """Sessão em que gravar a entrada do hall falha e a mensagem, não.
+
+    O `flush` que levanta é o que o Postgres faz com um `HallOfQuote` inválido.
+    O que o teste observa é o que sobra da transação depois dele — sem o
+    savepoint, a mensagem já gravada ia junto.
+    """
+
+    def __init__(self, member: object) -> None:
+        self.added: list[object] = []
+        self.committed: list[object] = []
+        self._member = member
+
+    def add(self, obj: object) -> None:
+        self.added.append(obj)
+
+    async def flush(self) -> None:
+        if any(isinstance(o, HallOfQuote) for o in self.added):
+            raise RuntimeError("null value in column violates not-null constraint")
+
+    async def refresh(self, _obj: object) -> None:
+        pass
+
+    async def commit(self) -> None:
+        self.committed.extend(self.added)
+        self.added = []
+
+    async def rollback(self) -> None:
+        self.added = []
+
+    async def execute(self, *_a: object, **_kw: object) -> MagicMock:
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = self._member
+        return result
+
+
+@pytest.mark.asyncio
+async def test_hall_of_quote_failure_does_not_take_the_message_down() -> None:
+    """A entrada no hall é um brinde à mensagem — e brinde não derruba pedido.
+
+    Antes, o erro engolido deixava a transação abortada no Postgres: a mensagem
+    morria no commit do request, com um 500 que nem mencionava o hall.
+    """
+    user_id = uuid.uuid4()
+    group_id = uuid.uuid4()
+    member = _make_member(user_id=user_id, group_id=group_id)
+    data = _make_create_request(content_type=ContentType.QUOTE, content_text="Foi assim que aprendi a ler.")
+
+    db = _SessionRejectingQuotes(member)
+
+    msg = await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
+
+    await db.commit()
+
+    assert msg in db.committed
+    assert not any(isinstance(o, HallOfQuote) for o in db.committed)

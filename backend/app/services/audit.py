@@ -89,21 +89,27 @@ async def log_event(
     Nunca levanta exceção — falha silenciosamente para não interromper a requisição.
     Passe `request` para extrair ip_hash e user_agent automaticamente,
     ou passe-os explicitamente se o request não estiver disponível.
+
+    A escrita vai num savepoint: em Postgres um erro de comando aborta a
+    transação inteira, então engolir a exceção aqui só adiava a falha até o
+    commit do request — o audit sumia *e* levava a requisição junto.
     """
     try:
         if request is not None:
             ip_hash, user_agent = _extract_request_meta(request)
 
-        entry = AuditLog(
-            user_id=user_id,
-            action=action,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            ip_hash=ip_hash,
-            user_agent=user_agent,
-            metadata_=metadata,
-        )
-        db.add(entry)
+        async with db.begin_nested():
+            entry = AuditLog(
+                user_id=user_id,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                ip_hash=ip_hash,
+                user_agent=user_agent,
+                metadata_=metadata,
+            )
+            db.add(entry)
+            await db.flush()
         # Não faz commit aqui — o caller é responsável pelo commit da transação
     except Exception as exc:  # noqa: BLE001
         logger.warning(

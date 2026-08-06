@@ -13,6 +13,7 @@ from app.services.audit import (
     _hash_ip,
     log_event,
 )
+from tests.conftest import with_savepoints
 
 
 class TestHashIp:
@@ -34,7 +35,7 @@ class TestHashIp:
 class TestLogEvent:
     @pytest.mark.asyncio
     async def test_creates_audit_log_entry(self) -> None:
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         db.add = MagicMock()
 
         await log_event(db, LOGIN_SUCCESS, user_id=uuid.uuid4())
@@ -45,7 +46,7 @@ class TestLogEvent:
 
     @pytest.mark.asyncio
     async def test_with_resource(self) -> None:
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         db.add = MagicMock()
         rid = uuid.uuid4()
 
@@ -65,7 +66,7 @@ class TestLogEvent:
 
     @pytest.mark.asyncio
     async def test_extracts_request_meta(self) -> None:
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         db.add = MagicMock()
 
         mock_request = MagicMock()
@@ -82,7 +83,7 @@ class TestLogEvent:
     @pytest.mark.asyncio
     async def test_swallows_exceptions_silently(self) -> None:
         """log_event nunca deve deixar a requisição falhar."""
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         db.add = MagicMock(side_effect=RuntimeError("DB gone"))
 
         # Não deve levantar exceção
@@ -91,7 +92,7 @@ class TestLogEvent:
     @pytest.mark.asyncio
     async def test_user_id_optional(self) -> None:
         """Eventos de sistema não têm user_id."""
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         db.add = MagicMock()
 
         await log_event(db, "system_event")
@@ -102,7 +103,7 @@ class TestLogEvent:
     @pytest.mark.asyncio
     async def test_no_commit_called(self) -> None:
         """log_event não deve fazer commit — responsabilidade do caller."""
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         db.add = MagicMock()
 
         await log_event(db, LOGIN_SUCCESS)

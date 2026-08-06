@@ -21,6 +21,8 @@ import pytest
 from starlette.requests import Request
 
 from app.db.models.audit_log import AuditLog
+from app.db.models.user import User
+from app.db.models.user_session import UserSession
 from app.services.audit import LOGIN_SUCCESS, LOGOUT, MAGIC_LINK_USED, OAUTH_LOGIN, TOKEN_REFRESH
 from app.services.login_session import (
     LoginFlow,
@@ -28,6 +30,7 @@ from app.services.login_session import (
     establish_session,
     renew_session,
 )
+from tests.conftest import SavepointMixin
 
 USER_AGENT = "Mozilla/5.0 (Teste)"
 CLIENT_IP = "198.51.100.42"
@@ -50,7 +53,7 @@ def _user(*, onboarding_completed: bool = True) -> MagicMock:
     return user
 
 
-class _OrderedSession:
+class _OrderedSession(SavepointMixin):
     """Registra a ordem dos eventos da transação."""
 
     def __init__(self) -> None:
@@ -357,3 +360,72 @@ class TestEndSession:
             )
 
         assert db.audit_row.user_id == user_id
+
+
+# ── Savepoint do registro de dispositivo (#233) ───────────────────────────────
+
+
+class _SessionRejectingDeviceRows(SavepointMixin):
+    """Sessão em que gravar o `UserSession` falha e o resto do login, não."""
+
+    def __init__(self) -> None:
+        self.added: list[object] = []
+        self.committed: list[object] = []
+        self.rollbacks = 0
+
+    def add(self, obj: object) -> None:
+        self.added.append(obj)
+
+    async def flush(self) -> None:
+        if any(isinstance(o, UserSession) for o in self.added):
+            raise RuntimeError("insert or update on table user_sessions violates foreign key")
+
+    async def commit(self) -> None:
+        self.committed.extend(self.added)
+        self.added = []
+
+    async def rollback(self) -> None:
+        self.rollbacks += 1
+        self.added = []
+
+    async def execute(self, *_a: object, **_kw: object) -> MagicMock:
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        return result
+
+
+class TestDeviceRowFailureIsContained:
+    @pytest.mark.asyncio
+    async def test_failed_session_row_does_not_undo_the_google_login(self) -> None:
+        """O usuário criado pelo OAuth sobrevive à falha ao gravar o dispositivo.
+
+        O `db.rollback()` que morava no `except` de `_create_session` desfazia a
+        transação inteira: no flow do Google, o usuário recém-criado ia junto —
+        o login era apagado pela falha que só deveria não atrapalhá-lo.
+        """
+        db = _SessionRejectingDeviceRows()
+        oauth_user = User(
+            id=uuid.uuid4(),
+            email="ana@example.com",
+            hashed_password=None,
+            display_name="Ana",
+            auth_provider="google",
+            email_verified=True,
+        )
+        db.add(oauth_user)  # como no google_oauth_callback: o usuário nasce nesta transação
+        response = _RecordingResponse()
+
+        await establish_session(
+            db=db,  # type: ignore[arg-type]
+            response=response,  # type: ignore[arg-type]
+            request=_request(),
+            user=oauth_user,
+            flow=LoginFlow.GOOGLE_OAUTH,
+        )
+
+        assert db.rollbacks == 0
+        assert oauth_user in db.committed
+        assert any(isinstance(o, AuditLog) for o in db.committed)
+        # A única baixa é o registro de dispositivo, que é o acessório.
+        assert not any(isinstance(o, UserSession) for o in db.committed)
+        assert set(response.cookies) == {"access_token", "refresh_token"}

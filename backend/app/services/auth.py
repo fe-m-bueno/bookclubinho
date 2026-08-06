@@ -9,7 +9,7 @@ import re
 import secrets
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import jwt
@@ -18,6 +18,8 @@ from jwt import PyJWTError
 from sqlalchemy import select
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -58,6 +60,11 @@ _LOGIN_LOCK_KEY_PREFIX = "login_lock:"
 _LOGIN_FAIL_TTL = 900  # 15 minutes sliding window
 _LOGIN_LOCK_TTL = 900  # 15 minutes lockout
 _LOGIN_MAX_FAILS = 10  # lock after 10 consecutive failures
+# Não há atraso progressivo antes do lockout, e é deliberado: `asyncio.sleep` no
+# handler cobra do lado errado. O atacante dispara e fecha; quem ficava segurando
+# a conexão HTTP, o slot de worker e a conexão de banco por até 15 s era o
+# servidor. O lockout acima, mais o rate limit do slowapi na rota, são a defesa —
+# e nenhum dos dois custa capacidade nossa por tentativa.
 # Valid bcrypt hash format — used as a constant-time dummy target when no real hash exists
 _DUMMY_BCRYPT_HASH = "$2b$12$notarealhashXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
@@ -122,6 +129,28 @@ def _hash_token(token: str) -> str:
     return hmac.new(settings.JWT_SECRET.encode(), token.encode(), "sha256").hexdigest()
 
 
+# `asyncio.create_task` só guarda uma referência fraca à task: sem alguém a
+# segurando, o GC pode coletá-la antes que ela rode. Era o caso do aviso de conta
+# bloqueada — entregue ou não conforme o timing, com um `noqa: RUF006` calando o
+# lint que apontava exatamente isso.
+_pending_tasks: set[asyncio.Task[Any]] = set()
+
+
+def _fire_and_forget(coro: Coroutine[Any, Any, Any]) -> None:
+    """Roda `coro` em paralelo ao request, sem esperar por ele e sem perdê-lo.
+
+    Não usa o `AfterCommit` do projeto de propósito. Aquele port entrega via
+    `BackgroundTasks`, que roda a partir da resposta *do endpoint* — e o único
+    caller daqui é o caminho de lockout, que sempre termina em `raise`. A resposta
+    vem do exception handler, não do endpoint, então uma task agendada ali não
+    teria execução garantida. Para efeitos que não dependem da transação, como um
+    e-mail, a task própria é o que de fato roda.
+    """
+    task = asyncio.create_task(coro)
+    _pending_tasks.add(task)
+    task.add_done_callback(_pending_tasks.discard)
+
+
 class AuthError(ServiceError):
     """Raised when credentials are invalid or the account is not ready."""
 
@@ -176,23 +205,35 @@ async def _create_session(
     user_agent: str | None,
     client_ip: str | None,
 ) -> None:
-    """Create a UserSession record. Silently swallows errors so login is not disrupted."""
+    """Create a UserSession record. Errors here never disrupt the login.
+
+    Engolir a exceção só não atrapalha o login se ela não deixar rastro na
+    transação. Em Postgres deixa: um erro de comando aborta a transação inteira,
+    todo comando seguinte falha com `InFailedSqlTransaction` e o commit do
+    request estoura depois por um motivo que não tem nada a ver com a causa. O
+    savepoint delimita o estrago no registro de dispositivo, que é acessório.
+
+    O `db.rollback()` que morava no `except` era o oposto disso: desfazia a
+    transação inteira — o `last_login_at`, a linha de audit e, no flow do Google
+    OAuth, o próprio usuário recém-criado. Uma falha ao gravar o dispositivo
+    apagava o login que ela deveria apenas não atrapalhar.
+    """
     try:
         jti = _extract_jti_from_token(refresh_token)
         if not jti:
             return
-        session = UserSession(
-            user_id=user_id,
-            refresh_token_jti=jti,
-            device_info=_parse_device_info(user_agent),
-            ip_address=_mask_ip(client_ip),
-        )
-        db.add(session)
-        # flush so integrity errors surface before commit; caller handles commit
-        await db.flush()
+        async with db.begin_nested():
+            session = UserSession(
+                user_id=user_id,
+                refresh_token_jti=jti,
+                device_info=_parse_device_info(user_agent),
+                ip_address=_mask_ip(client_ip),
+            )
+            db.add(session)
+            # flush so integrity errors surface before commit; caller handles commit
+            await db.flush()
     except Exception as exc:  # noqa: BLE001
         logger.warning("session_create_failed", user_id=str(user_id), error=str(exc))
-        await db.rollback()
 
 
 # ── Register ──────────────────────────────────────────────────────────────────
@@ -519,7 +560,9 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     `login_session.establish_session`, um lugar só para os três flows.
 
     Raises AuthError for any auth failure (single generic message to prevent enumeration).
-    Implements brute force protection: progressive delays and account lockout after 10 failures.
+
+    Proteção contra força bruta: contador de falhas no Redis e lockout de 15 min
+    após 10 falhas seguidas. Não há atraso progressivo — ver `_LOGIN_MAX_FAILS`.
     """
     email_lower = email.lower().strip()
     email_hash = _hash_email(email_lower)
@@ -541,16 +584,9 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     auth_failed = user is None or not password_ok or not user.is_active
 
     if auth_failed or not user.email_verified:
-        # Increment failure counter and apply progressive delay
         fail_count = await _increment_login_fail(email_hash)
 
-        if 4 <= fail_count <= 5:
-            await asyncio.sleep(2.0)
-        elif 6 <= fail_count <= 8:
-            await asyncio.sleep(5.0)
-        elif fail_count == 9:
-            await asyncio.sleep(15.0)
-        elif fail_count >= _LOGIN_MAX_FAILS:
+        if fail_count >= _LOGIN_MAX_FAILS:
             await _lock_account(email_hash)
             logger.warning("login_account_locked", email_hash=email_hash)
             # O lockout é o evento de segurança mais forte deste caminho e não
@@ -564,9 +600,9 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
                 user_id=user.id if user is not None else None,
                 metadata={"email_hash": email_hash, "fail_count": fail_count},
             )
-            # Fire-and-forget warning email — only when we can identify the user
+            # Aviso por e-mail — only when we can identify the user
             if user is not None and user.is_active:
-                asyncio.create_task(  # noqa: RUF006
+                _fire_and_forget(
                     email_service.send_account_locked_warning(
                         to=user.email,
                         display_name=user.display_name or user.email,
@@ -653,20 +689,23 @@ async def rotate_refresh_token(token: str, *, db: AsyncSession) -> tuple[str, st
         onboarding_completed=payload.get("onb", False),
     )
 
-    # Update session record (best-effort — no crash on failure)
+    # Update session record (best-effort — no crash on failure).
+    # Savepoint pelo mesmo motivo de `_create_session`: sem ele, um erro aqui
+    # aborta a transação e quem paga é o commit do request, não este `except`.
     try:
         new_jti = _extract_jti_from_token(new_refresh)
         if new_jti:
-            result = await db.execute(
-                select(UserSession).where(
-                    UserSession.refresh_token_jti == jti,
-                    UserSession.revoked_at.is_(None),
+            async with db.begin_nested():
+                result = await db.execute(
+                    select(UserSession).where(
+                        UserSession.refresh_token_jti == jti,
+                        UserSession.revoked_at.is_(None),
+                    )
                 )
-            )
-            session = result.scalar_one_or_none()
-            if session is not None:
-                session.refresh_token_jti = new_jti
-                session.last_active_at = datetime.now(UTC)
+                session = result.scalar_one_or_none()
+                if session is not None:
+                    session.refresh_token_jti = new_jti
+                    session.last_active_at = datetime.now(UTC)
     except Exception as exc:  # noqa: BLE001
         logger.warning("session_rotate_failed", jti=jti, error=str(exc))
 

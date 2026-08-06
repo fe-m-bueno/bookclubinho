@@ -48,13 +48,53 @@ def after_commit() -> RecordingAfterCommit:
     return RecordingAfterCommit()
 
 
+class _Savepoint:
+    """Dublê de `db.begin_nested()` com a semântica do savepoint de verdade.
+
+    O que foi adicionado dentro do bloco some quando ele levanta, e a exceção
+    continua subindo — é assim que o `except Exception` de quem chama consegue
+    tratá-la sem que a transação de fora fique abortada.
+
+    Um `AsyncMock` cru não serve: `begin_nested()` devolveria uma corrotina (não
+    um context manager async) e, se devolvesse, o `__aexit__` do mock retorna um
+    valor verdadeiro — engoliria toda exceção do bloco, o oposto do savepoint.
+    """
+
+    def __init__(self, session: object) -> None:
+        self._session = session
+        self._mark = 0
+
+    async def __aenter__(self) -> _Savepoint:
+        self._mark = len(getattr(self._session, "added", ()))
+        return self
+
+    async def __aexit__(self, exc_type: object, *_rest: object) -> bool:
+        added = getattr(self._session, "added", None)
+        if exc_type is not None and isinstance(added, list):
+            del added[self._mark :]
+        return False
+
+
+class SavepointMixin:
+    """Dá `begin_nested()` aos dublês de sessão escritos à mão."""
+
+    def begin_nested(self) -> _Savepoint:
+        return _Savepoint(self)
+
+
+def with_savepoints(db: AsyncMock) -> AsyncMock:
+    """Ensina um mock de sessão a responder `begin_nested()` como savepoint."""
+    db.begin_nested = MagicMock(side_effect=lambda: _Savepoint(db))
+    return db
+
+
 def mock_db_returning(value: object) -> AsyncMock:
     """AsyncSession mock cujo execute() retorna scalar_one_or_none = value."""
     result = MagicMock()
     result.scalar_one_or_none.return_value = value
     db = AsyncMock()
     db.execute = AsyncMock(return_value=result)
-    return db
+    return with_savepoints(db)
 
 
 def make_group(**overrides: object) -> MagicMock:

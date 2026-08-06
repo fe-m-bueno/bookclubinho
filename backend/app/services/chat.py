@@ -195,34 +195,40 @@ async def _auto_create_hall_of_quote(
     round_id: uuid.UUID | None,
     quote_text: str,
 ) -> None:
-    """Auto-create a HallOfQuote entry from a quote-type chat message."""
+    """Auto-create a HallOfQuote entry from a quote-type chat message.
+
+    Savepoint em volta do trabalho de banco: a entrada no hall é um brinde à
+    mensagem, e sem ele um erro aqui aborta a transação em Postgres — a mensagem
+    já gravada morre no commit, com um 500 que não menciona o hall.
+    """
     try:
         from app.db.models.round import Round
 
-        book_title = "Leitura do grupo"
-        book_author: str | None = None
-        page_reference: str | None = None
+        async with db.begin_nested():
+            book_title = "Leitura do grupo"
+            book_author: str | None = None
+            page_reference: str | None = None
 
-        if round_id:
-            round_result = await db.execute(select(Round).where(Round.id == round_id))
-            round_ = round_result.scalar_one_or_none()
-            if round_ and round_.book_title:
-                book_title = round_.book_title
-                book_author = round_.book_author
-        elif msg.reference_value:
-            page_reference = msg.reference_value
+            if round_id:
+                round_result = await db.execute(select(Round).where(Round.id == round_id))
+                round_ = round_result.scalar_one_or_none()
+                if round_ and round_.book_title:
+                    book_title = round_.book_title
+                    book_author = round_.book_author
+            elif msg.reference_value:
+                page_reference = msg.reference_value
 
-        hall_quote = HallOfQuote(
-            group_id=group_id,
-            round_id=round_id,
-            user_id=user_id,
-            quote_text=quote_text,
-            page_reference=page_reference,
-            book_title=book_title,
-            book_author=book_author,
-        )
-        db.add(hall_quote)
-        await db.flush()
+            hall_quote = HallOfQuote(
+                group_id=group_id,
+                round_id=round_id,
+                user_id=user_id,
+                quote_text=quote_text,
+                page_reference=page_reference,
+                book_title=book_title,
+                book_author=book_author,
+            )
+            db.add(hall_quote)
+            await db.flush()
     except Exception:
         logger.warning(
             "auto_hall_of_quote_failed",
