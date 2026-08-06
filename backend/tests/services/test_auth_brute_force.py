@@ -16,7 +16,7 @@ from app.services.auth import (
     _reset_login_fail,
     authenticate_user,
 )
-from tests.conftest import make_user
+from tests.conftest import make_user, with_savepoints
 
 # ── _hash_email ────────────────────────────────────────────────────────────────
 
@@ -132,7 +132,7 @@ class TestAuthenticateUserBruteForce:
     @pytest.mark.asyncio
     async def test_locked_account_raises_generic_error(self) -> None:
         mock_redis = _make_redis(locked=True)
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
 
         with (
             patch("app.services.auth.get_redis", return_value=mock_redis),
@@ -150,7 +150,7 @@ class TestAuthenticateUserBruteForce:
     async def test_wrong_password_increments_counter(self) -> None:
         mock_redis = _make_redis(locked=False, fail_count=0)
         user = _make_user()
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         result = MagicMock()
         result.scalar_one_or_none.return_value = user
         db.execute = AsyncMock(return_value=result)
@@ -168,7 +168,7 @@ class TestAuthenticateUserBruteForce:
     async def test_successful_login_resets_counter(self) -> None:
         mock_redis = _make_redis(locked=False)
         user = _make_user()
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         result = MagicMock()
         result.scalar_one_or_none.return_value = user
         db.execute = AsyncMock(return_value=result)
@@ -191,7 +191,7 @@ class TestAuthenticateUserBruteForce:
         # fail_count=9 means incr returns 10 (= _LOGIN_MAX_FAILS)
         mock_redis = _make_redis(locked=False, fail_count=9)
         user = _make_user()
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         result = MagicMock()
         result.scalar_one_or_none.return_value = user
         db.execute = AsyncMock(return_value=result)
@@ -214,7 +214,7 @@ class TestAuthenticateUserBruteForce:
         """Unverified email must return 401 with the same generic message (anti-enumeration)."""
         mock_redis = _make_redis(locked=False, fail_count=0)
         user = _make_user(email_verified=False)
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         result = MagicMock()
         result.scalar_one_or_none.return_value = user
         db.execute = AsyncMock(return_value=result)
@@ -234,7 +234,7 @@ class TestAuthenticateUserBruteForce:
     async def test_progressive_delay_applied_on_failure(self) -> None:
         """4th failure triggers 2s delay."""
         mock_redis = _make_redis(locked=False, fail_count=3)
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         result = MagicMock()
         result.scalar_one_or_none.return_value = None
         db.execute = AsyncMock(return_value=result)
@@ -269,7 +269,7 @@ class TestAuthenticateUserBruteForce:
         user.email_verified = True
 
         mock_redis = _make_redis(locked=False, fail_count=9)
-        db = AsyncMock()
+        db = with_savepoints(AsyncMock())
         db.add = MagicMock()
         result = MagicMock()
         result.scalar_one_or_none.return_value = user

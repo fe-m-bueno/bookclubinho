@@ -33,6 +33,7 @@ from app.services.audit import (
     REGISTER,
     TOKEN_REFRESH,
 )
+from tests.conftest import SavepointMixin
 
 app = FastAPI()
 app.include_router(auth_router, prefix="/api/v1/auth")
@@ -51,7 +52,7 @@ def _make_user(*, onboarding_completed: bool = True) -> MagicMock:
     return user
 
 
-class _RecordingSession:
+class _RecordingSession(SavepointMixin):
     """Coleta o que foi adicionado à sessão — as linhas de audit inclusive."""
 
     def __init__(self) -> None:

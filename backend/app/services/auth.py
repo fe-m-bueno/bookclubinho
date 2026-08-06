@@ -176,23 +176,35 @@ async def _create_session(
     user_agent: str | None,
     client_ip: str | None,
 ) -> None:
-    """Create a UserSession record. Silently swallows errors so login is not disrupted."""
+    """Create a UserSession record. Errors here never disrupt the login.
+
+    Engolir a exceção só não atrapalha o login se ela não deixar rastro na
+    transação. Em Postgres deixa: um erro de comando aborta a transação inteira,
+    todo comando seguinte falha com `InFailedSqlTransaction` e o commit do
+    request estoura depois por um motivo que não tem nada a ver com a causa. O
+    savepoint delimita o estrago no registro de dispositivo, que é acessório.
+
+    O `db.rollback()` que morava no `except` era o oposto disso: desfazia a
+    transação inteira — o `last_login_at`, a linha de audit e, no flow do Google
+    OAuth, o próprio usuário recém-criado. Uma falha ao gravar o dispositivo
+    apagava o login que ela deveria apenas não atrapalhar.
+    """
     try:
         jti = _extract_jti_from_token(refresh_token)
         if not jti:
             return
-        session = UserSession(
-            user_id=user_id,
-            refresh_token_jti=jti,
-            device_info=_parse_device_info(user_agent),
-            ip_address=_mask_ip(client_ip),
-        )
-        db.add(session)
-        # flush so integrity errors surface before commit; caller handles commit
-        await db.flush()
+        async with db.begin_nested():
+            session = UserSession(
+                user_id=user_id,
+                refresh_token_jti=jti,
+                device_info=_parse_device_info(user_agent),
+                ip_address=_mask_ip(client_ip),
+            )
+            db.add(session)
+            # flush so integrity errors surface before commit; caller handles commit
+            await db.flush()
     except Exception as exc:  # noqa: BLE001
         logger.warning("session_create_failed", user_id=str(user_id), error=str(exc))
-        await db.rollback()
 
 
 # ── Register ──────────────────────────────────────────────────────────────────
@@ -653,20 +665,23 @@ async def rotate_refresh_token(token: str, *, db: AsyncSession) -> tuple[str, st
         onboarding_completed=payload.get("onb", False),
     )
 
-    # Update session record (best-effort — no crash on failure)
+    # Update session record (best-effort — no crash on failure).
+    # Savepoint pelo mesmo motivo de `_create_session`: sem ele, um erro aqui
+    # aborta a transação e quem paga é o commit do request, não este `except`.
     try:
         new_jti = _extract_jti_from_token(new_refresh)
         if new_jti:
-            result = await db.execute(
-                select(UserSession).where(
-                    UserSession.refresh_token_jti == jti,
-                    UserSession.revoked_at.is_(None),
+            async with db.begin_nested():
+                result = await db.execute(
+                    select(UserSession).where(
+                        UserSession.refresh_token_jti == jti,
+                        UserSession.revoked_at.is_(None),
+                    )
                 )
-            )
-            session = result.scalar_one_or_none()
-            if session is not None:
-                session.refresh_token_jti = new_jti
-                session.last_active_at = datetime.now(UTC)
+                session = result.scalar_one_or_none()
+                if session is not None:
+                    session.refresh_token_jti = new_jti
+                    session.last_active_at = datetime.now(UTC)
     except Exception as exc:  # noqa: BLE001
         logger.warning("session_rotate_failed", jti=jti, error=str(exc))
 
