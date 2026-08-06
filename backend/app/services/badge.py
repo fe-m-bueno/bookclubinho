@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 if TYPE_CHECKING:
     import uuid
@@ -14,34 +14,12 @@ if TYPE_CHECKING:
 
 from app.core.exceptions import ServiceError
 from app.db.models.badge import Badge, UserBadge
-from app.db.models.book_review import BookReview
 from app.db.models.group import Group, GroupMember
-from app.db.models.message import GroupMessage
-from app.db.models.reading_session import ReadingSession
 from app.db.models.round import Round
 from app.db.models.user import User
+from app.services.badge_checker import BADGES
 
 logger = structlog.get_logger(__name__)
-
-# slug → (target, description for progress endpoint)
-_BADGE_TARGETS: dict[str, int] = {
-    "bookworm": 5,
-    "reviewer": 10,
-    "crybaby": 3,
-    "romantic": 5,
-    "speed_reader": 1,
-    "variety": 5,
-    "social_butterfly": 100,
-    "streak_7": 7,
-    "streak_30": 30,
-    "streak_100": 100,
-    "marathon": 120,
-    "night_owl": 5,
-    "first_blood": 1,
-    "quote_king": 1,
-    "founder": 1,
-    "hot_take": 1,
-}
 
 
 class BadgeError(ServiceError):
@@ -184,109 +162,31 @@ async def get_badge_progress(
     if badge is None:
         raise BadgeError("Badge não encontrado.", status_code=404)
 
-    target = _BADGE_TARGETS.get(slug, 1)
-    current = await _compute_badge_progress(db, user_id, slug)
-    pct = min(100.0, round(current / target * 100, 1)) if target > 0 else 100.0
+    spec = BADGES.get(slug)
+    if spec is None:
+        # Badge no catálogo mas sem regra registrada — nada a medir.
+        return {
+            "slug": badge.slug,
+            "name": badge.name,
+            "emoji": badge.emoji,
+            "current": 0,
+            "target": 1,
+            "percentage": 0.0,
+        }
+
+    # Mesma medição que decide o award (app.services.badge_checker.BADGES),
+    # apenas truncada no alvo — não há segunda cópia da regra aqui.
+    current = min(await spec.measure(db, user_id, {}), spec.target)
+    pct = min(100.0, round(current / spec.target * 100, 1)) if spec.target > 0 else 100.0
 
     return {
         "slug": badge.slug,
         "name": badge.name,
         "emoji": badge.emoji,
         "current": current,
-        "target": target,
+        "target": spec.target,
         "percentage": pct,
     }
-
-
-async def _compute_badge_progress(
-    db: AsyncSession,
-    user_id: uuid.UUID,
-    slug: str,
-) -> int:
-    """Compute current progress value for a badge."""
-    if slug in ("bookworm", "reviewer"):
-        result = await db.execute(select(func.count(BookReview.id)).where(BookReview.user_id == user_id))
-        return int(result.scalar_one() or 0)
-
-    if slug == "crybaby":
-        result = await db.execute(
-            select(func.count(BookReview.id)).where(
-                BookReview.user_id == user_id,
-                BookReview.cried.is_(True),
-            )
-        )
-        return int(result.scalar_one() or 0)
-
-    if slug == "romantic":
-        result = await db.execute(
-            select(func.count(BookReview.id)).where(
-                BookReview.user_id == user_id,
-                BookReview.loved_it.is_(True),
-            )
-        )
-        return int(result.scalar_one() or 0)
-
-    if slug == "variety":
-        rounds_result = await db.execute(
-            select(Round.book_genres).where(
-                Round.id.in_(select(BookReview.round_id).where(BookReview.user_id == user_id)),
-                Round.book_genres.isnot(None),
-            )
-        )
-        genres: set[str] = set()
-        for (genre_list,) in rounds_result.all():
-            genres.update(genre_list or [])
-        return len(genres)
-
-    if slug == "social_butterfly":
-        # Max messages in a single group
-        result = await db.execute(
-            select(func.count(GroupMessage.id), GroupMessage.group_id)
-            .where(
-                GroupMessage.user_id == user_id,
-                GroupMessage.is_deleted.is_(False),
-            )
-            .group_by(GroupMessage.group_id)
-            .order_by(func.count(GroupMessage.id).desc())
-            .limit(1)
-        )
-        row = result.one_or_none()
-        return int(row[0]) if row else 0
-
-    if slug in ("streak_7", "streak_30", "streak_100"):
-        user_result = await db.execute(select(User).where(User.id == user_id))
-        user = user_result.scalar_one_or_none()
-        return user.streak_current if user else 0
-
-    if slug == "marathon":
-        result = await db.execute(
-            select(func.max(ReadingSession.duration_minutes)).where(ReadingSession.user_id == user_id)
-        )
-        return int(result.scalar_one() or 0)
-
-    if slug == "night_owl":
-        result = await db.execute(
-            select(func.count(ReadingSession.id)).where(
-                ReadingSession.user_id == user_id,
-                func.extract("hour", ReadingSession.started_at) >= 0,
-                func.extract("hour", ReadingSession.started_at) < 5,
-            )
-        )
-        return int(result.scalar_one() or 0)
-
-    if slug == "founder":
-        result = await db.execute(
-            select(func.count(Group.id)).where(Group.created_by == user_id, Group.is_active.is_(True))
-        )
-        return int(result.scalar_one() or 0)
-
-    # Badges with binary progress (0 or 1): first_blood, quote_king, speed_reader, hot_take
-    already_earned = await db.execute(
-        select(func.count(UserBadge.id))
-        .join(Badge, Badge.id == UserBadge.badge_id)
-        .where(UserBadge.user_id == user_id, Badge.slug == slug)
-    )
-    return int(already_earned.scalar_one() or 0)
 
 
 async def get_recent_badges(

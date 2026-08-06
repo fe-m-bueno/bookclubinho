@@ -15,6 +15,7 @@ from app.services.badge import (
     get_group_badges,
     get_my_badges,
 )
+from app.services.badge_checker import BADGES
 
 # ── Mock factories ─────────────────────────────────────────────────────────────
 
@@ -245,14 +246,40 @@ async def test_get_badge_progress_partial() -> None:
     assert result["percentage"] == 40.0
 
 
-# ── marathon target ─────────────────────────────────────────────────────────────
+# ── progresso vem do mesmo registry do award ───────────────────────────────────
 
 
-def test_marathon_target_is_120() -> None:
-    """_BADGE_TARGETS['marathon'] deve ser 120, não 1."""
-    from app.services.badge import _BADGE_TARGETS
+def test_targets_come_from_the_badge_registry() -> None:
+    """O progresso não tem tabela de alvos própria — lê `BADGES` do checker."""
+    import app.services.badge as badge_module
 
-    assert _BADGE_TARGETS["marathon"] == 120
+    assert not hasattr(badge_module, "_BADGE_TARGETS")
+    assert not hasattr(badge_module, "_compute_badge_progress")
+    assert BADGES["marathon"].target == 120
+
+
+def test_registry_covers_every_badge_in_the_catalog() -> None:
+    """Todo slug semeado na migration 0016 tem regra registrada."""
+    seeded = {
+        "first_blood",
+        "quote_king",
+        "crybaby",
+        "bookworm",
+        "speed_reader",
+        "social_butterfly",
+        "streak_7",
+        "streak_30",
+        "streak_100",
+        "night_owl",
+        "marathon",
+        "reviewer",
+        "variety",
+        "founder",
+        "hot_take",
+        "romantic",
+    }
+
+    assert seeded == set(BADGES)
 
 
 @pytest.mark.asyncio
@@ -268,7 +295,7 @@ async def test_get_badge_progress_marathon_target() -> None:
 
     # marathon progress usa ReadingSession max duration
     res_progress = MagicMock()
-    res_progress.scalar_one.return_value = 60  # 60 min de máximo
+    res_progress.scalar_one_or_none.return_value = 60  # 60 min de máximo
 
     db.execute = AsyncMock(side_effect=[res_badge, res_progress])
 
@@ -291,10 +318,28 @@ async def test_get_badge_progress_marathon_119_min_not_full() -> None:
     res_badge.scalar_one_or_none.return_value = badge
 
     res_progress = MagicMock()
-    res_progress.scalar_one.return_value = 119
+    res_progress.scalar_one_or_none.return_value = 119
 
     db.execute = AsyncMock(side_effect=[res_badge, res_progress])
 
     result = await get_badge_progress(db, user_id=user_id, slug="marathon")
 
     assert result["percentage"] < 100.0
+
+
+@pytest.mark.asyncio
+async def test_get_badge_progress_is_capped_at_the_target() -> None:
+    """Medida acima do alvo não estoura a barra: 12 reviews num alvo de 5 → 5/5."""
+    badge = _make_badge(slug="bookworm")
+
+    db = AsyncMock()
+    res_badge = MagicMock()
+    res_badge.scalar_one_or_none.return_value = badge
+    res_progress = MagicMock()
+    res_progress.scalar_one.return_value = 12
+    db.execute = AsyncMock(side_effect=[res_badge, res_progress])
+
+    result = await get_badge_progress(db, user_id=uuid.uuid4(), slug="bookworm")
+
+    assert result["current"] == 5
+    assert result["percentage"] == 100.0
