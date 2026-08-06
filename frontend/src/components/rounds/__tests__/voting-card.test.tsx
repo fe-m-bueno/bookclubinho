@@ -102,4 +102,57 @@ describe("VotingCard", () => {
     );
     expect(screen.getByText("1 voto")).toBeInTheDocument();
   });
+
+  /**
+   * O card se anunciava como "Votar em Dom Casmurro" mesmo depois da votação
+   * encerrada — o rótulo era fixo, não olhava para `isRevealed`. Quem usa leitor
+   * de tela ouvia uma ação disponível numa tela onde ela não está; pior no
+   * desempate, cuja razão de existir é comunicar um resultado.
+   */
+  describe("nome acessível", () => {
+    it("promete votar enquanto a votação está aberta", () => {
+      render(<VotingCard {...defaultProps} />);
+      const card = screen.getByRole("button");
+      expect(card).toHaveAccessibleName("Votar em Dom Casmurro");
+      expect(card).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("marca o voto do usuário como pressionado antes da revelação", () => {
+      render(<VotingCard {...defaultProps} isSelected />);
+      expect(screen.getByRole("button")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+
+    it("depois da revelação não é mais um botão", () => {
+      render(<VotingCard {...defaultProps} isRevealed disabled />);
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("depois da revelação não promete votar nem se diz pressionado", () => {
+      const { container } = render(
+        <VotingCard {...defaultProps} isRevealed isWinner disabled isSelected />,
+      );
+      expect(screen.queryByLabelText(/Votar em/)).not.toBeInTheDocument();
+      expect(container.querySelector("[aria-pressed]")).toBeNull();
+    });
+
+    it("o resultado continua legível depois da revelação", () => {
+      render(<VotingCard {...defaultProps} isRevealed isWinner disabled />);
+      expect(screen.getByText("Dom Casmurro")).toBeInTheDocument();
+      expect(screen.getByText("3 votos")).toBeInTheDocument();
+      expect(screen.getByText("Vencedor")).toBeInTheDocument();
+    });
+
+    /**
+     * `disabled` só apagava `pointer-events`. O botão seguia focável e
+     * acionável pelo teclado — o clique era engolido por um guard no handler,
+     * então a tecla não fazia nada e nada dizia por quê.
+     */
+    it("desabilitado durante o envio do voto é desabilitado de fato", () => {
+      render(<VotingCard {...defaultProps} disabled />);
+      expect(screen.getByRole("button")).toBeDisabled();
+    });
+  });
 });

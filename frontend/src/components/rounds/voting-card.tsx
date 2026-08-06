@@ -29,28 +29,26 @@ export function VotingCard({
   disabled,
   onVote,
 }: VotingCardProps) {
-  return (
-    <motion.button
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      whileTap={disabled ? undefined : { scale: 0.98 }}
-      onClick={() => !disabled && onVote(nomination.id)}
-      className={cn(
-        "relative w-full rounded-xl border bg-card p-4 text-left transition-all shadow-warm-sm",
-        isSelected && !isRevealed
-          ? "border-sage-400 dark:border-sage-300 ring-2 ring-sage-400/40"
-          : "border-border",
-        isWinner && isRevealed && "ring-4 ring-sage-500",
-        disabled
-          ? "pointer-events-none"
-          : "cursor-pointer hover:border-muted-foreground/40",
-      )}
-      aria-pressed={isSelected}
-      aria-label={`Votar em ${nomination.book_title}`}
-      type="button"
-    >
+  const className = cn(
+    "relative w-full rounded-xl border bg-card p-4 text-left transition-all shadow-warm-sm",
+    isSelected && !isRevealed
+      ? "border-sage-400 dark:border-sage-300 ring-2 ring-sage-400/40"
+      : "border-border",
+    isWinner && isRevealed && "ring-4 ring-sage-500",
+    disabled || isRevealed
+      ? "pointer-events-none"
+      : "cursor-pointer hover:border-muted-foreground/40",
+  );
+
+  const enter = {
+    layout: true,
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.2 },
+  } as const;
+
+  const conteudo = (
+    <>
       <div className="flex gap-3">
         {/* Cover */}
         <div className="relative h-[120px] w-20 shrink-0 overflow-hidden rounded-md bg-muted">
@@ -132,6 +130,39 @@ export function VotingCard({
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         />
       )}
+    </>
+  );
+
+  /**
+   * Revelado é resultado, não ação: nada para acionar, nada para alternar,
+   * nada para receber foco. O card se anunciava como "Votar em Título" e
+   * `aria-pressed` seguia ligado — depois da revelação `isSelected` quer dizer
+   * "foi nisto que você votou", que é histórico, não um toggle. O que o leitor
+   * de tela precisa dizer aqui já está no conteúdo: título, autor, quem
+   * indicou, a contagem de votos e o selo de vencedor.
+   */
+  if (isRevealed) {
+    return (
+      <motion.div {...enter} className={className}>
+        {conteudo}
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.button
+      {...enter}
+      whileTap={disabled ? undefined : { scale: 0.98 }}
+      onClick={() => !disabled && onVote(nomination.id)}
+      className={className}
+      // Era só `pointer-events-none`: o botão seguia focável e o Enter caía num
+      // guard silencioso dentro do handler.
+      disabled={disabled}
+      aria-pressed={isSelected}
+      aria-label={`Votar em ${nomination.book_title}`}
+      type="button"
+    >
+      {conteudo}
     </motion.button>
   );
 }
