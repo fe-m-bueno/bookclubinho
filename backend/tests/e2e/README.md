@@ -78,3 +78,26 @@ TRUNCATE user_badges, reading_progress, book_reviews, round_votes,
 ```
 
 Nunca aponte isto para o banco de produção.
+
+## media_key_backfill.py
+
+Verifica o backfill da migration 0023. Precisa de um banco **descartável** —
+escreve em `group_messages` e o nome do DSN tem que conter `_mig` (ou
+`E2E_ALLOW_ANY_DB=1`, se você souber o que está fazendo).
+
+Duas passagens, porque o estado a conferir é o que a migration deixou:
+
+```bash
+export PGPASSWORD=bookclub
+createdb -h 127.0.0.1 -U bookclub bookclub_mig
+D=postgresql://bookclub:bookclub@localhost:5432/bookclub_mig
+
+alembic upgrade 0022                                    # schema anterior
+E2E_DSN=$D python tests/e2e/media_key_backfill.py       # planta os 4 casos
+alembic upgrade head                                    # roda o backfill
+VERIFICAR=1 E2E_DSN=$D python tests/e2e/media_key_backfill.py
+```
+
+Saída esperada: `8 passaram, 0 falharam`. Com o backfill original (padrão
+`'media/[^?]+'`, sem o `group_id`), dá `4 passaram, 4 falharam` — é o que o
+script existe para pegar.
