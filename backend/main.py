@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import sentry_sdk
 import structlog
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
@@ -167,6 +168,23 @@ async def service_error_handler(request: Request, exc: ServiceError) -> JSONResp
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Diz qual campo falhou e por quê, sem repetir o valor.
+
+    O corpo padrão do FastAPI inclui `input` — exatamente o que o usuário
+    enviou. Numa senha rejeitada por política, isso é a senha em texto puro no
+    corpo da resposta, e daí em tudo que registra resposta de erro. `ctx` sai
+    junto porque carrega o objeto de exceção do validador.
+
+    `loc`, `msg` e `type` bastam para o frontend apontar o campo.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": [{k: v for k, v in erro.items() if k in ("loc", "msg", "type")} for erro in exc.errors()]},
     )
 
 
