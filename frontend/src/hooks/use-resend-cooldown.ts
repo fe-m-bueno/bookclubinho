@@ -1,30 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+
+import { useCountdown } from "@/hooks/use-countdown";
 
 export function useResendCooldown(durationSeconds = 60) {
-  const [remaining, setRemaining] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
+  // O que o hook guarda é o prazo, não o quanto falta: o resto é conta.
+  const [deadline, setDeadline] = useState<number | null>(null);
+  const remainingMs = useCountdown(deadline);
 
   const start = useCallback(() => {
-    setRemaining(durationSeconds);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    setDeadline(Date.now() + durationSeconds * 1_000);
   }, [durationSeconds]);
+
+  const remaining = Math.ceil(remainingMs / 1_000);
 
   return { remaining, start, isActive: remaining > 0 };
 }

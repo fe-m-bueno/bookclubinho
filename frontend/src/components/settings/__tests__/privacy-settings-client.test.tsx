@@ -101,7 +101,31 @@ describe("PrivacySettingsClient", () => {
     const deleteButtons = screen.getAllByRole("button", { name: /excluir conta/i });
     fireEvent.click(deleteButtons[0]);
     expect(screen.getByText(/anonimizados/i)).toBeTruthy();
-    expect(screen.getByText(/perdera acesso/i)).toBeTruthy();
+    expect(screen.getByText(/perderá acesso/i)).toBeTruthy();
+  });
+
+  // É o diálogo de exclusão de conta: texto sem acento aqui lê como descuido
+  // justo na tela em que a confiança do usuário mais importa.
+  it("escreve as consequências da exclusão com acentuação correta", () => {
+    render(<PrivacySettingsClient />);
+    const deleteButtons = screen.getAllByRole("button", { name: /excluir conta/i });
+    fireEvent.click(deleteButtons[0]);
+
+    expect(screen.getByText("Seu nome e foto serão anonimizados")).toBeTruthy();
+    expect(screen.getByText("Você perderá acesso imediatamente")).toBeTruthy();
+    expect(screen.getByText(/estatísticas do clube/)).toBeTruthy();
+    expect(screen.getByText("Esta ação não pode ser desfeita")).toBeTruthy();
+  });
+
+  it("escreve o card de exclusão e o de exportação com acentuação correta", () => {
+    render(<PrivacySettingsClient />);
+
+    expect(
+      screen.getByText("Esta ação é permanente e não pode ser desfeita."),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Solicitar exportação" }),
+    ).toBeTruthy();
   });
 
   it("advances to step 2 when 'Continuar' is clicked in step 1", () => {
