@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { ApiError, api } from "@/lib/api";
 
 type Status = "loading" | "success" | "error-expired" | "error-invalid";
 
@@ -83,21 +83,16 @@ function VerifyEmailContent() {
 
     async function verify() {
       try {
-        await ensureCsrf();
-        const res = await fetch(
-          `/api/v1/auth/verify-email?token=${encodeURIComponent(token!)}`,
-          { method: "POST", headers: withCsrf(), credentials: "include" }
+        await api.post(
+          `/auth/verify-email?token=${encodeURIComponent(token!)}`,
         );
-
-        if (res.ok) {
-          setStatus("success");
-        } else if (res.status === 400) {
-          setStatus("error-expired");
-        } else {
-          setStatus("error-invalid");
-        }
-      } catch {
-        setStatus("error-invalid");
+        setStatus("success");
+      } catch (err) {
+        setStatus(
+          err instanceof ApiError && err.status === 400
+            ? "error-expired"
+            : "error-invalid",
+        );
       }
     }
 

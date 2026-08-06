@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card";
 import { FormField } from "@/components/auth/form-field";
 import { GoogleIcon } from "@/components/icons/google-icon";
-import { useAuthSubmit, FORM_HEADERS } from "@/hooks/use-auth-submit";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 
 const loginSchema = z.object({
   email: z.string().min(1, "E-mail é obrigatório").email("E-mail inválido"),
@@ -60,8 +60,7 @@ export default function LoginPage() {
   });
 
   const { submit: submitLogin, loading: loadingPassword } = useAuthSubmit({
-    url: "/api/v1/auth/login",
-    headers: FORM_HEADERS,
+    path: "/auth/login",
     onSuccess: () => router.push("/"),
     statusHandlers: [
       { status: 401, handler: () => toast.error("Credenciais inválidas") },
@@ -73,7 +72,7 @@ export default function LoginPage() {
   });
 
   const { submit: submitMagic, loading: loadingMagic } = useAuthSubmit({
-    url: "/api/v1/auth/magic-link",
+    path: "/auth/magic-link",
     onSuccess: () => toast.success("Link enviado! Verifique seu e-mail."),
     antiEnumeration: true,
   });
@@ -95,7 +94,7 @@ export default function LoginPage() {
   }
 
   async function onMagicSubmit(data: MagicLinkFormData) {
-    await submitMagic(JSON.stringify({ email: data.email }));
+    await submitMagic({ email: data.email });
   }
 
   return (

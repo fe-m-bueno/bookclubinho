@@ -15,10 +15,9 @@ function JoinGroupContent() {
 
   const { status, group } = useGroupCodeCheck(code, 0);
 
-  const { submit, loading: joining } = useAuthSubmit({
-    url: "/api/v1/groups/join",
-    onSuccess: async (res) => {
-      const data = await res.json();
+  const { submit, loading: joining } = useAuthSubmit<{ group_id: string }>({
+    path: "/groups/join",
+    onSuccess: async (data) => {
       router.push(`/groups/${data.group_id}`);
     },
     statusHandlers: [
@@ -92,7 +91,7 @@ function JoinGroupContent() {
             <Button
               className="w-full"
               size="lg"
-              onClick={() => submit(JSON.stringify({ invite_code: code }))}
+              onClick={() => submit({ invite_code: code })}
               disabled={joining}
             >
               {joining ? (

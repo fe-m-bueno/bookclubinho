@@ -4,13 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement } from "react";
 import { useMeetingDetail } from "../use-meeting-detail";
 import type { MeetingResponse } from "@/lib/types/meeting";
+import { api } from "@/lib/api";
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
-}));
-
-vi.mock("@/lib/api-fetch", () => ({
-  apiFetch: vi.fn(),
+vi.mock("@/lib/api", () => ({
+  api: { get: vi.fn() },
 }));
 
 function createWrapper() {
@@ -59,8 +56,7 @@ describe("useMeetingDetail", () => {
       updated_at: new Date().toISOString(),
     };
 
-    const { apiFetch } = await import("@/lib/api-fetch");
-    (apiFetch as any).mockResolvedValueOnce(mockMeeting);
+    vi.mocked(api.get).mockResolvedValueOnce(mockMeeting);
 
     const { result } = renderHook(() => useMeetingDetail("m1"), {
       wrapper: createWrapper(),

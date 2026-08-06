@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { toast } from "sonner";
 import type { FinalizeResponse } from "@/lib/types/round";
 
@@ -27,10 +27,8 @@ export function FinalizeVotingButton({
   onFinalized,
 }: FinalizeVotingButtonProps) {
   const { submit, loading } = useAuthSubmit({
-    url: `/api/v1/rounds/${roundId}/finalize`,
-    headers: JSON_HEADERS,
-    onSuccess: async (res) => {
-      const data: FinalizeResponse = await res.json();
+    path: `/rounds/${roundId}/finalize`,
+    onSuccess: async (data: FinalizeResponse) => {
       toast.success("Votação encerrada!");
       onFinalized(data);
     },
@@ -73,7 +71,7 @@ export function FinalizeVotingButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => submit(JSON.stringify({}))}>
+            <AlertDialogAction onClick={() => submit({})}>
               Encerrar
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import JoinGroupPage from "../page";
+import { QueryWrapper } from "@/test-utils/query";
 
 const pushMock = vi.fn();
 
@@ -41,7 +42,7 @@ describe("JoinGroupPage", () => {
       new Response(JSON.stringify(groupData), { status: 200 }),
     );
 
-    render(<JoinGroupPage />);
+    render(<JoinGroupPage />, { wrapper: QueryWrapper });
 
     expect(screen.getByText("Verificando convite...")).toBeInTheDocument();
 
@@ -59,7 +60,7 @@ describe("JoinGroupPage", () => {
       new Response(JSON.stringify({ detail: "Not found" }), { status: 404 }),
     );
 
-    render(<JoinGroupPage />);
+    render(<JoinGroupPage />, { wrapper: QueryWrapper });
 
     await waitFor(() => {
       expect(
@@ -84,7 +85,7 @@ describe("JoinGroupPage", () => {
       );
 
     const user = userEvent.setup();
-    render(<JoinGroupPage />);
+    render(<JoinGroupPage />, { wrapper: QueryWrapper });
 
     await waitFor(() => {
       expect(screen.getByText("Clube Legal")).toBeInTheDocument();
@@ -102,7 +103,7 @@ describe("JoinGroupPage", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (nav as any).__setParams(new URLSearchParams());
 
-    render(<JoinGroupPage />);
+    render(<JoinGroupPage />, { wrapper: QueryWrapper });
 
     expect(
       screen.getByText("Codigo de convite nao informado."),

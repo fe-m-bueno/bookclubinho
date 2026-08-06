@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useChatStore } from "@/stores/chat-store";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { api } from "@/lib/api";
 import type { TypingUser } from "@/lib/types/chat";
 
 const THROTTLE_MS = 3_000;
@@ -19,12 +19,7 @@ export function useTypingIndicator(groupId: string, currentUserId: string) {
     lastSentRef.current = now;
 
     try {
-      await ensureCsrf();
-      await fetch(`/api/v1/groups/${groupId}/messages/typing`, {
-        method: "POST",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-        credentials: "include",
-      });
+      await api.post(`/groups/${groupId}/messages/typing`);
     } catch {
       // Fire-and-forget
     }

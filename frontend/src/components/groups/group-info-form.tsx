@@ -22,9 +22,8 @@ export function GroupInfoForm({ group, refetch }: GroupInfoFormProps) {
   const [photo, setPhoto] = useState<File | null>(null);
 
   const { submit, loading } = useAuthSubmit({
-    url: `/api/v1/groups/${group.id}`,
+    path: `/groups/${group.id}`,
     method: "PATCH",
-    headers: {},
     onSuccess: () => {
       toast.success("Clube atualizado!");
       refetch();

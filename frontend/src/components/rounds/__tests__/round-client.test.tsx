@@ -85,6 +85,7 @@ vi.mock("next/navigation", () => ({
 import { useGroup } from "@/lib/contexts/group-context";
 import { useCurrentRound } from "@/hooks/use-current-round";
 import { RoundClient } from "../round-client";
+import { jsonResponse } from "@/test-utils/http";
 
 const mockedUseGroup = vi.mocked(useGroup);
 const mockedUseCurrentRound = vi.mocked(useCurrentRound);
@@ -93,10 +94,7 @@ describe("RoundClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedUseGroup.mockReturnValue({ group: adminGroup, refetch: mockRefetch });
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: false,
-      status: 404,
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse({}, 404));
   });
 
   afterEach(() => {

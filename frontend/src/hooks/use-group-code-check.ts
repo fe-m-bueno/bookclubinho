@@ -1,4 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { ApiError, api } from "@/lib/api";
 
 export const INVITE_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_REGEX = new RegExp(`^[${INVITE_CODE_CHARS}]{8}$`);
@@ -13,65 +18,34 @@ export interface ValidatedGroup {
 }
 
 export function useGroupCodeCheck(code: string, debounceMs = DEBOUNCE_MS) {
-  const [status, setStatus] = useState<GroupCodeStatus>("idle");
-  const [group, setGroup] = useState<ValidatedGroup | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounced = useDebouncedValue(code, debounceMs);
+  const valid = CODE_REGEX.test(debounced);
+  const settling = code !== debounced && CODE_REGEX.test(code);
 
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (abortRef.current) abortRef.current.abort();
-
-    if (!code || !CODE_REGEX.test(code)) {
-      setStatus("idle");
-      setGroup(null);
-      return;
-    }
-
-    setStatus("checking");
-
-    const run = async () => {
-      const controller = new AbortController();
-      abortRef.current = controller;
-
+  const query = useQuery<ValidatedGroup | null, Error>({
+    queryKey: ["groupCodeCheck", debounced],
+    queryFn: async () => {
       try {
-        const res = await fetch(
-          `/api/v1/groups/validate/${encodeURIComponent(code)}`,
-          { credentials: "include", signal: controller.signal },
-        );
-
-        if (controller.signal.aborted) return;
-
-        if (res.ok) {
-          const data: ValidatedGroup = await res.json();
-          setGroup(data);
-          setStatus("valid");
-        } else if (res.status === 404) {
-          setGroup(null);
-          setStatus("not_found");
-        } else {
-          setGroup(null);
-          setStatus("error");
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setGroup(null);
-          setStatus("error");
-        }
+        return await api.get<ValidatedGroup>(`/groups/validate/${encodeURIComponent(debounced)}`);
+      } catch (error) {
+        // Código inexistente é resposta, não falha.
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
       }
-    };
+    },
+    enabled: valid,
+    staleTime: 60_000,
+  });
 
-    if (debounceMs > 0) {
-      timerRef.current = setTimeout(run, debounceMs);
-    } else {
-      run();
-    }
+  const status: GroupCodeStatus = !CODE_REGEX.test(code)
+    ? "idle"
+    : settling || query.isPending
+      ? "checking"
+      : query.error
+        ? "error"
+        : query.data
+          ? "valid"
+          : "not_found";
 
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (abortRef.current) abortRef.current.abort();
-    };
-  }, [code, debounceMs]);
-
-  return { status, group };
+  return { status, group: query.data ?? null };
 }

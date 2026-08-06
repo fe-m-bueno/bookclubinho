@@ -1,100 +1,60 @@
-import { renderHook, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { useUsernameCheck } from "../use-username-check";
+import { waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useUsernameCheck } from "@/hooks/use-username-check";
+import { ApiError } from "@/lib/api";
+import { renderApiHook } from "@/test-utils/query";
+
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+  return { ...actual, api: { get: vi.fn() } };
+});
+
+import { api } from "@/lib/api";
+
+const get = api.get as unknown as ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+});
+afterEach(() => vi.useRealTimers());
 
 describe("useUsernameCheck", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("returns idle for empty username", () => {
-    const { result } = renderHook(() => useUsernameCheck(""));
+  it("username inválido não chega a consultar", () => {
+    const { result } = renderApiHook(() => useUsernameCheck("ab"));
     expect(result.current.status).toBe("idle");
+    expect(get).not.toHaveBeenCalled();
   });
 
-  it("returns idle for invalid username format", () => {
-    const { result } = renderHook(() => useUsernameCheck("1abc"));
-    expect(result.current.status).toBe("idle");
-  });
-
-  it("returns idle for username too short", () => {
-    const { result } = renderHook(() => useUsernameCheck("ab"));
-    expect(result.current.status).toBe("idle");
-  });
-
-  it("shows checking immediately for valid username", () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ available: true }), { status: 200 })
-    );
-
-    const { result } = renderHook(() => useUsernameCheck("validuser"));
+  it("mostra 'checking' enquanto o debounce não venceu", () => {
+    get.mockResolvedValue({ available: true });
+    const { result } = renderApiHook(() => useUsernameCheck("felipe"));
     expect(result.current.status).toBe("checking");
   });
 
-  it("returns available when API says available", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ available: true }), { status: 200 })
-    );
+  it("disponível", async () => {
+    get.mockResolvedValue({ available: true });
+    const { result } = renderApiHook(() => useUsernameCheck("felipe"));
 
-    const { result } = renderHook(() => useUsernameCheck("validuser"));
-
-    await waitFor(
-      () => {
-        expect(result.current.status).toBe("available");
-      },
-      { timeout: 2000 },
-    );
+    await vi.advanceTimersByTimeAsync(600);
+    await waitFor(() => expect(result.current.status).toBe("available"));
+    expect(get).toHaveBeenCalledWith("/users/check-username/felipe");
   });
 
-  it("returns taken when API says not available", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ available: false }), { status: 200 })
-    );
+  it("em uso", async () => {
+    get.mockResolvedValue({ available: false });
+    const { result } = renderApiHook(() => useUsernameCheck("felipe"));
 
-    const { result } = renderHook(() => useUsernameCheck("takenuser"));
-
-    await waitFor(
-      () => {
-        expect(result.current.status).toBe("taken");
-      },
-      { timeout: 2000 },
-    );
+    await vi.advanceTimersByTimeAsync(600);
+    await waitFor(() => expect(result.current.status).toBe("taken"));
   });
 
-  it("returns error on non-ok response", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(null, { status: 500 })
-    );
+  it("falha vira erro", async () => {
+    get.mockRejectedValue(new ApiError(500, "Erro interno."));
+    const { result } = renderApiHook(() => useUsernameCheck("felipe"));
 
-    const { result } = renderHook(() => useUsernameCheck("validuser"));
-
-    await waitFor(
-      () => {
-        expect(result.current.status).toBe("error");
-      },
-      { timeout: 2000 },
-    );
-  });
-
-  it("calls API with credentials include", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ available: true }), { status: 200 })
-    );
-
-    renderHook(() => useUsernameCheck("validuser"));
-
-    await waitFor(
-      () => {
-        expect(fetchSpy).toHaveBeenCalledWith(
-          expect.stringContaining("/api/v1/users/check-username/validuser"),
-          expect.objectContaining({ credentials: "include" })
-        );
-      },
-      { timeout: 2000 },
-    );
+    await vi.advanceTimersByTimeAsync(600);
+    await waitFor(() => expect(result.current.status).toBe("error"));
   });
 });

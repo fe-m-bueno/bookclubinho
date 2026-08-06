@@ -38,10 +38,11 @@ vi.mock("framer-motion", async () => {
 });
 
 import { OnboardingWizard } from "../onboarding-wizard";
+import { QueryWrapper } from "@/test-utils/query";
 
 describe("OnboardingWizard", () => {
   it("renders step 1 (profile) by default", () => {
-    render(<OnboardingWizard />);
+    render(<OnboardingWizard />, { wrapper: QueryWrapper });
 
     expect(screen.getByText("Perfil")).toBeInTheDocument();
     expect(screen.getByLabelText("Username")).toBeInTheDocument();
@@ -51,7 +52,7 @@ describe("OnboardingWizard", () => {
   });
 
   it("renders progress header with all steps", () => {
-    render(<OnboardingWizard />);
+    render(<OnboardingWizard />, { wrapper: QueryWrapper });
 
     expect(screen.getByText("Perfil")).toBeInTheDocument();
     expect(screen.getByText("Preferências")).toBeInTheDocument();
@@ -60,7 +61,7 @@ describe("OnboardingWizard", () => {
   });
 
   it("renders avatar upload area", () => {
-    render(<OnboardingWizard />);
+    render(<OnboardingWizard />, { wrapper: QueryWrapper });
 
     expect(
       screen.getByRole("button", { name: "Enviar foto de perfil" })
@@ -68,14 +69,14 @@ describe("OnboardingWizard", () => {
   });
 
   it("has Próximo button disabled initially (form invalid)", () => {
-    render(<OnboardingWizard />);
+    render(<OnboardingWizard />, { wrapper: QueryWrapper });
 
     expect(screen.getByRole("button", { name: "Próximo" })).toBeDisabled();
   });
 
   it("shows username validation error for invalid format", async () => {
     const user = userEvent.setup();
-    render(<OnboardingWizard />);
+    render(<OnboardingWizard />, { wrapper: QueryWrapper });
 
     const usernameInput = screen.getByLabelText("Username");
     await user.type(usernameInput, "1invalid");
@@ -89,14 +90,14 @@ describe("OnboardingWizard", () => {
   });
 
   it("shows char counter for status field", () => {
-    render(<OnboardingWizard />);
+    render(<OnboardingWizard />, { wrapper: QueryWrapper });
 
     expect(screen.getByText("0/100")).toBeInTheDocument();
   });
 
   it("updates char counter as user types", async () => {
     const user = userEvent.setup();
-    render(<OnboardingWizard />);
+    render(<OnboardingWizard />, { wrapper: QueryWrapper });
 
     const statusInput = screen.getByLabelText("Status");
     await user.type(statusInput, "Hello");

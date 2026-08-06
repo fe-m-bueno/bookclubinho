@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { RoundStatusBadge } from "./round-status-badge";
 import { VotingCard } from "./voting-card";
 import { FinalizeVotingButton } from "./finalize-voting-button";
@@ -27,8 +27,7 @@ export function RoundVotingPhase({
   );
 
   const { submit: castVote, loading: voting } = useAuthSubmit({
-    url: `/api/v1/rounds/${round.id}/vote`,
-    headers: JSON_HEADERS,
+    path: `/rounds/${round.id}/vote`,
     onSuccess: async () => {
       toast.success("Voto registrado!");
     },
@@ -47,7 +46,7 @@ export function RoundVotingPhase({
   function handleVote(nominationId: string) {
     setVotedNominationId(nominationId);
     sessionStorage.setItem(`vote:${round.id}`, nominationId);
-    castVote(JSON.stringify({ nomination_id: nominationId }));
+    castVote({ nomination_id: nominationId });
   }
 
   return (

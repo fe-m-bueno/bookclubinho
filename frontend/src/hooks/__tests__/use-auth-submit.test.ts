@@ -1,141 +1,140 @@
-import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { ApiError } from "@/lib/api";
 import { useAuthSubmit } from "../use-auth-submit";
 
-vi.mock("sonner", () => ({
-  toast: {
-    error: vi.fn(),
-    success: vi.fn(),
-  },
-}));
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+  return {
+    ...actual,
+    api: { post: vi.fn(), patch: vi.fn(), del: vi.fn() },
+  };
+});
+
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+
+const post = api.post as unknown as ReturnType<typeof vi.fn>;
+
+beforeEach(() => vi.clearAllMocks());
 
 describe("useAuthSubmit", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it("começa com loading=false", () => {
+    const { result } = renderHook(() =>
+      useAuthSubmit({ path: "/test", onSuccess: vi.fn() }),
+    );
+    expect(result.current.loading).toBe(false);
   });
 
-  it("starts with loading=false", () => {
+  it("passa o corpo parseado para onSuccess", async () => {
+    // Antes o callback recebia uma Response e cada call site fazia
+    // `await res.json()`. Nenhum usava a Response para outra coisa.
+    post.mockResolvedValue({ group_id: "g-1" });
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() =>
+      useAuthSubmit<{ group_id: string }>({ path: "/groups", onSuccess }),
+    );
+
+    await act(() => result.current.submit({ name: "Clube" }));
+
+    expect(post).toHaveBeenCalledWith("/groups", { name: "Clube" });
+    expect(onSuccess).toHaveBeenCalledWith({ group_id: "g-1" });
+  });
+
+  it("mostra toast próprio no 429, antes dos statusHandlers", async () => {
+    post.mockRejectedValue(new ApiError(429, "Muitas requisições."));
+    const handler = vi.fn();
     const { result } = renderHook(() =>
       useAuthSubmit({
-        url: "/api/test",
+        path: "/test",
         onSuccess: vi.fn(),
-      })
-    );
-    expect(result.current.loading).toBe(false);
-  });
-
-  it("calls onSuccess on ok response", async () => {
-    const onSuccess = vi.fn();
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(null, { status: 200 })
+        statusHandlers: [{ status: 429, handler }],
+      }),
     );
 
-    const { result } = renderHook(() =>
-      useAuthSubmit({ url: "/api/test", onSuccess })
-    );
-
-    await act(() => result.current.submit("{}"));
-
-    expect(onSuccess).toHaveBeenCalled();
-    expect(result.current.loading).toBe(false);
-
-    vi.restoreAllMocks();
-  });
-
-  it("shows rate limit toast on 429", async () => {
-    const { toast } = await import("sonner");
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(null, { status: 429 })
-    );
-
-    const { result } = renderHook(() =>
-      useAuthSubmit({ url: "/api/test", onSuccess: vi.fn() })
-    );
-
-    await act(() => result.current.submit("{}"));
+    await act(() => result.current.submit({}));
 
     expect(toast.error).toHaveBeenCalledWith(
-      "Muitas tentativas. Aguarde um momento."
+      "Muitas tentativas. Aguarde um momento.",
     );
-
-    vi.restoreAllMocks();
+    expect(handler).not.toHaveBeenCalled();
   });
 
-  it("calls matched status handler", async () => {
+  it("chama o handler do status, com o erro", async () => {
+    const error = new ApiError(409, "Você já faz parte deste clube.");
+    post.mockRejectedValue(error);
     const handler = vi.fn();
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(null, { status: 401 })
-    );
-
     const { result } = renderHook(() =>
       useAuthSubmit({
-        url: "/api/test",
+        path: "/groups/join",
         onSuccess: vi.fn(),
-        statusHandlers: [{ status: 401, handler }],
-      })
+        statusHandlers: [{ status: 409, handler }],
+      }),
     );
 
-    await act(() => result.current.submit("{}"));
+    await act(() => result.current.submit({}));
 
-    expect(handler).toHaveBeenCalled();
-
-    vi.restoreAllMocks();
+    expect(handler).toHaveBeenCalledWith(error);
   });
 
-  it("calls onSuccess for non-429 errors with antiEnumeration", async () => {
+  it("com antiEnumeration, o caminho de sucesso roda mesmo em falha", async () => {
+    // Respostas de auth precisam ser idênticas independente do erro, senão dá
+    // para enumerar e-mails cadastrados.
+    post.mockRejectedValue(new ApiError(404, "Usuário não encontrado."));
     const onSuccess = vi.fn();
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(null, { status: 404 })
-    );
-
     const { result } = renderHook(() =>
       useAuthSubmit({
-        url: "/api/test",
+        path: "/auth/magic-link",
         onSuccess,
         antiEnumeration: true,
-      })
+      }),
     );
 
-    await act(() => result.current.submit("{}"));
+    await act(() => result.current.submit({}));
 
     expect(onSuccess).toHaveBeenCalled();
-
-    vi.restoreAllMocks();
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("shows connection error toast on fetch failure", async () => {
-    const { toast } = await import("sonner");
-    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network"));
-
+  it("sem handler, mostra a mensagem do backend", async () => {
+    // O apiFetch antigo descartava o detail e mostrava "Erro ao carregar dados".
+    post.mockRejectedValue(
+      new ApiError(422, "Nome deve ter ao menos 2 caracteres."),
+    );
     const { result } = renderHook(() =>
-      useAuthSubmit({ url: "/api/test", onSuccess: vi.fn() })
+      useAuthSubmit({ path: "/groups", onSuccess: vi.fn() }),
     );
 
-    await act(() => result.current.submit("{}"));
+    await act(() => result.current.submit({}));
 
     expect(toast.error).toHaveBeenCalledWith(
-      "Erro de conexão. Verifique sua internet."
+      "Nome deve ter ao menos 2 caracteres.",
     );
-
-    vi.restoreAllMocks();
   });
 
-  it("sends request with credentials include", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(null, { status: 200 })
-    );
-
+  it("erro que não é da API vira toast de conexão", async () => {
+    post.mockRejectedValue(new TypeError("Failed to fetch"));
     const { result } = renderHook(() =>
-      useAuthSubmit({ url: "/api/test", onSuccess: vi.fn() })
+      useAuthSubmit({ path: "/test", onSuccess: vi.fn() }),
     );
 
-    await act(() => result.current.submit("{}"));
+    await act(() => result.current.submit({}));
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      "/api/test",
-      expect.objectContaining({ credentials: "include" })
+    expect(toast.error).toHaveBeenCalledWith(
+      "Erro de conexão. Verifique sua internet.",
+    );
+  });
+
+  it("loading volta a false mesmo quando falha", async () => {
+    post.mockRejectedValue(new ApiError(500, "Erro interno."));
+    const { result } = renderHook(() =>
+      useAuthSubmit({ path: "/test", onSuccess: vi.fn() }),
     );
 
-    fetchSpy.mockRestore();
+    await act(() => result.current.submit({}));
+
+    expect(result.current.loading).toBe(false);
   });
 });

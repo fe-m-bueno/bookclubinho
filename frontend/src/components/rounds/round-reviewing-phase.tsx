@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
-import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { useMyReview, useReviews, useReviewStats } from "@/hooks/use-reviews";
 import { BookHero } from "./book-hero";
 import { RoundStatusBadge } from "./round-status-badge";
@@ -138,8 +138,7 @@ function FinishRoundButton({
   onFinished: () => void;
 }) {
   const { submit, loading } = useAuthSubmit({
-    url: `/api/v1/rounds/${roundId}/finish`,
-    headers: JSON_HEADERS,
+    path: `/rounds/${roundId}/finish`,
     onSuccess: async () => {
       toast.success("Rodada encerrada!");
       onFinished();
@@ -147,9 +146,8 @@ function FinishRoundButton({
     statusHandlers: [
       {
         status: 422,
-        handler: async (res) => {
-          const data = await res.json();
-          toast.error(data.detail || "Não é possível encerrar.");
+        handler: (error) => {
+          toast.error(error.detail || "Não é possível encerrar.");
         },
       },
       {
@@ -186,7 +184,7 @@ function FinishRoundButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => submit(JSON.stringify({}))}>
+            <AlertDialogAction onClick={() => submit({})}>
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -48,18 +48,15 @@ export function CreateGroupForm({ onSuccess }: CreateGroupFormProps) {
   const description = form.watch("description") ?? "";
 
   const { submit, loading: submitting } = useAuthSubmit({
-    url: "/api/v1/groups/",
-    headers: NO_CONTENT_TYPE,
-    onSuccess: async (res) => {
-      const body: GroupCreateResponse = await res.json();
+    path: "/groups/",
+    onSuccess: async (body: GroupCreateResponse) => {
       onSuccess(body);
     },
     statusHandlers: [
       {
         status: 422,
-        handler: async (res) => {
-          const body = await res.json();
-          toast.error(body.detail || "Erro de validação");
+        handler: (error) => {
+          toast.error(error.detail || "Erro de validação");
         },
       },
       {

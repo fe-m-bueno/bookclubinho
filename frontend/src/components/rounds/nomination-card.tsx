@@ -37,7 +37,7 @@ export function NominationCard({
   const isOwn = nomination.user_id === currentUserId;
 
   const { submit, loading } = useAuthSubmit({
-    url: `/api/v1/rounds/${roundId}/nominations/${nomination.id}`,
+    path: `/rounds/${roundId}/nominations/${nomination.id}`,
     method: "DELETE",
     onSuccess: async () => {
       toast.success("Indicação removida.");
@@ -128,7 +128,7 @@ export function NominationCard({
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   variant="destructive"
-                  onClick={() => submit("")}
+                  onClick={() => submit()}
                 >
                   Remover
                 </AlertDialogAction>

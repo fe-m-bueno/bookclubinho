@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useGroup } from "@/lib/contexts/group-context";
 import { useCurrentRound } from "@/hooks/use-current-round";
 import { useBookSearch } from "@/hooks/use-book-search";
-import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { Button } from "@/components/ui/button";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { RoundSkeleton } from "./round-skeleton";
@@ -30,8 +30,7 @@ export function RoundNominatingClient() {
     useBookSearch(searchQuery);
 
   const { submit: createRound, loading: creatingRound } = useAuthSubmit({
-    url: `/api/v1/groups/${group.id}/rounds`,
-    headers: JSON_HEADERS,
+    path: `/groups/${group.id}/rounds`,
     onSuccess: async () => {
       toast.success("Rodada criada!");
       refetch();
@@ -73,7 +72,7 @@ export function RoundNominatingClient() {
         {isAdmin && (
           <Button
             type="button"
-            onClick={() => createRound(JSON.stringify({}))}
+            onClick={() => createRound({})}
             disabled={creatingRound}
             className="min-h-[44px] px-6"
           >

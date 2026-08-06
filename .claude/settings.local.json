@@ -9,5 +9,8 @@
       "Bash(npm run:*)",
       "Bash(npm test:*)"
     ]
+  },
+  "skillOverrides": {
+    "vercel-react-best-practices": "on"
   }
 }

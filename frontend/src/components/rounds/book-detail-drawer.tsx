@@ -12,7 +12,7 @@ import {
   DrawerFooter,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { toast } from "sonner";
 import type { BookResult, BookDetail } from "@/lib/types/book";
 import type { NominationCreatePayload } from "@/lib/types/round";
@@ -68,8 +68,7 @@ export function BookDetailDrawer({
   }, [open, book?.slug]);
 
   const { submit, loading: nominating } = useAuthSubmit({
-    url: `/api/v1/rounds/${roundId}/nominate`,
-    headers: JSON_HEADERS,
+    path: `/rounds/${roundId}/nominate`,
     onSuccess: async () => {
       toast.success("Livro indicado!");
       onNominated();
@@ -77,9 +76,8 @@ export function BookDetailDrawer({
     statusHandlers: [
       {
         status: 409,
-        handler: async (res) => {
-          const data = await res.json().catch(() => ({}));
-          const detail = (data as { detail?: string }).detail ?? "";
+        handler: (error) => {
+          const detail = error.detail;
           if (detail.includes("já indicado")) {
             toast.error("Livro já indicado nesta rodada.");
           } else if (detail.includes("Máximo")) {
@@ -110,7 +108,7 @@ export function BookDetailDrawer({
       ...(trimmed ? { pitch: trimmed } : {}),
     };
 
-    submit(JSON.stringify(payload));
+    submit(payload);
   };
 
   if (!book) return null;

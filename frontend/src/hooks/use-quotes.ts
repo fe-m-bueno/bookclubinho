@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { useCallback } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+
+import { errorMessage } from "@/hooks/use-api-query";
+import { api } from "@/lib/api";
 import type {
-  QuoteResponse,
-  QuoteListResponse,
   QuoteCreateRequest,
+  QuoteListResponse,
+  QuoteResponse,
 } from "@/lib/types/quote";
 
 interface UseQuotesParams {
@@ -30,111 +32,38 @@ export function useQuotes({
   sort,
   roundId,
 }: UseQuotesParams): UseQuotesReturn {
-  const [quotes, setQuotes] = useState<QuoteResponse[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
-
-  const abortRef = useRef<AbortController | null>(null);
-
-  const buildUrl = useCallback(
-    (cursor?: string | null) => {
-      const params = new URLSearchParams();
-      params.set("sort", sort);
-      params.set("limit", "20");
-      if (cursor) params.set("cursor", cursor);
+  // A paginação por cursor era feita à mão: `nextCursor` em estado, um
+  // `loadingMore` separado e concatenação das páginas no `setQuotes`. O
+  // useInfiniteQuery já é isso, e guarda as páginas por chave — voltar para uma
+  // ordenação já vista não refaz o fetch.
+  const query = useInfiniteQuery<QuoteListResponse, Error>({
+    queryKey: ["quotes", groupId, { sort, roundId: roundId ?? null }],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ sort, limit: "20" });
+      if (pageParam) params.set("cursor", pageParam as string);
       if (roundId) params.set("round_id", roundId);
-      return `/api/v1/groups/${groupId}/quotes?${params.toString()}`;
+      return api.get<QuoteListResponse>(
+        `/groups/${groupId}/quotes?${params.toString()}`,
+      );
     },
-    [groupId, sort, roundId],
-  );
-
-  const fetchQuotes = useCallback(async () => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setLoading(true);
-    setError(null);
-    setQuotes([]);
-    setNextCursor(null);
-
-    try {
-      const res = await fetch(buildUrl(), {
-        credentials: "include",
-        signal: controller.signal,
-      });
-
-      if (res.ok) {
-        const json: QuoteListResponse = await res.json();
-        setQuotes(json.quotes);
-        setNextCursor(json.next_cursor);
-        return;
-      }
-
-      if (res.status === 401) {
-        routerRef.current.push("/auth/login");
-        return;
-      }
-
-      setError("Erro ao carregar quotes. Tente novamente.");
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      setError("Erro de conexão. Verifique sua internet.");
-    } finally {
-      if (!controller.signal.aborted) {
-        setLoading(false);
-      }
-    }
-  }, [buildUrl]);
-
-  const loadMore = useCallback(async () => {
-    if (!nextCursor || loadingMore) return;
-
-    setLoadingMore(true);
-
-    try {
-      const res = await fetch(buildUrl(nextCursor), {
-        credentials: "include",
-        signal: abortRef.current?.signal,
-      });
-
-      if (res.ok) {
-        const json: QuoteListResponse = await res.json();
-        setQuotes((prev) => [...prev, ...json.quotes]);
-        setNextCursor(json.next_cursor);
-        return;
-      }
-
-      if (res.status === 401) {
-        routerRef.current.push("/auth/login");
-        return;
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [buildUrl, nextCursor, loadingMore]);
-
-  useEffect(() => {
-    fetchQuotes();
-    return () => abortRef.current?.abort();
-  }, [fetchQuotes]);
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+  });
 
   return {
-    quotes,
-    loading,
-    loadingMore,
-    hasMore: !!nextCursor,
-    error,
-    loadMore,
-    refetch: fetchQuotes,
+    quotes: query.data?.pages.flatMap((p) => p.quotes) ?? [],
+    loading: query.isPending,
+    loadingMore: query.isFetchingNextPage,
+    hasMore: query.hasNextPage,
+    error: query.error ? errorMessage(query.error) : null,
+    loadMore: () => {
+      if (query.hasNextPage && !query.isFetchingNextPage) {
+        void query.fetchNextPage();
+      }
+    },
+    refetch: () => {
+      void query.refetch();
+    },
   };
 }
 
@@ -144,24 +73,16 @@ interface UseQuoteMutationsReturn {
   deleteQuote: (quoteId: string) => Promise<boolean>;
 }
 
+/**
+ * As três engolem a falha e devolvem null/false, como antes — quem chama decide
+ * o que mostrar. O que muda é que CSRF e Content-Type saem daqui: o cliente
+ * decide pelo método e pelo tipo do corpo.
+ */
 export function useQuoteMutations(groupId: string): UseQuoteMutationsReturn {
   const createQuote = useCallback(
-    async (data: QuoteCreateRequest): Promise<QuoteResponse | null> => {
+    async (data: QuoteCreateRequest) => {
       try {
-        await ensureCsrf();
-        const res = await fetch(`/api/v1/groups/${groupId}/quotes`, {
-          method: "POST",
-          headers: withCsrf({ "Content-Type": "application/json" }),
-          credentials: "include",
-          body: JSON.stringify(data),
-        });
-
-        if (res.ok) {
-          const quote: QuoteResponse = await res.json();
-          return quote;
-        }
-
-        return null;
+        return await api.post<QuoteResponse>(`/groups/${groupId}/quotes`, data);
       } catch {
         return null;
       }
@@ -169,39 +90,21 @@ export function useQuoteMutations(groupId: string): UseQuoteMutationsReturn {
     [groupId],
   );
 
-  const toggleVote = useCallback(
-    async (quoteId: string): Promise<boolean | null> => {
-      try {
-        await ensureCsrf();
-        const res = await fetch(`/api/v1/quotes/${quoteId}/vote`, {
-          method: "POST",
-          headers: withCsrf({ "Content-Type": "application/json" }),
-          credentials: "include",
-        });
-
-        if (res.ok) {
-          const json: { voted: boolean } = await res.json();
-          return json.voted;
-        }
-
-        return null;
-      } catch {
-        return null;
-      }
-    },
-    [],
-  );
-
-  const deleteQuote = useCallback(async (quoteId: string): Promise<boolean> => {
+  const toggleVote = useCallback(async (quoteId: string) => {
     try {
-      await ensureCsrf();
-      const res = await fetch(`/api/v1/quotes/${quoteId}`, {
-        method: "DELETE",
-        headers: withCsrf(),
-        credentials: "include",
-      });
+      const { voted } = await api.post<{ voted: boolean }>(
+        `/quotes/${quoteId}/vote`,
+      );
+      return voted;
+    } catch {
+      return null;
+    }
+  }, []);
 
-      return res.ok || res.status === 204;
+  const deleteQuote = useCallback(async (quoteId: string) => {
+    try {
+      await api.del(`/quotes/${quoteId}`);
+      return true;
     } catch {
       return false;
     }

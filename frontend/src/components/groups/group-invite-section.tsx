@@ -33,7 +33,7 @@ export function GroupInviteSection({ group, refetch }: GroupInviteSectionProps) 
   );
 
   const { submit: regenerate, loading: regenerating } = useAuthSubmit({
-    url: `/api/v1/groups/${group.id}/regenerate-code`,
+    path: `/groups/${group.id}/regenerate-code`,
     method: "POST",
     onSuccess: () => {
       toast.success("Código regenerado!");

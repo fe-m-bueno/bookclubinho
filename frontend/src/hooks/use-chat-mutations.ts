@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { api } from "@/lib/api";
 import type {
   ChatMessage,
   MessageCreatePayload,
@@ -56,18 +56,8 @@ export function useSendMessage(
 
   return useMutation<ChatMessage, Error, MessageCreatePayload, SendMessageContext>({
     mutationFn: async (payload) => {
-      await ensureCsrf();
-      const res = await fetch(`/api/v1/groups/${groupId}/messages`, {
-        method: "POST",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Erro ao enviar mensagem");
-      }
-      return res.json();
+      const res = await api.post<ChatMessage>(`/groups/${groupId}/messages`, payload);
+      return res;
     },
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey: ["chat-messages", groupId] });
@@ -112,18 +102,8 @@ export function useEditMessage() {
 
   return useMutation<ChatMessage, Error, { messageId: string; payload: MessageEditPayload }>({
     mutationFn: async ({ messageId, payload }) => {
-      await ensureCsrf();
-      const res = await fetch(`/api/v1/messages/${messageId}`, {
-        method: "PATCH",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Erro ao editar mensagem");
-      }
-      return res.json();
+      const res = await api.patch<ChatMessage>(`/messages/${messageId}`, payload);
+      return res;
     },
     onSuccess: (msg) => {
       queryClient.invalidateQueries({ queryKey: ["chat-messages", msg.group_id] });
@@ -136,17 +116,8 @@ export function useDeleteMessage() {
 
   return useMutation<ChatMessage, Error, string>({
     mutationFn: async (messageId) => {
-      await ensureCsrf();
-      const res = await fetch(`/api/v1/messages/${messageId}`, {
-        method: "DELETE",
-        headers: withCsrf(),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Erro ao apagar mensagem");
-      }
-      return res.json();
+      const res = await api.del<ChatMessage>(`/messages/${messageId}`);
+      return res;
     },
     onSuccess: (msg) => {
       queryClient.invalidateQueries({ queryKey: ["chat-messages", msg.group_id] });
@@ -159,18 +130,8 @@ export function useToggleReaction() {
 
   return useMutation<ChatMessage, Error, { messageId: string; payload: ReactionPayload }>({
     mutationFn: async ({ messageId, payload }) => {
-      await ensureCsrf();
-      const res = await fetch(`/api/v1/messages/${messageId}/reactions`, {
-        method: "POST",
-        headers: withCsrf({ "Content-Type": "application/json" }),
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Erro ao reagir");
-      }
-      return res.json();
+      const res = await api.post<ChatMessage>(`/messages/${messageId}/reactions`, payload);
+      return res;
     },
     onSuccess: (msg) => {
       queryClient.invalidateQueries({ queryKey: ["chat-messages", msg.group_id] });

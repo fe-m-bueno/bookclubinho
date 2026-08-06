@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import ReactConfetti from "react-confetti";
 import { toast } from "sonner";
-import { useAuthSubmit, JSON_HEADERS } from "@/hooks/use-auth-submit";
+import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { useWindowSize } from "@/hooks/use-window-size";
 import { ProgressHeader } from "../onboarding/progress-header";
 import { StepStarRating } from "./review-steps/step-star-rating";
@@ -57,8 +57,7 @@ export function ReviewWizard({ roundId, onSubmitted }: ReviewWizardProps) {
   const [extraThoughts, setExtraThoughts] = useState("");
 
   const { submit, loading: submitting } = useAuthSubmit({
-    url: `/api/v1/rounds/${roundId}/review`,
-    headers: JSON_HEADERS,
+    path: `/rounds/${roundId}/review`,
     onSuccess: async () => {
       setShowCelebration(true);
       toast.success("Review enviada!");
@@ -67,9 +66,8 @@ export function ReviewWizard({ roundId, onSubmitted }: ReviewWizardProps) {
     statusHandlers: [
       {
         status: 409,
-        handler: async (res) => {
-          const data = await res.json();
-          toast.error(data.detail || "Você já enviou uma review.");
+        handler: (error) => {
+          toast.error(error.detail || "Você já enviou uma review.");
         },
       },
     ],
@@ -102,11 +100,11 @@ export function ReviewWizard({ roundId, onSubmitted }: ReviewWizardProps) {
   };
 
   function handleSubmit() {
-    submit(JSON.stringify({
+    submit({
       ...reviewData,
       funny_oneliner: reviewData.funny_oneliner || null,
       extra_thoughts: reviewData.extra_thoughts || null,
-    }));
+    });
   }
 
   if (showCelebration) {
