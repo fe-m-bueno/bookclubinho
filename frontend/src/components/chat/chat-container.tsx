@@ -13,6 +13,7 @@ import {
 } from "@/hooks/use-chat-mutations";
 import { useMediaUpload } from "@/hooks/use-media-upload";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
+import { useViewerChapter } from "@/hooks/use-viewer-chapter";
 import { ChatHeader } from "./chat-header";
 import { MessageList } from "./message-list";
 import { ChatInput } from "./chat-input";
@@ -48,6 +49,7 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
   } = useChatMessages({ groupId, chapterFilter });
 
   const { connected } = useChatSSE({ groupId, currentUserId });
+  const viewerChapter = useViewerChapter(groupId, currentUserId);
   const { sendTyping, typingUsers } = useTypingIndicator(
     groupId,
     currentUserId,
@@ -210,6 +212,7 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
           hasNextPage={hasNextPage}
           fetchNextPage={fetchNextPage}
           typingUsers={typingUsers}
+          viewerChapter={viewerChapter}
           onDelete={handleDelete}
           onToggleReaction={handleToggleReaction}
           onReply={handleReply}

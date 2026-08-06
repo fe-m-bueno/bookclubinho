@@ -10,7 +10,7 @@ import { SpoilerConfirmDialog } from "./spoiler-confirm-dialog";
 interface SpoilerOverlayProps {
   message: ChatMessage;
   currentUserId: string;
-  viewerChapter?: number | null;
+  viewerChapter: number | null;
   children: ReactNode;
 }
 
@@ -80,7 +80,7 @@ export function SpoilerOverlay({
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         spoilerChapter={message.spoiler_chapter}
-        viewerChapter={viewerChapter ?? null}
+        viewerChapter={viewerChapter}
         messageId={message.id}
       />
     </>

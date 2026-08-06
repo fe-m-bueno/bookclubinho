@@ -61,6 +61,12 @@ export const queryKeys = {
       groupId: string,
       filters: { roundId?: string | null; chapterFilter?: number | null },
     ) => ["chat-messages", groupId, filters] as const,
+    /**
+     * Marcadores de capítulo do clube — de onde sai o capítulo do leitor.
+     * Sob o prefixo `ofGroup` de propósito: mensagem nova já invalida isto.
+     */
+    viewerChapter: (groupId: string, userId: string) =>
+      ["chat-messages", groupId, "viewer-chapter", userId] as const,
     linkPreview: (url: string) => ["link-preview", url] as const,
   },
 

@@ -65,6 +65,7 @@ const defaultProps = {
   showAvatar: true,
   showName: false,
   currentUserId: "u2",
+  viewerChapter: null,
   onReply: vi.fn(),
   onEdit: vi.fn(),
   onDelete: vi.fn(),

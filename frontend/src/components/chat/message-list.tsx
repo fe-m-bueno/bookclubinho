@@ -28,8 +28,13 @@ interface MessageListProps {
   hasNextPage: boolean;
   fetchNextPage: () => void;
   typingUsers: TypingUser[];
-  /** Current reading chapter of the viewer — used for spoiler auto-reveal */
-  viewerChapter?: number | null;
+  /**
+   * Capítulo em que o leitor está — o que revela spoiler já lido sem clique.
+   * Obrigatório de propósito: o `?` que existia aqui deixou cinco componentes
+   * repassarem um valor que nenhum pai fornecia, e a feature ficou desligada
+   * em produção sem um erro de build.
+   */
+  viewerChapter: number | null;
   onDelete: (messageId: string) => void;
   onToggleReaction: (messageId: string, emoji: string) => void;
   onReply: (message: ChatMessage) => void;
