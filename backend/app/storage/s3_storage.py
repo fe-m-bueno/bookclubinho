@@ -209,7 +209,12 @@ def process_media_upload(data: bytes, group_id: str, file_uuid: str) -> dict:
     This is a **synchronous** function — call via ``asyncio.to_thread()``.
     Size validation is the caller's responsibility (see upload_chat_media).
 
-    Returns a dict with keys: media_url, thumbnail_url, width, height.
+    Returns a dict with keys: media_key, thumbnail_key, width, height.
+
+    Devolve **chaves**, não URLs: media/ é um prefixo privado, e uma URL
+    presigned tem validade de uma hora. Quem persiste guarda a chave; a URL é
+    assunto de apresentação e se resolve na serialização, via get_public_url.
+
     Raises ValueError for invalid magic bytes.
     """
     _validate_magic_bytes(data)
@@ -255,8 +260,8 @@ def process_media_upload(data: bytes, group_id: str, file_uuid: str) -> dict:
     )
 
     return {
-        "media_url": get_public_url(bucket_path),
-        "thumbnail_url": get_public_url(thumb_path),
+        "media_key": bucket_path,
+        "thumbnail_key": thumb_path,
         "width": width,
         "height": height,
     }
@@ -336,6 +341,10 @@ def get_public_url(bucket_path: str) -> str:
 
     For public prefixes (avatars/, groups/) returns a plain CDN URL.
     For private prefixes (media/, exports/) returns a presigned GET URL.
+
+    Função de **apresentação**: o resultado para prefixos privados expira em
+    uma hora. Nunca persista o retorno — guarde a chave e chame isto de novo
+    na hora de serializar.
     """
     if any(bucket_path.startswith(prefix) for prefix in _PUBLIC_PREFIXES):
         return f"{settings.S3_PUBLIC_URL.rstrip('/')}/{bucket_path}"

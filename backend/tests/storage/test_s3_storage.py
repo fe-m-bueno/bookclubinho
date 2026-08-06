@@ -130,8 +130,9 @@ def test_process_media_upload_jpeg_produces_webp_and_thumb() -> None:
     keys_uploaded = {call.kwargs["Key"] for call in mock_client.put_object.call_args_list}
     assert any(k.endswith(".webp") and "_thumb" not in k for k in keys_uploaded)
     assert any("_thumb.webp" in k for k in keys_uploaded)
-    assert result["media_url"].endswith(".webp")
-    assert result["thumbnail_url"].endswith("_thumb.webp")
+    assert result["media_key"] == "media/group-123/file-uuid-1.webp"
+    assert result["thumbnail_key"] == "media/group-123/file-uuid-1_thumb.webp"
+    assert "media_url" not in result  # URL é apresentação, não sai daqui
     assert result["width"] > 0
     assert result["height"] > 0
 
@@ -153,8 +154,8 @@ def test_process_media_upload_gif_preserves_original() -> None:
     content_types = [call.kwargs["ContentType"] for call in mock_client.put_object.call_args_list]
     assert "image/gif" in content_types
     assert "image/webp" in content_types
-    assert result["media_url"].endswith(".gif")
-    assert result["thumbnail_url"].endswith("_thumb.webp")
+    assert result["media_key"] == "media/group-123/file-uuid-2.gif"
+    assert result["thumbnail_key"] == "media/group-123/file-uuid-2_thumb.webp"
 
 
 def test_process_media_upload_rejects_invalid_magic_bytes() -> None:

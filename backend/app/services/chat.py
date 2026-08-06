@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -35,6 +36,8 @@ _FLOOD_WINDOW_SECONDS = 60
 _FLOOD_MAX_MESSAGES = 10
 _DEDUP_KEY_PREFIX = "chat_dedup:"
 _DEDUP_TTL_SECONDS = 30
+# media/{group_uuid}/{file_uuid}[_thumb].{ext} — nada de barras ou ".." extras.
+_MEDIA_KEY_RE = re.compile(r"media/[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}(_thumb)?\.(webp|gif)")
 
 
 class ChatError(ServiceError):
@@ -42,6 +45,19 @@ class ChatError(ServiceError):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _validate_media_key(key: str, group_id: uuid.UUID) -> str:
+    """Garante que a chave aponta para a pasta de mídia deste grupo.
+
+    O cliente devolve a chave que o upload gerou; sem esta checagem ele poderia
+    apontar a mensagem para a mídia de outro grupo (ou para qualquer caminho do
+    bucket). O nome do arquivo é limitado ao que o upload produz: uuid, sufixo
+    `_thumb` e extensão.
+    """
+    if not _MEDIA_KEY_RE.fullmatch(key) or not key.startswith(f"media/{group_id}/"):
+        raise ChatError("Chave de mídia inválida para este grupo.", status_code=400)
+    return key
 
 
 async def _check_flood(user_id: uuid.UUID, group_id: uuid.UUID, content_hash: str) -> None:
@@ -130,6 +146,9 @@ async def create_message(
         if round_ is None or round_.group_id != group_id:
             raise ChatError("Rodada não encontrada neste grupo.", status_code=404)
 
+    media_key = _validate_media_key(data.media_key, group_id) if data.media_key else None
+    thumbnail_key = _validate_media_key(data.thumbnail_key, group_id) if data.thumbnail_key else None
+
     msg = GroupMessage(
         group_id=group_id,
         user_id=user_id,
@@ -137,8 +156,9 @@ async def create_message(
         content_type=data.content_type,
         content_text=clean_text,
         content_rich_json=clean_rich,
+        media_key=media_key,
+        thumbnail_key=thumbnail_key,
         media_url=data.media_url,
-        thumbnail_url=data.thumbnail_url,
         reference_type=data.reference_type,
         reference_value=data.reference_value,
         is_spoiler=data.is_spoiler,

@@ -96,6 +96,11 @@ Bucket: bookclubinho
 
 `get_public_url(path)` detecta o prefixo automaticamente e retorna URL pública ou presigned.
 
+**URL de prefixo privado é apresentação, não dado.** O que se persiste é a chave do objeto —
+`group_messages.media_key` guarda `media/{group_id}/{uuid}.webp`, e a URL é resolvida a cada
+serialização. Guardar a presigned URL fazia a imagem do chat quebrar uma hora depois. O cliente
+devolve a chave do upload no POST da mensagem, e o backend valida que ela pertence ao grupo.
+
 ---
 
 ## Auth Flow

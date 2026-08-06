@@ -8,7 +8,7 @@ import uuid
 import structlog
 
 from app.core.exceptions import ServiceError
-from app.storage.s3_storage import process_media_upload
+from app.storage.s3_storage import get_public_url, process_media_upload
 
 logger = structlog.get_logger(__name__)
 
@@ -27,7 +27,9 @@ async def upload_chat_media(
 ) -> dict:
     """Validate and upload chat media to storage.
 
-    Returns dict with: media_url, thumbnail_url, width, height.
+    Returns dict with: media_key, thumbnail_key, media_url, thumbnail_url,
+    width, height. As chaves são o dado durável — as URLs são presigned e vão
+    junto apenas para o preview imediato no cliente.
 
     Raises:
         MediaError(413) — file too large
@@ -59,4 +61,8 @@ async def upload_chat_media(
         file_uuid=file_uuid,
         content_type=content_type,
     )
-    return result
+    return {
+        **result,
+        "media_url": get_public_url(result["media_key"]),
+        "thumbnail_url": get_public_url(result["thumbnail_key"]),
+    }

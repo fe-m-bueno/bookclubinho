@@ -52,8 +52,16 @@ export interface MessageCreatePayload {
   content_type: ContentType;
   content_text?: string | null;
   content_rich_json?: Record<string, unknown> | null;
+  /** Chave do objeto devolvida pelo upload — é o que o backend persiste. */
+  media_key?: string | null;
+  thumbnail_key?: string | null;
+  /** Só para video_link: link externo. Imagens não aceitam URL do cliente. */
   media_url?: string | null;
-  thumbnail_url?: string | null;
+  /**
+   * URL presigned do upload, usada só no preview otimista local.
+   * Não vai no request — o backend resolve a URL a partir da chave.
+   */
+  previewUrl?: string | null;
   reference_type?: "chapter" | "page" | "quote" | null;
   reference_value?: string | null;
   is_spoiler?: boolean;
@@ -72,6 +80,9 @@ export interface ReactionPayload {
 }
 
 export interface MediaUploadResponse {
+  media_key: string;
+  thumbnail_key: string;
+  /** Presigned, expira em 1h — serve para preview imediato, não para guardar. */
   media_url: string;
   thumbnail_url: string;
   width: number;

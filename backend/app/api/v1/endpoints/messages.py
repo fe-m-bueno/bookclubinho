@@ -49,12 +49,25 @@ from app.services.chat import (
     toggle_reaction,
 )
 from app.services.report import ReportError, report_message
+from app.storage.s3_storage import get_public_url
 
 group_messages_router = APIRouter(tags=["chat"])
 messages_router = APIRouter(tags=["chat"])
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _resolve_media_url(key: str | None, legacy_url: str | None) -> str | None:
+    """Resolve a URL de exibição da mídia, fresca a cada resposta.
+
+    Só a chave é persistida — a URL de `media/` é presigned e vive uma hora, e
+    seria dado vencido se ficasse gravada. `legacy_url` cobre `video_link`, que
+    guarda um link externo de verdade.
+    """
+    if key:
+        return get_public_url(key)
+    return legacy_url
 
 
 def _message_to_response(
@@ -91,8 +104,8 @@ def _message_to_response(
         content_type=msg.content_type,
         content_text=None if msg.is_deleted else msg.content_text,
         content_rich_json=None if msg.is_deleted else msg.content_rich_json,
-        media_url=None if msg.is_deleted else msg.media_url,
-        thumbnail_url=None if msg.is_deleted else msg.thumbnail_url,
+        media_url=None if msg.is_deleted else _resolve_media_url(msg.media_key, msg.media_url),
+        thumbnail_url=None if msg.is_deleted else _resolve_media_url(msg.thumbnail_key, msg.thumbnail_url),
         reference_type=msg.reference_type,
         reference_value=msg.reference_value,
         is_spoiler=msg.is_spoiler,

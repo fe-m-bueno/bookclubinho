@@ -121,8 +121,9 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
         const result = await uploadMedia(file);
         const payload: MessageCreatePayload = {
           content_type: "image",
-          media_url: result.media_url,
-          thumbnail_url: result.thumbnail_url,
+          media_key: result.media_key,
+          thumbnail_key: result.thumbnail_key,
+          previewUrl: result.media_url,
           content_text: null,
         };
         sendMutation.mutate(payload, {

@@ -20,8 +20,8 @@ def _make_jpeg_bytes() -> bytes:
 
 
 _FAKE_RESULT = {
-    "media_url": "https://cdn.example.com/media/g/f.webp",
-    "thumbnail_url": "https://cdn.example.com/media/g/f_thumb.webp",
+    "media_key": "media/g/f.webp",
+    "thumbnail_key": "media/g/f_thumb.webp",
     "width": 100,
     "height": 100,
 }
@@ -32,11 +32,16 @@ async def test_upload_chat_media_success() -> None:
     data = _make_jpeg_bytes()
     group_id = uuid.uuid4()
 
-    with patch("app.services.media.process_media_upload", return_value=_FAKE_RESULT):
+    with (
+        patch("app.services.media.process_media_upload", return_value=_FAKE_RESULT),
+        patch("app.services.media.get_public_url", side_effect=lambda k: f"https://cdn.example.com/{k}?sig=x"),
+    ):
         result = await upload_chat_media(data, "image/jpeg", group_id)
 
-    assert result["media_url"] == _FAKE_RESULT["media_url"]
-    assert result["thumbnail_url"] == _FAKE_RESULT["thumbnail_url"]
+    assert result["media_key"] == _FAKE_RESULT["media_key"]
+    assert result["thumbnail_key"] == _FAKE_RESULT["thumbnail_key"]
+    # A URL vai junto só para preview — derivada da chave, não persistida.
+    assert result["media_url"] == "https://cdn.example.com/media/g/f.webp?sig=x"
 
 
 @pytest.mark.asyncio

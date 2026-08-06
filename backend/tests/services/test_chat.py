@@ -83,8 +83,9 @@ def _make_create_request(**overrides: object) -> MagicMock:
     req.content_type = overrides.get("content_type", "text")
     req.content_text = overrides.get("content_text", "Hello!")
     req.content_rich_json = overrides.get("content_rich_json")
+    req.media_key = overrides.get("media_key")
+    req.thumbnail_key = overrides.get("thumbnail_key")
     req.media_url = overrides.get("media_url")
-    req.thumbnail_url = overrides.get("thumbnail_url")
     req.reference_type = overrides.get("reference_type")
     req.reference_value = overrides.get("reference_value")
     req.is_spoiler = overrides.get("is_spoiler", False)
@@ -189,6 +190,98 @@ async def test_create_message_with_parent_in_different_group_raises() -> None:
     with pytest.raises(ChatError) as exc_info:
         await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
     assert exc_info.value.status_code == 404
+
+
+def _db_with_member(member: MagicMock) -> AsyncMock:
+    db = AsyncMock()
+    res_member = MagicMock()
+    res_member.scalar_one_or_none.return_value = member
+    db.execute = AsyncMock(return_value=res_member)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.refresh = AsyncMock()
+    return db
+
+
+@pytest.mark.asyncio
+async def test_create_image_message_persists_key_not_url() -> None:
+    user_id = uuid.uuid4()
+    group_id = uuid.uuid4()
+    key = f"media/{group_id}/{uuid.uuid4()}.webp"
+    thumb = f"media/{group_id}/{uuid.uuid4()}_thumb.webp"
+    data = _make_create_request(content_type="image", content_text=None, media_key=key, thumbnail_key=thumb)
+
+    db = _db_with_member(_make_member(user_id=user_id, group_id=group_id))
+    await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
+
+    added = db.add.call_args[0][0]
+    assert added.media_key == key
+    assert added.thumbnail_key == thumb
+    assert added.media_url is None
+
+
+@pytest.mark.asyncio
+async def test_create_message_with_media_key_from_another_group_raises_400() -> None:
+    """A chave é do upload deste grupo — não dá para apontar para a mídia de outro."""
+    user_id = uuid.uuid4()
+    group_id = uuid.uuid4()
+    other_group_id = uuid.uuid4()
+    data = _make_create_request(
+        content_type="image",
+        content_text=None,
+        media_key=f"media/{other_group_id}/{uuid.uuid4()}.webp",
+    )
+
+    db = _db_with_member(_make_member(user_id=user_id, group_id=group_id))
+
+    with pytest.raises(ChatError) as exc_info:
+        await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
+    assert exc_info.value.status_code == 400
+    db.add.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_message_with_thumbnail_key_from_another_group_raises_400() -> None:
+    user_id = uuid.uuid4()
+    group_id = uuid.uuid4()
+    data = _make_create_request(
+        content_type="image",
+        content_text=None,
+        media_key=f"media/{group_id}/{uuid.uuid4()}.webp",
+        thumbnail_key=f"media/{uuid.uuid4()}/{uuid.uuid4()}_thumb.webp",
+    )
+
+    db = _db_with_member(_make_member(user_id=user_id, group_id=group_id))
+
+    with pytest.raises(ChatError):
+        await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "bad_key",
+    [
+        "avatars/someone.webp",
+        "../../etc/passwd",
+        "media/{gid}/../../exports/dump.zip",
+        "media/{gid}/file.webp?X-Amz-Signature=abc",
+        "https://evil.example.com/media/{gid}/x.webp",
+    ],
+)
+async def test_create_message_rejects_malformed_media_key(bad_key: str) -> None:
+    user_id = uuid.uuid4()
+    group_id = uuid.uuid4()
+    data = _make_create_request(
+        content_type="image",
+        content_text=None,
+        media_key=bad_key.format(gid=group_id),
+    )
+
+    db = _db_with_member(_make_member(user_id=user_id, group_id=group_id))
+
+    with pytest.raises(ChatError) as exc_info:
+        await create_message(db, after_commit=RecordingAfterCommit(), group_id=group_id, user_id=user_id, data=data)
+    assert exc_info.value.status_code == 400
 
 
 # ── edit_message ───────────────────────────────────────────────────────────────
