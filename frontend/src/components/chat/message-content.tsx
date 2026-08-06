@@ -18,9 +18,9 @@ interface MessageContentProps {
  * Renders the body of a message by switching on `content_type`.
  *
  * Chapter/page markers are also handled here for the inline bubble case —
- * the MessageList may additionally render them full-width outside of a
- * MessageGroup, but this component covers the case where a marker arrives
- * inside the bubble rendering path.
+ * the MessageList may additionally render them full-width in place of a
+ * bubble, but this component covers the case where a marker arrives inside
+ * the bubble rendering path.
  */
 export function MessageContent({ message }: MessageContentProps) {
   switch (message.content_type) {
