@@ -2,12 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import type { SharedGroup } from "@/lib/types/public-profile";
 
 export function useSharedGroups(username: string) {
 
   return useQuery<SharedGroup[]>({
-    queryKey: ["sharedGroups", username],
+    queryKey: queryKeys.user.sharedGroups(username),
     queryFn: () =>
       api.get<SharedGroup[]>(`/users/by-username/${encodeURIComponent(username)}/shared-groups`),
     staleTime: 60_000,

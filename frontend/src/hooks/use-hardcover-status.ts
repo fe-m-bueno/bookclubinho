@@ -2,12 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import type { HardcoverStatus } from "@/lib/types/integration";
 
 export function useHardcoverStatus() {
 
   return useQuery<HardcoverStatus>({
-    queryKey: ["hardcoverStatus"],
+    queryKey: queryKeys.user.hardcoverStatus(),
     queryFn: () =>
       api.get<HardcoverStatus>("/integrations/hardcover/status"),
     staleTime: 60_000,
@@ -22,8 +23,8 @@ export function useConnectHardcover() {
       return res;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["hardcoverStatus"] });
-      qc.invalidateQueries({ queryKey: ["currentUser"] });
+      qc.invalidateQueries({ queryKey: queryKeys.user.hardcoverStatus() });
+      qc.invalidateQueries({ queryKey: queryKeys.user.me() });
     },
   });
 }
@@ -36,8 +37,8 @@ export function useDisconnectHardcover() {
       return res;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["hardcoverStatus"] });
-      qc.invalidateQueries({ queryKey: ["currentUser"] });
+      qc.invalidateQueries({ queryKey: queryKeys.user.hardcoverStatus() });
+      qc.invalidateQueries({ queryKey: queryKeys.user.me() });
     },
   });
 }
@@ -50,7 +51,7 @@ export function useToggleHardcoverSync() {
       return res;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["currentUser"] });
+      qc.invalidateQueries({ queryKey: queryKeys.user.me() });
     },
   });
 }

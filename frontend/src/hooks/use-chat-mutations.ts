@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import type {
   ChatMessage,
   MessageCreatePayload,
@@ -60,7 +61,7 @@ export function useSendMessage(
       return res;
     },
     onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: ["chat-messages", groupId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.chat.ofGroup(groupId) });
       const previousData = queryClient.getQueryData<{
         pages: MessageListResponse[];
         pageParams: unknown[];
@@ -76,7 +77,7 @@ export function useSendMessage(
         );
         const firstPage = previousData.pages[0];
         queryClient.setQueryData(
-          ["chat-messages", groupId],
+          queryKeys.chat.ofGroup(groupId),
           {
             ...previousData,
             pages: [
@@ -91,7 +92,7 @@ export function useSendMessage(
     },
     onError: (_err, _payload, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(["chat-messages", groupId], context.previousData);
+        queryClient.setQueryData(queryKeys.chat.ofGroup(groupId), context.previousData);
       }
     },
   });
@@ -106,7 +107,7 @@ export function useEditMessage() {
       return res;
     },
     onSuccess: (msg) => {
-      queryClient.invalidateQueries({ queryKey: ["chat-messages", msg.group_id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chat.ofGroup(msg.group_id) });
     },
   });
 }
@@ -120,7 +121,7 @@ export function useDeleteMessage() {
       return res;
     },
     onSuccess: (msg) => {
-      queryClient.invalidateQueries({ queryKey: ["chat-messages", msg.group_id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chat.ofGroup(msg.group_id) });
     },
   });
 }
@@ -134,7 +135,7 @@ export function useToggleReaction() {
       return res;
     },
     onSuccess: (msg) => {
-      queryClient.invalidateQueries({ queryKey: ["chat-messages", msg.group_id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chat.ofGroup(msg.group_id) });
     },
   });
 }

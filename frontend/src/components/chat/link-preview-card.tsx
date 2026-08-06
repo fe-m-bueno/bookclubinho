@@ -5,6 +5,7 @@ import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { queryKeys } from "@/lib/query-keys";
 
 interface LinkPreviewData {
   url: string;
@@ -32,7 +33,7 @@ async function fetchPreview(url: string): Promise<LinkPreviewData> {
  */
 export function LinkPreviewCard({ url }: LinkPreviewCardProps) {
   const { data, isLoading, isError } = useQuery<LinkPreviewData>({
-    queryKey: ["link-preview", url],
+    queryKey: queryKeys.chat.linkPreview(url),
     queryFn: () => fetchPreview(url),
     staleTime: 24 * 60 * 60 * 1000, // 24h — matches backend TTL
     retry: false,

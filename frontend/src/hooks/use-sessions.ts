@@ -2,12 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import type { SessionListResponse } from "@/lib/types/session";
 
 export function useSessions() {
 
   return useQuery<SessionListResponse>({
-    queryKey: ["sessions"],
+    queryKey: queryKeys.user.sessions(),
     queryFn: () =>
       api.get<SessionListResponse>("/auth/sessions"),
     staleTime: 30_000,
@@ -20,7 +21,7 @@ export function useRevokeSession() {
     mutationFn: async (sessionId: string) => {
       const res = await api.del(`/auth/sessions/${sessionId}`);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sessions"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.user.sessions() }),
   });
 }
 
@@ -30,6 +31,6 @@ export function useRevokeAllOtherSessions() {
     mutationFn: async () => {
       const res = await api.del("/auth/sessions?all_others=true");
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sessions"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.user.sessions() }),
   });
 }

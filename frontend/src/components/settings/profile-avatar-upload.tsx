@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { queryKeys } from "@/lib/query-keys";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -48,7 +49,7 @@ export function ProfileAvatarUpload({ avatarUrl, initials }: ProfileAvatarUpload
       });
 
       if (res.ok) {
-        await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.user.me() });
         toast.success("Foto atualizada!");
       } else {
         const data = await res.json().catch(() => ({}));
@@ -73,7 +74,7 @@ export function ProfileAvatarUpload({ avatarUrl, initials }: ProfileAvatarUpload
       });
 
       if (res.ok) {
-        await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.user.me() });
         toast.success("Foto removida.");
       } else {
         toast.error("Erro ao remover foto.");

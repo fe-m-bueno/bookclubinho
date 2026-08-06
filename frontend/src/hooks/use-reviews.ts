@@ -1,6 +1,7 @@
 "use client";
 
 import { useApiQuery } from "@/hooks/use-api-query";
+import { queryKeys } from "@/lib/query-keys";
 import type { ReviewResponse, ReviewStatsResponse } from "@/lib/types/round";
 
 interface UseMyReviewReturn {
@@ -13,7 +14,7 @@ interface UseMyReviewReturn {
 export function useMyReview(roundId: string): UseMyReviewReturn {
   // 404 é "ainda não resenhou", não falha.
   const { data, loading, error, refetch } = useApiQuery<ReviewResponse>(
-    ["myReview", roundId],
+    queryKeys.rounds.myReview(roundId),
     `/rounds/${roundId}/reviews/me`,
     { notFoundAsNull: true },
   );
@@ -30,7 +31,7 @@ interface UseReviewsReturn {
 export function useReviews(roundId: string): UseReviewsReturn {
   // 403 até o usuário enviar a própria review — a mensagem do backend explica.
   const { data, loading, error, refetch } = useApiQuery<ReviewResponse[]>(
-    ["reviews", roundId],
+    queryKeys.rounds.reviews(roundId),
     `/rounds/${roundId}/reviews`,
   );
   return { reviews: data, loading, error, refetch };
@@ -44,7 +45,7 @@ interface UseReviewStatsReturn {
 
 export function useReviewStats(roundId: string): UseReviewStatsReturn {
   const { data, loading, error } = useApiQuery<ReviewStatsResponse>(
-    ["reviewStats", roundId],
+    queryKeys.rounds.reviewStats(roundId),
     `/rounds/${roundId}/reviews/stats`,
   );
   return { stats: data, loading, error };

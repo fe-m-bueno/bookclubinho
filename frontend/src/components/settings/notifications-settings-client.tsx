@@ -9,6 +9,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { Switch } from "@/components/ui/switch";
 import { NotificationsSettingsSkeleton } from "./notifications-settings-skeleton";
 import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { queryKeys } from "@/lib/query-keys";
 import type { EmailNotificationPreferences, UserMe } from "@/lib/types/user";
 
 interface NotificationToggle {
@@ -55,8 +56,8 @@ export function NotificationsSettingsClient() {
     newValue: boolean,
   ) {
     // Optimistic update
-    const prevUser = queryClient.getQueryData<UserMe>(["currentUser"]);
-    queryClient.setQueryData<UserMe>(["currentUser"], (old) => {
+    const prevUser = queryClient.getQueryData<UserMe>(queryKeys.user.me());
+    queryClient.setQueryData<UserMe>(queryKeys.user.me(), (old) => {
       if (!old) return old;
       return {
         ...old,
@@ -83,7 +84,7 @@ export function NotificationsSettingsClient() {
       );
     } catch {
       // Rollback
-      queryClient.setQueryData<UserMe>(["currentUser"], prevUser);
+      queryClient.setQueryData<UserMe>(queryKeys.user.me(), prevUser);
       toast.error("Erro ao atualizar preferência. Tente novamente.");
     }
   }

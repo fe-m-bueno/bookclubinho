@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { invalidateMeetings } from "@/lib/query-keys";
 import type {
   MeetingCreatePayload,
   MeetingResponse,
@@ -24,14 +25,18 @@ export function useCreateMeeting(groupId: string) {
   return useMutation<MeetingResponse, Error, MeetingCreatePayload>({
     mutationFn: (payload) =>
       api.post<MeetingResponse>(`/groups/${groupId}/meetings`, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meetings", groupId] });
-      queryClient.invalidateQueries({ queryKey: ["meetings-badge", groupId] });
-    },
+    onSuccess: () => invalidateMeetings(queryClient),
   });
 }
 
-export function useUpdateMeeting(groupId: string) {
+/**
+ * As três mutações abaixo ainda recebem `groupId` porque é o que as páginas de
+ * clube chamam, mas a invalidação não depende mais dele — era justamente essa
+ * dependência que impedia os caminhos `Standalone` de invalidar o mesmo
+ * conjunto.
+ */
+
+export function useUpdateMeeting(_groupId: string) {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -41,14 +46,11 @@ export function useUpdateMeeting(groupId: string) {
   >({
     mutationFn: ({ meetingId, payload }) =>
       api.patch<MeetingResponse>(`/meetings/${meetingId}`, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meetings", groupId] });
-      queryClient.invalidateQueries({ queryKey: ["meetings-badge", groupId] });
-    },
+    onSuccess: () => invalidateMeetings(queryClient),
   });
 }
 
-export function useUpdateRsvp(groupId: string) {
+export function useUpdateRsvp(_groupId: string) {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -57,22 +59,16 @@ export function useUpdateRsvp(groupId: string) {
     { meetingId: string; status: Exclude<RsvpStatus, "pending"> }
   >({
     mutationFn: async ({ meetingId, status }) => updateRsvpApi(meetingId, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meetings", groupId] });
-      queryClient.invalidateQueries({ queryKey: ["meetings-badge", groupId] });
-    },
+    onSuccess: () => invalidateMeetings(queryClient),
   });
 }
 
-export function useDeleteMeeting(groupId: string) {
+export function useDeleteMeeting(_groupId: string) {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, string>({
     mutationFn: deleteMeetingApi,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meetings", groupId] });
-      queryClient.invalidateQueries({ queryKey: ["meetings-badge", groupId] });
-    },
+    onSuccess: () => invalidateMeetings(queryClient),
   });
 }
 
@@ -93,8 +89,11 @@ export function useDownloadIcs() {
 }
 
 /**
- * Standalone versions for meeting detail pages (outside group context).
- * These invalidate the ["meeting", meetingId] query instead of ["meetings", groupId].
+ * Versões para a página de detalhe do encontro, fora do contexto de clube.
+ *
+ * A diferença é só o que a mutação recebe: aqui o `meetingId` vem do escopo do
+ * hook, não do argumento. O conjunto de caches invalidado é o mesmo — é o que
+ * `invalidateMeetings` garante, e o que antes divergia entre os dois caminhos.
  */
 
 export function useUpdateRsvpStandalone(meetingId: string) {
@@ -106,9 +105,7 @@ export function useUpdateRsvpStandalone(meetingId: string) {
     { status: Exclude<RsvpStatus, "pending"> }
   >({
     mutationFn: async ({ status }) => updateRsvpApi(meetingId, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meeting", meetingId] });
-    },
+    onSuccess: () => invalidateMeetings(queryClient),
   });
 }
 
@@ -117,10 +114,6 @@ export function useDeleteMeetingStandalone() {
 
   return useMutation<void, Error, string>({
     mutationFn: deleteMeetingApi,
-    onSuccess: (_, meetingId) => {
-      queryClient.invalidateQueries({ queryKey: ["meeting", meetingId] });
-      queryClient.invalidateQueries({ queryKey: ["upcomingMeetings"] });
-    },
+    onSuccess: () => invalidateMeetings(queryClient),
   });
 }
-

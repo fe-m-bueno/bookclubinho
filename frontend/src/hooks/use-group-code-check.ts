@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ApiError, api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 
 export const INVITE_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_REGEX = new RegExp(`^[${INVITE_CODE_CHARS}]{8}$`);
@@ -23,7 +24,7 @@ export function useGroupCodeCheck(code: string, debounceMs = DEBOUNCE_MS) {
   const settling = code !== debounced && CODE_REGEX.test(code);
 
   const query = useQuery<ValidatedGroup | null, Error>({
-    queryKey: ["groupCodeCheck", debounced],
+    queryKey: queryKeys.groups.codeCheck(debounced),
     queryFn: async () => {
       try {
         return await api.get<ValidatedGroup>(`/groups/validate/${encodeURIComponent(debounced)}`);

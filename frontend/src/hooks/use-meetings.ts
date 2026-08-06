@@ -4,6 +4,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo, useRef } from "react";
 import type { MeetingListItem, MeetingListResponse } from "@/lib/types/meeting";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 
 interface UseMeetingsOptions {
   groupId: string;
@@ -13,7 +14,7 @@ interface UseMeetingsOptions {
 export function useMeetings({ groupId, filter = "upcoming" }: UseMeetingsOptions) {
 
   const query = useInfiniteQuery<MeetingListResponse, Error>({
-    queryKey: ["meetings", groupId, { filter }],
+    queryKey: queryKeys.meetings.list(groupId, filter),
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       params.set("filter", filter);
@@ -33,19 +34,13 @@ export function useMeetings({ groupId, filter = "upcoming" }: UseMeetingsOptions
     return query.data.pages.flatMap((page) => page.meetings);
   }, [query.data]);
 
-  const hasUpcomingSoon = useMemo(() => {
-    if (filter !== "upcoming" || meetings.length === 0) return false;
-    const now = Date.now();
-    const in48h = now + 48 * 60 * 60 * 1000;
-    return meetings.some((m) => {
-      const t = new Date(m.scheduled_at).getTime();
-      return t >= now && t <= in48h;
-    });
-  }, [meetings, filter]);
+  // `hasUpcomingSoon` era calculado aqui, com uma janela de 48h escrita à mão e
+  // nenhum consumidor. Quem pergunta é `use-meetings-badge.ts`, e quem responde
+  // é o backend — duas computações independentes do mesmo conceito não tinham
+  // garantia de concordar nos limites.
 
   return {
     meetings,
-    hasUpcomingSoon,
     isLoading: query.isLoading,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage ?? false,
