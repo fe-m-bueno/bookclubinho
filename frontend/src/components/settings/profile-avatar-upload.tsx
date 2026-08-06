@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { errorMessage } from "@/hooks/use-api-query";
+import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -37,26 +38,16 @@ export function ProfileAvatarUpload({ avatarUrl, initials }: ProfileAvatarUpload
 
     setUploading(true);
     try {
-      await ensureCsrf();
       const formData = new FormData();
       formData.append("avatar", file);
 
-      const res = await fetch("/api/v1/users/me/avatar", {
-        method: "POST",
-        headers: withCsrf({}),
-        body: formData,
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.user.me() });
-        toast.success("Foto atualizada!");
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.detail ?? "Erro ao enviar foto.");
-      }
-    } catch {
-      toast.error("Erro de conexão. Tente novamente.");
+      // `FormData` traz o próprio Content-Type com boundary; o cliente sabe não
+      // sobrescrever, e era justamente isso que dava errado à mão.
+      await api.post("/users/me/avatar", formData);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.user.me() });
+      toast.success("Foto atualizada!");
+    } catch (err) {
+      toast.error(errorMessage(err));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -66,21 +57,11 @@ export function ProfileAvatarUpload({ avatarUrl, initials }: ProfileAvatarUpload
   async function handleRemove() {
     setUploading(true);
     try {
-      await ensureCsrf();
-      const res = await fetch("/api/v1/users/me/avatar", {
-        method: "DELETE",
-        headers: withCsrf(),
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.user.me() });
-        toast.success("Foto removida.");
-      } else {
-        toast.error("Erro ao remover foto.");
-      }
-    } catch {
-      toast.error("Erro de conexão. Tente novamente.");
+      await api.del("/users/me/avatar");
+      await queryClient.invalidateQueries({ queryKey: queryKeys.user.me() });
+      toast.success("Foto removida.");
+    } catch (err) {
+      toast.error(errorMessage(err));
     } finally {
       setUploading(false);
     }

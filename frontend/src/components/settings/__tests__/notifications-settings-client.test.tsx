@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { UserMe } from "@/lib/types/user";
+import { errorResponse, jsonResponse } from "@/test-utils/http";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -74,7 +75,9 @@ describe("NotificationsSettingsClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetQueryData.mockReturnValue(mockUser);
-    global.fetch = vi.fn().mockResolvedValue({ ok: true });
+    // `mockImplementation` e não `mockResolvedValue`: o corpo de um Response só
+    // pode ser lido uma vez, e cada teste faz mais de um toggle.
+    global.fetch = vi.fn().mockImplementation(async () => jsonResponse({}));
   });
 
   it("renders all four configurable toggles", () => {
@@ -166,7 +169,11 @@ describe("NotificationsSettingsClient", () => {
   });
 
   it("rolls back and shows error toast on failed PATCH", async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false });
+    global.fetch = vi
+      .fn()
+      .mockImplementation(async () =>
+        errorResponse(500, "Preferência não pôde ser salva."),
+      );
 
     render(<NotificationsSettingsClient />);
     const toggle = screen.getByLabelText("Encontros");
@@ -174,7 +181,10 @@ describe("NotificationsSettingsClient", () => {
 
     await waitFor(() => {
       expect(mockSetQueryData).toHaveBeenCalledTimes(2); // optimistic + rollback
-      expect(vi.mocked(toast.error)).toHaveBeenCalled();
+      // A mensagem do backend, e não um genérico do componente.
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+        "Preferência não pôde ser salva.",
+      );
     });
   });
 

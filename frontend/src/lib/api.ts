@@ -94,7 +94,23 @@ async function readError(res: Response): Promise<string> {
   return `Erro ao processar a requisição (${res.status})`;
 }
 
-async function request<T>(method: string, path: string, body?: Body): Promise<T> {
+/**
+ * Um `AbortSignal` para as leituras que precisam parar no unmount. Existe para
+ * que esses casos não precisem de um `fetch` cru só por causa do `signal` —
+ * abortar não é motivo para sair do cliente. O abort chega como `AbortError`,
+ * que não é `ApiError`: quem trata distingue "o servidor respondeu erro" de
+ * "desisti da requisição".
+ */
+interface RequestInit_ {
+  signal?: AbortSignal;
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  body?: Body,
+  init?: RequestInit_,
+): Promise<T> {
   const mutating = method !== "GET";
   if (mutating) await ensureCsrf();
 
@@ -104,6 +120,7 @@ async function request<T>(method: string, path: string, body?: Body): Promise<T>
     credentials: "include",
     headers: mutating ? withCsrf(encoded.headers) : encoded.headers,
     body: encoded.body,
+    signal: init?.signal,
   });
 
   if (res.status === 401) throw new UnauthorizedError(await readError(res));
@@ -131,7 +148,8 @@ async function requestBlob(method: string, path: string): Promise<Blob> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
+  get: <T>(path: string, init?: RequestInit_) =>
+    request<T>("GET", path, undefined, init),
   blob: (path: string, method = "POST") => requestBlob(method, path),
   post: <T>(path: string, body?: Body) => request<T>("POST", path, body),
   patch: <T>(path: string, body?: Body) => request<T>("PATCH", path, body),

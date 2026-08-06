@@ -34,9 +34,11 @@ describe("LinkPreviewCard", () => {
       expect(screen.getByText("Exemplo")).toBeInTheDocument();
     });
 
+    // O caminho e o cookie é o que importa aqui; o resto das opções é
+    // responsabilidade de `lib/api.ts`, que tem os próprios testes.
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/v1/link-preview?url=https%3A%2F%2Fexample.com%2Fpost",
-      { credentials: "include" }
+      expect.objectContaining({ method: "GET", credentials: "include" })
     );
   });
 });

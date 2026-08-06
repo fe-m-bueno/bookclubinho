@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
+import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 
 interface Genre {
@@ -22,12 +23,10 @@ interface GenreSelectorProps {
 const SKELETON_ITEMS = Array.from({ length: 12 });
 const GRID_CLASSES = "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3";
 
-async function fetchGenres(): Promise<Genre[]> {
-  const res = await fetch("/api/v1/config/genres", { credentials: "include" });
-  if (!res.ok) throw new Error("Erro ao carregar gêneros.");
-  const data = await res.json();
-  return data.genres as Genre[];
-}
+const fetchGenres = () =>
+  api
+    .get<{ genres: Genre[] }>("/config/genres")
+    .then((data) => data.genres);
 
 export function GenreSelector({
   selected,

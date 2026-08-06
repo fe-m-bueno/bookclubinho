@@ -7,6 +7,9 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
+import { errorMessage } from "@/hooks/use-api-query";
+import { api } from "@/lib/api";
+
 const MAX_GENRES = 10;
 const SKELETON_ITEMS = Array.from({ length: 12 });
 const GRID_CLASSES = "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3";
@@ -49,19 +52,15 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
 
     async function fetchGenres() {
       try {
-        const res = await fetch("/api/v1/config/genres", {
-          credentials: "include",
+        const data = await api.get<{ genres: Genre[] }>("/config/genres", {
           signal: controller.signal,
         });
-        if (res.ok) {
-          const data = await res.json();
-          setGenres(data.genres);
-        } else {
-          toast.error("Erro ao carregar gêneros.");
-        }
+        setGenres(data.genres);
       } catch (err) {
         if (!controller.signal.aborted) {
-          toast.error("Erro de conexão. Verifique sua internet.");
+          // O `detail` do backend em vez de um genérico; rede fora do ar não
+          // tem `detail`, e aí `errorMessage` diz isso.
+          toast.error(errorMessage(err));
         }
       } finally {
         if (!controller.signal.aborted) {

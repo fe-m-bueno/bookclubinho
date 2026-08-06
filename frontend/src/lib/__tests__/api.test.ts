@@ -159,3 +159,37 @@ describe("respostas sem corpo", () => {
     await expect(api.get("/whatever")).resolves.toBeUndefined();
   });
 });
+
+/**
+ * Abortar no unmount não é motivo para sair do cliente e voltar ao `fetch` cru
+ * — era o que três leituras faziam só por causa do `signal`.
+ */
+describe("abort", () => {
+  it("repassa o signal para o fetch", async () => {
+    const controller = new AbortController();
+    await api.get("/books/dom-casmurro", { signal: controller.signal });
+    expect(lastCall()[1].signal).toBe(controller.signal);
+  });
+
+  it("sem signal o campo fica undefined, não um signal já abortado", async () => {
+    await api.get("/books/dom-casmurro");
+    expect(lastCall()[1].signal).toBeUndefined();
+  });
+
+  it("o abort chega como AbortError e não como ApiError", async () => {
+    const controller = new AbortController();
+    global.fetch = vi.fn(async (_url, init?: RequestInit) => {
+      controller.abort();
+      throw Object.assign(new Error("aborted"), {
+        name: "AbortError",
+        signal: init?.signal,
+      });
+    }) as unknown as typeof fetch;
+
+    // Quem trata precisa dessa diferença: "o servidor respondeu erro" pede
+    // uma ação; "desisti da requisição" não pede nada.
+    await expect(
+      api.get("/books/x", { signal: controller.signal }),
+    ).rejects.not.toBeInstanceOf(ApiError);
+  });
+});

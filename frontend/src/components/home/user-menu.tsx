@@ -23,7 +23,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { api } from "@/lib/api";
 import type { UserMe } from "@/lib/types/user";
 
 interface UserMenuProps {
@@ -47,12 +47,9 @@ function MenuContent({ user, onClose }: MenuContentProps) {
 
   const handleLogout = async () => {
     onClose();
-    await ensureCsrf();
-    await fetch("/api/v1/auth/logout", {
-      method: "POST",
-      credentials: "include",
-      headers: withCsrf(),
-    });
+    // Sai da sessão local mesmo se o backend não responder: o cookie httpOnly
+    // fica, mas insistir na tela do menu é pior que mandar para o login.
+    await api.post("/auth/logout").catch(() => undefined);
     router.push("/auth/login");
   };
 

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useTimerStore } from "@/stores/use-timer-store";
 import { subscribeTick, getTickSnapshot, getServerSnapshot } from "@/stores/tick-store";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 
 function formatElapsed(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -79,15 +79,13 @@ export function FloatingTimerButton() {
     if (checkedRef.current || status === "idle" || !sessionId) return;
     checkedRef.current = true;
     const controller = new AbortController();
-    fetch(`/api/v1/reading-sessions/${sessionId}`, {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then((res) => {
-        if (!res.ok) stopTimer();
-      })
-      .catch(() => {
-        // network error — keep local state, user can retry manually
+    api
+      .get(`/reading-sessions/${sessionId}`, { signal: controller.signal })
+      .catch((err) => {
+        // O servidor não conhece mais a sessão: o timer local está órfão.
+        // Rede fora do ar ou abort no unmount não é resposta — mantém o estado
+        // local e o usuário tenta de novo.
+        if (err instanceof ApiError) stopTimer();
       });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
