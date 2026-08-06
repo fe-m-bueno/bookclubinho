@@ -20,8 +20,8 @@ interface MessageBubbleProps {
   showAvatar: boolean;
   showName: boolean;
   currentUserId: string;
-  /** Current reading chapter of the viewer — used by SpoilerOverlay for auto-reveal */
-  viewerChapter?: number | null;
+  /** Capítulo em que o leitor está — o SpoilerOverlay usa para auto-reveal. */
+  viewerChapter: number | null;
   onReply?: (message: ChatMessage) => void;
   onEdit?: (message: ChatMessage) => void;
   onDelete?: (messageId: string) => void;

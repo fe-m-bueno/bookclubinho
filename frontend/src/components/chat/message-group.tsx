@@ -8,7 +8,7 @@ interface MessageGroupProps {
   messages: ChatMessage[];
   isOwn: boolean;
   currentUserId: string;
-  viewerChapter?: number | null;
+  viewerChapter: number | null;
   onReply?: (message: ChatMessage) => void;
   onEdit?: (message: ChatMessage) => void;
   onDelete?: (messageId: string) => void;

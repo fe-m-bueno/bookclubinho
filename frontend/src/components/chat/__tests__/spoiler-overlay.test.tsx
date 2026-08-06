@@ -19,7 +19,7 @@ describe("SpoilerOverlay", () => {
   it("renders children directly when is_spoiler is false", () => {
     const msg = makeMessage({ is_spoiler: false });
     render(
-      <SpoilerOverlay message={msg} currentUserId="u2">
+      <SpoilerOverlay message={msg} currentUserId="u2" viewerChapter={null}>
         <span>Safe content</span>
       </SpoilerOverlay>,
     );
@@ -33,7 +33,7 @@ describe("SpoilerOverlay", () => {
     const msg = makeMessage({ is_spoiler: true, spoiler_chapter: 5 });
     // currentUserId matches message.author.user_id ("u1")
     render(
-      <SpoilerOverlay message={msg} currentUserId="u1">
+      <SpoilerOverlay message={msg} currentUserId="u1" viewerChapter={null}>
         <span>Own spoiler</span>
       </SpoilerOverlay>,
     );
