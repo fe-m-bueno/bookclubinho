@@ -14,6 +14,7 @@ from app.api.v1.endpoints.messages import group_messages_router, messages_router
 from app.core.deps import get_current_active_user, get_group_membership, get_session
 from app.core.exceptions import ServiceError
 from app.services.chat import ChatError
+from app.services.membership import MembershipError
 from tests.conftest import make_user
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────
@@ -211,6 +212,55 @@ class TestSendMessage:
             )
 
         assert response.status_code == 404
+
+
+# ── GET /messages/{message_id} ────────────────────────────────────────────────
+
+
+class TestGetMessage:
+    def test_get_message_returns_200_with_reply_count(self) -> None:
+        app = _make_app()
+        client = TestClient(app)
+        message_id = uuid.uuid4()
+        msg = _make_group_message_orm(id=message_id, content_text="Editada")
+
+        with patch(
+            "app.api.v1.endpoints.messages.get_message",
+            new=AsyncMock(return_value=(msg, 4)),
+        ):
+            response = client.get(f"/api/v1/messages/{message_id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(message_id)
+        assert data["content_text"] == "Editada"
+        assert data["reply_count"] == 4
+
+    def test_get_message_not_found_returns_404(self) -> None:
+        app = _make_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.messages.get_message",
+            new=AsyncMock(side_effect=ChatError("Mensagem não encontrada.", status_code=404)),
+        ):
+            response = client.get(f"/api/v1/messages/{uuid.uuid4()}")
+
+        assert response.status_code == 404
+
+    def test_get_message_non_member_returns_404(self) -> None:
+        """Quem não é do clube não descobre por aqui que a mensagem existe."""
+        app = _make_app()
+        client = TestClient(app)
+
+        with patch(
+            "app.api.v1.endpoints.messages.get_message",
+            new=AsyncMock(side_effect=MembershipError("Mensagem não encontrada.", status_code=404)),
+        ):
+            response = client.get(f"/api/v1/messages/{uuid.uuid4()}")
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Mensagem não encontrada."
 
 
 # ── PATCH /messages/{message_id} ──────────────────────────────────────────────

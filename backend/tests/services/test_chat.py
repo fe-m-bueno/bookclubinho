@@ -16,6 +16,7 @@ from app.services.chat import (
     create_message,
     delete_message,
     edit_message,
+    get_message,
     list_messages,
     list_reactions,
     remove_reaction,
@@ -479,6 +480,61 @@ async def test_delete_already_deleted_raises() -> None:
     with pytest.raises(ChatError) as exc_info:
         await delete_message(db, after_commit=RecordingAfterCommit(), message_id=msg.id, user_id=user_id)
     assert exc_info.value.status_code == 409
+
+
+# ── get_message ────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_message_returns_message_and_reply_count() -> None:
+    user_id = uuid.uuid4()
+    group_id = uuid.uuid4()
+    msg = _make_message(group_id=group_id)
+    member = _make_member(user_id=user_id, group_id=group_id)
+
+    db = AsyncMock()
+    res_msg = MagicMock()
+    res_msg.scalar_one_or_none.return_value = msg
+    res_member = MagicMock()
+    res_member.scalar_one_or_none.return_value = member
+    res_count = MagicMock()
+    res_count.scalar_one.return_value = 3
+    db.execute = AsyncMock(side_effect=[res_msg, res_member, res_count])
+
+    result, reply_count = await get_message(db, message_id=msg.id, user_id=user_id)
+
+    assert result is msg
+    assert reply_count == 3
+
+
+@pytest.mark.asyncio
+async def test_get_message_not_found_raises_404() -> None:
+    db = AsyncMock()
+    res = MagicMock()
+    res.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(return_value=res)
+
+    with pytest.raises(ChatError) as exc_info:
+        await get_message(db, message_id=uuid.uuid4(), user_id=uuid.uuid4())
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_message_non_member_raises_404_hiding_the_message() -> None:
+    """Não-membro recebe o mesmo 404 de mensagem inexistente — nada vaza."""
+    msg = _make_message()
+
+    db = AsyncMock()
+    res_msg = MagicMock()
+    res_msg.scalar_one_or_none.return_value = msg
+    res_member = MagicMock()
+    res_member.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(side_effect=[res_msg, res_member])
+
+    with pytest.raises(MembershipError) as exc_info:
+        await get_message(db, message_id=msg.id, user_id=uuid.uuid4())
+    assert exc_info.value.status_code == 404
+    assert str(exc_info.value) == "Mensagem não encontrada."
 
 
 # ── count_replies ──────────────────────────────────────────────────────────────

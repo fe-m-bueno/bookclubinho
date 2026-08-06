@@ -6,6 +6,7 @@ group_messages_router — montado em /groups/{group_id}/messages
   POST /   — membro envia mensagem
 
 messages_router — montado em /messages
+  GET    /{message_id}                    — busca uma mensagem
   PATCH  /{message_id}                    — edita mensagem (janela 15min)
   DELETE /{message_id}                    — soft-delete de mensagem
   POST   /{message_id}/reactions          — toggle reaction
@@ -48,6 +49,7 @@ from app.services.chat import (
     delete_message,
     edit_message,
     emit_typing_event,
+    get_message,
     list_messages,
     list_reactions,
     remove_reaction,
@@ -241,6 +243,31 @@ async def send_message(
 
 
 # ── /messages ─────────────────────────────────────────────────────────────────
+
+
+@messages_router.get(
+    "/{message_id}",
+    response_model=ChatMessageResponse,
+    summary="Buscar mensagem",
+)
+@limiter.limit("60/minute")
+async def get_message_endpoint(
+    request: Request,
+    message_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> ChatMessageResponse:
+    """Busca uma mensagem pelo id. Exige ser membro do clube dela.
+
+    O evento SSE de edição traz só o `message_id`; é por aqui que o cliente
+    aplica a edição de outro membro numa linha só, em vez de refetchar a página.
+    """
+    try:
+        msg, reply_count = await get_message(db, message_id=message_id, user_id=current_user.id)
+    except ChatError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    return _message_to_response(msg, current_user.id, reply_count=reply_count)
 
 
 @messages_router.patch(
