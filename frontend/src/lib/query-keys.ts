@@ -15,6 +15,26 @@ import type { QueryClient } from "@tanstack/react-query";
  * prefixo: invalidar `["meetings"]` atinge `["meetings", g, { filter }]` de
  * qualquer grupo.
  */
+
+/**
+ * Um prefixo de key — não uma key.
+ *
+ * Só metade da API do React Query casa por prefixo: `invalidateQueries`,
+ * `setQueriesData`, `cancelQueries` e companhia recebem *filtros* e atingem
+ * toda key que comece pelo prefixo. `getQueryData`/`setQueryData` recebem uma
+ * key e exigem igualdade exata.
+ *
+ * Passar um prefixo para os últimos compila, roda e não faz nada: foi assim que
+ * o update otimista do chat ficou morto por meses (#234). `getQueryData(
+ * ["chat-messages", groupId])` sempre voltava `undefined` porque a query real
+ * mora em `["chat-messages", groupId, filters]`.
+ *
+ * Por isso um prefixo já sai daqui embalado como filtro. `{ queryKey }` é
+ * aceito onde prefixo faz sentido e é erro de tipo onde não faz.
+ */
+export type QueryKeyPrefix<TKey extends readonly unknown[]> = {
+  readonly queryKey: TKey;
+};
 export const queryKeys = {
   user: {
     me: () => ["currentUser"] as const,
@@ -55,8 +75,15 @@ export const queryKeys = {
   },
 
   chat: {
-    /** Prefixo: toda janela de mensagens de um clube, qualquer filtro. */
-    ofGroup: (groupId: string) => ["chat-messages", groupId] as const,
+    /**
+     * Prefixo: toda janela de mensagens de um clube, qualquer filtro.
+     *
+     * Só serve para `invalidateQueries`/`setQueriesData`/`cancelQueries` — ver
+     * {@link QueryKeyPrefix}.
+     */
+    ofGroup: (groupId: string): QueryKeyPrefix<readonly ["chat-messages", string]> => ({
+      queryKey: ["chat-messages", groupId] as const,
+    }),
     messages: (
       groupId: string,
       filters: { roundId?: string | null; chapterFilter?: number | null },

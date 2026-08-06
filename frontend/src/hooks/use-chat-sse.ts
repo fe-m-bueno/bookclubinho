@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChatStore } from "@/stores/chat-store";
-import { queryKeys } from "@/lib/query-keys";
+import {
+  applyCachedReaction,
+  markChatMessageDeleted,
+  syncLatestChatMessages,
+} from "@/lib/chat-cache";
 import type { ChatSSEEvent } from "@/lib/types/chat";
 
 interface UseChatSSEOptions {
@@ -24,6 +28,12 @@ export function useChatSSE({ groupId, currentUserId }: UseChatSSEOptions) {
     es.addEventListener("connected", () => setConnected(true));
     es.onerror = () => setConnected(false);
 
+    // Rede fora no meio do stream não deve virar unhandled rejection: o
+    // próximo evento, ou o refetch natural da janela, traz o que faltou.
+    const syncLatest = () => {
+      void syncLatestChatMessages(queryClient, groupId).catch(() => {});
+    };
+
     const handleEvent = (eventType: string) => (e: MessageEvent) => {
       try {
         const data = JSON.parse(e.data) as Record<string, string>;
@@ -39,23 +49,41 @@ export function useChatSSE({ groupId, currentUserId }: UseChatSSEOptions) {
           return;
         }
 
+        // O eco do próprio evento: a mutação já escreveu no cache com a
+        // resposta do servidor. Antes, cada ação minha atualizava o chat duas
+        // vezes — uma pelo `onSuccess`, outra por aqui.
+        if (event.user_id === currentUserId) return;
+
         if (event.type === "message_created") {
-          if (event.user_id !== currentUserId) {
-            const isAtBottom = useChatStore.getState().isAtBottom;
-            if (!isAtBottom) {
-              useChatStore.getState().incrementUnread();
-            }
+          if (!useChatStore.getState().isAtBottom) {
+            useChatStore.getState().incrementUnread();
           }
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.chat.ofGroup(groupId),
+          syncLatest();
+          return;
+        }
+
+        if (event.type === "message_deleted") {
+          markChatMessageDeleted(queryClient, groupId, event.message_id);
+          return;
+        }
+
+        if (event.type === "reaction_added" || event.type === "reaction_removed") {
+          applyCachedReaction(queryClient, groupId, {
+            messageId: event.message_id,
+            emoji: event.emoji,
+            added: event.type === "reaction_added",
+            // A reação é de outro membro: `did_i_react` continua como está.
+            mine: false,
           });
           return;
         }
 
-        // message_edited, message_deleted, reaction_added, reaction_removed
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.chat.ofGroup(groupId),
-        });
+        // message_edited. O evento traz só o id — o conteúdo novo não vem nele,
+        // e não existe endpoint de mensagem avulsa. Buscar a primeira página
+        // resolve o caso real (editar acontece minutos depois de enviar); uma
+        // edição em mensagem antiga só aparece no próximo refetch natural, o
+        // que é o preço de não refetchar as dez páginas roladas.
+        syncLatest();
       } catch {
         // Ignore malformed events
       }
