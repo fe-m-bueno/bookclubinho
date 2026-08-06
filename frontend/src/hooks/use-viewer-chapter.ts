@@ -1,7 +1,9 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { useApiQuery } from "@/hooks/use-api-query";
+
+import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import type { MessageListResponse } from "@/lib/types/chat";
 
@@ -31,10 +33,13 @@ export function useViewerChapter(
   groupId: string,
   currentUserId: string,
 ): number | null {
-  const { data } = useApiQuery<MessageListResponse>(
-    queryKeys.chat.viewerChapter(groupId, currentUserId),
-    `/groups/${groupId}/messages?reference_type=chapter&limit=${MARKER_WINDOW}`,
-  );
+  const { data } = useQuery<MessageListResponse, Error>({
+    queryKey: queryKeys.chat.viewerChapter(groupId, currentUserId),
+    queryFn: () =>
+      api.get<MessageListResponse>(
+        `/groups/${groupId}/messages?reference_type=chapter&limit=${MARKER_WINDOW}`,
+      ),
+  });
 
   return useMemo(() => {
     if (!data) return null;
