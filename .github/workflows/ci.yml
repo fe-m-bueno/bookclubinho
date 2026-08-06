@@ -6,6 +6,19 @@ on:
   pull_request:
     branches: [master, main]
 
+# Um run por ref. Sem isto, cada push ou rerun cria um run novo sem encerrar o
+# anterior do mesmo PR: nove jobs por run, dez PRs abertos, e a fila cresce mais
+# rápido do que os runners a esvaziam — foi o que travou o CI por horas em
+# 2026-08-06, com jobs enfileirados às 18:06 UTC ainda parados às 19:25.
+#
+# `cancel-in-progress` só vale para pull_request. Em push para master cada commit
+# precisa do próprio resultado: cancelar o run anterior deixaria commits já
+# integrados sem CI nenhum, que é justamente o histórico que se quer poder
+# auditar depois.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # ── Secrets scanning ─────────────────────────────────────────────────────────
   secrets-scan:
