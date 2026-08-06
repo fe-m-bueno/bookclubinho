@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -199,7 +200,7 @@ class TestAuthenticateUserBruteForce:
         with (
             patch("app.services.auth.get_redis", return_value=mock_redis),
             patch("app.services.auth.verify_password", return_value=False),
-            patch("app.services.auth.asyncio.create_task"),
+            patch("app.services.auth._fire_and_forget"),
             pytest.raises(AuthError),
         ):
             await authenticate_user(db=db, email="user@example.com", password="wrong")
@@ -230,10 +231,18 @@ class TestAuthenticateUserBruteForce:
         assert exc_info.value.status_code == 401
         assert "Credenciais inválidas" in str(exc_info.value)
 
+    @pytest.mark.parametrize("fail_count", [3, 5, 8])
     @pytest.mark.asyncio
-    async def test_progressive_delay_applied_on_failure(self) -> None:
-        """4th failure triggers 2s delay."""
-        mock_redis = _make_redis(locked=False, fail_count=3)
+    async def test_failure_never_holds_the_request_open(self, fail_count: int) -> None:
+        """Nenhuma falha responde com espera artificial.
+
+        Os atrasos progressivos (2 s, 5 s, 15 s) cobravam do lado errado: o
+        atacante dispara e fecha, e quem ficava segurando a conexão HTTP, o slot
+        de worker e a conexão de banco por até 15 s era o servidor. `fail_count`
+        aqui é o valor *antes* do incremento, então cobre as três faixas antigas
+        — a de 2 s, a de 5 s e a de 15 s.
+        """
+        mock_redis = _make_redis(locked=False, fail_count=fail_count)
         db = with_savepoints(AsyncMock())
         result = MagicMock()
         result.scalar_one_or_none.return_value = None
@@ -248,7 +257,48 @@ class TestAuthenticateUserBruteForce:
         ):
             await authenticate_user(db=db, email="user@example.com", password="wrong")
 
-        sleep_mock.assert_called_once_with(2.0)
+        sleep_mock.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_lockout_email_task_is_held_by_a_strong_reference(self) -> None:
+        """A task do e-mail de bloqueio não pode depender do humor do GC.
+
+        `asyncio.create_task` sem referência forte permite que a task seja
+        coletada antes de rodar — o aviso de "conta bloqueada" era entregue ou
+        não conforme o timing. Aqui a task é uma real (não um mock), e o que se
+        afirma é que o módulo a mantém viva enquanto ela não termina.
+        """
+        from app.services import auth as auth_module
+
+        user = _make_user()
+        mock_redis = _make_redis(locked=False, fail_count=9)
+        db = with_savepoints(AsyncMock())
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = user
+        db.execute = AsyncMock(return_value=result)
+
+        started = asyncio.Event()
+        released = asyncio.Event()
+
+        async def _blocked_send(**_kwargs: object) -> None:
+            started.set()
+            await released.wait()
+
+        with (
+            patch("app.services.auth.get_redis", return_value=mock_redis),
+            patch("app.services.auth.verify_password", return_value=False),
+            patch.object(auth_module.email_service, "send_account_locked_warning", _blocked_send),
+            pytest.raises(AuthError),
+        ):
+            await authenticate_user(db=db, email="user@example.com", password="wrong")
+
+        await asyncio.wait_for(started.wait(), timeout=1)
+        assert any(not t.done() for t in auth_module._pending_tasks)
+
+        released.set()
+        await asyncio.gather(*list(auth_module._pending_tasks))
+        # E o callback de descarte devolve o set ao vazio, senão isto vaza.
+        assert not auth_module._pending_tasks
 
     @pytest.mark.asyncio
     async def test_lockout_leaves_an_audit_row(self) -> None:
@@ -278,7 +328,7 @@ class TestAuthenticateUserBruteForce:
         with (
             patch("app.services.auth.get_redis", return_value=mock_redis),
             patch("app.services.auth.verify_password", return_value=False),
-            patch("app.services.auth.asyncio.create_task"),
+            patch("app.services.auth._fire_and_forget"),
             pytest.raises(AuthError),
         ):
             await authenticate_user(db=db, email="user@example.com", password="wrong")
