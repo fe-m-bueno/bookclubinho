@@ -12,17 +12,22 @@ import contextlib
 import signal
 import time
 import uuid
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, datetime
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import redis.asyncio as aioredis
 import structlog
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.db.engine import AsyncSessionLocal
 from app.services import group_events
+
+if TYPE_CHECKING:
+    from app.db.models.user import User
 
 logger = structlog.get_logger(__name__)
 
@@ -37,6 +42,45 @@ HEARTBEAT_INTERVAL = 30  # seconds
 REMINDER_POLL_INTERVAL = 60  # seconds
 DIGEST_COOLDOWN_TTL = 900  # 15 minutes in seconds
 REMINDER_BATCH_SIZE = 50  # max reminders processed per poll cycle
+
+
+async def _group_recipients(
+    db: AsyncSession,
+    group_id: uuid.UUID,
+    exclude_user_id: uuid.UUID,
+) -> list[User]:
+    """Quem recebe notificação deste grupo: membros ativos, menos o autor do evento."""
+    from app.db.models.group import GroupMember
+    from app.db.models.user import User
+
+    result = await db.execute(
+        select(User)
+        .join(GroupMember, GroupMember.user_id == User.id)
+        .where(
+            GroupMember.group_id == group_id,
+            User.id != exclude_user_id,
+            User.is_active.is_(True),
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def _send_to_each(
+    recipients: Sequence[User],
+    send: Callable[[User], Awaitable[None]],
+    *,
+    event: str,
+    **log_fields: str,
+) -> None:
+    """Dispara `send` para todos os destinatários em paralelo, isolando falhas.
+
+    As corrotinas só fazem I/O de rede (Resend, Redis) — nenhuma toca a
+    AsyncSession, que não é segura para uso concorrente.
+    """
+    results = await asyncio.gather(*(send(r) for r in recipients), return_exceptions=True)
+    for recipient, outcome in zip(recipients, results, strict=True):
+        if isinstance(outcome, BaseException):
+            logger.error(event, user_id=str(recipient.id), exc_info=outcome, **log_fields)
 
 
 async def process_event(
@@ -58,7 +102,7 @@ async def process_event(
 
 async def _handle_approaching_end(data: dict[str, str]) -> None:
     """Send approaching_end emails to group members."""
-    from app.db.models.group import Group, GroupMember
+    from app.db.models.group import Group
     from app.db.models.user import User
     from app.services.email import email_service
 
@@ -94,35 +138,24 @@ async def _handle_approaching_end(data: dict[str, str]) -> None:
 
         group_url = f"{settings.APP_URL}/groups/{group_id}"
 
-        members_result = await db.execute(
-            select(User)
-            .join(GroupMember, GroupMember.user_id == User.id)
-            .where(
-                GroupMember.group_id == group_id,
-                User.id != reader_user_id,
-                User.is_active.is_(True),
-            )
-        )
-        members = list(members_result.scalars().all())
+        members = await _group_recipients(db, group_id, reader_user_id)
 
-        for member in members:
-            try:
-                await email_service.send_approaching_end(
-                    user=member,
-                    group_name=group.name,
-                    reader_name=reader_name,
-                    progress_percent=percentage,
-                    group_url=group_url,
-                )
-            except Exception:
-                logger.exception("approaching_end_email_failed", user_id=str(member.id))
+        async def _send(member: User) -> None:
+            await email_service.send_approaching_end(
+                user=member,
+                group_name=group.name,
+                reader_name=reader_name,
+                progress_percent=percentage,
+                group_url=group_url,
+            )
+
+        await _send_to_each(members, _send, event="approaching_end_email_failed")
 
 
 async def _handle_new_message(redis: aioredis.Redis, data: dict[str, str]) -> None:
     """Buffer new message notifications and send digest after cooldown."""
-    from app.db.models.group import Group, GroupMember
+    from app.db.models.group import Group
     from app.db.models.message import GroupMessage
-    from app.db.models.user import User
     from app.services.email import email_service
 
     group_id_str = data.get("group_id")
@@ -151,16 +184,7 @@ async def _handle_new_message(redis: aioredis.Redis, data: dict[str, str]) -> No
         if group is None:
             return
 
-        members_result = await db.execute(
-            select(User)
-            .join(GroupMember, GroupMember.user_id == User.id)
-            .where(
-                GroupMember.group_id == group_id,
-                User.id != sender_id,
-                User.is_active.is_(True),
-            )
-        )
-        members = list(members_result.scalars().all())
+        members = await _group_recipients(db, group_id, sender_id)
 
         # Filter members who want updates and check cooldown via mget
         eligible = [m for m in members if m.email_notifications.get("all_updates", False)]
@@ -175,19 +199,22 @@ async def _handle_new_message(redis: aioredis.Redis, data: dict[str, str]) -> No
             preview = preview[:80] + "..."
         group_url = f"{settings.APP_URL}/groups/{group_id}/chat"
 
-        for member, cooldown_val in zip(eligible, cooldown_vals, strict=False):
-            if cooldown_val is not None:
-                continue
-            try:
-                await email_service.send_post_digest(
-                    user=member,
-                    group_name=group.name,
-                    messages_preview=[preview],
-                    group_url=group_url,
-                )
-                await redis.setex(f"digest_cooldown:{member.id}:{group_id}", DIGEST_COOLDOWN_TTL, "1")
-            except Exception:
-                logger.exception("digest_email_failed", user_id=str(member.id))
+        recipients = [
+            member for member, cooldown_val in zip(eligible, cooldown_vals, strict=False) if cooldown_val is None
+        ]
+
+        async def _send(member: User) -> None:
+            await email_service.send_post_digest(
+                user=member,
+                group_name=group.name,
+                messages_preview=[preview],
+                group_url=group_url,
+            )
+            # Só marca o cooldown depois do envio bem-sucedido — uma falha
+            # parcial não pode silenciar quem não recebeu nada.
+            await redis.setex(f"digest_cooldown:{member.id}:{group_id}", DIGEST_COOLDOWN_TTL, "1")
+
+        await _send_to_each(recipients, _send, event="digest_email_failed")
 
 
 async def _consume_notification_stream(redis: aioredis.Redis, stop_event: asyncio.Event) -> None:
@@ -270,15 +297,16 @@ async def _process_single_reminder(redis: aioredis.Redis, entry: str) -> None:
         users = list(rsvps_result.scalars().all())
 
         tl: Literal["24h", "1h"] = time_label  # type: ignore[assignment]
-        for user in users:
-            try:
-                await email_service.send_meeting_reminder(user=user, meeting=meeting, time_until=tl)
-            except Exception:
-                logger.exception(
-                    "meeting_reminder_email_failed",
-                    user_id=str(user.id),
-                    meeting_id=str(meeting_id),
-                )
+
+        async def _send(user: User) -> None:
+            await email_service.send_meeting_reminder(user=user, meeting=meeting, time_until=tl)
+
+        await _send_to_each(
+            users,
+            _send,
+            event="meeting_reminder_email_failed",
+            meeting_id=str(meeting_id),
+        )
 
     await redis.zrem(MEETING_REMINDERS_KEY, entry)
     logger.info("meeting_reminder_sent", entry=entry)
