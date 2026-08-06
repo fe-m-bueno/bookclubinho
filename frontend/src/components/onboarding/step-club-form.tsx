@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -130,10 +131,13 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
                 className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3"
               >
                 {group.photo_url ? (
-                  <img
+                  <Image
                     src={group.photo_url}
                     alt={group.name}
+                    width={40}
+                    height={40}
                     className="h-10 w-10 rounded-full object-cover"
+                    unoptimized
                   />
                 ) : (
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">

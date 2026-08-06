@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Users, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,12 +69,13 @@ function JoinGroupContent() {
           <div className="flex flex-col items-center gap-6">
             <div className="flex flex-col items-center gap-3 text-center">
               {group.photo_url ? (
-                <img
+                <Image
                   src={group.photo_url}
                   alt={group.name}
                   width={80}
                   height={80}
                   className="h-20 w-20 rounded-2xl object-cover"
+                  unoptimized
                 />
               ) : (
                 <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 text-2xl font-bold">

@@ -6,19 +6,21 @@ import { Users } from "lucide-react";
 import { ShelfGrid } from "@/components/shelf/shelf-grid";
 import { ShelfEmptyState } from "@/components/shelf/shelf-empty-state";
 import type { ShelfResponse } from "@/lib/types/shelf";
+import { serverApi } from "@/lib/server-api";
 import { ShareButton } from "./share-button";
 
 // cache() deduplicates concurrent calls within the same request
 // (generateMetadata + page component both call this)
+//
+// `auth: false` de propósito: a estante pública é a mesma para todo mundo, e
+// repassar o cookie faria a resposta variar por usuário — o `revalidate` de uma
+// hora deixaria de valer.
 const fetchPublicShelf = cache(async (id: string): Promise<ShelfResponse | null> => {
   try {
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-    const res = await fetch(`${apiUrl}/api/v1/shelf/${id}`, {
+    return await serverApi.get<ShelfResponse>(`/shelf/${id}`, {
+      auth: false,
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return null;
-    return res.json() as Promise<ShelfResponse>;
   } catch {
     return null;
   }

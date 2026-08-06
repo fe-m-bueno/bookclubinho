@@ -1,14 +1,45 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, X, Pencil, Reply } from "lucide-react";
 import { useChatStore } from "@/stores/chat-store";
-import { TiptapEditor, type TiptapEditorHandle } from "./tiptap-editor";
+import type { TiptapEditorHandle } from "./tiptap-editor";
 import { InputToolbar } from "./input-toolbar";
 import { UploadProgressBar } from "./upload-progress-bar";
 import { cn } from "@/lib/utils";
 import type { MessageCreatePayload } from "@/lib/types/chat";
+
+/**
+ * O editor sai do bundle inicial do chat.
+ *
+ * `@tiptap/react` + `starter-kit` + Placeholder + Link são o maior bloco de JS
+ * da rota, e nenhum deles é necessário para pintar a conversa — que é o que o
+ * usuário veio ler. Importado assim, viram um chunk próprio, buscado depois da
+ * hidratação em vez de antes dela. É o mesmo `next/dynamic` que a
+ * `reaction-picker` já usa para o `emoji-mart`.
+ *
+ * `ssr: false` porque o `useEditor` já roda com `immediatelyRender: false` — o
+ * editor nunca teve saída no HTML do servidor, então nada se perde.
+ *
+ * O fallback é a caixa do campo, com as mesmas medidas do editor de verdade
+ * (`min-h-[2.5rem]` + `px-3 py-2` + borda). Sem ele o input nasceria com altura
+ * zero e empurraria a lista de mensagens quando o chunk chegasse.
+ */
+const TiptapEditor = dynamic(
+  () => import("./tiptap-editor").then((m) => m.TiptapEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col gap-1">
+        <div className="rounded-xl border bg-background px-3 py-2">
+          <div className="min-h-[2.5rem]" />
+        </div>
+      </div>
+    ),
+  },
+);
 
 interface ChatInputProps {
   onSend: (text: string, richJson: Record<string, unknown>) => void;

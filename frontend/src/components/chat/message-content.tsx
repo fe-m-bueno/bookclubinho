@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { type ChatMessage } from "@/lib/types/chat";
 import { extractUrls } from "@/lib/url-utils";
 import { MessageTextContent } from "./message-text-content";
@@ -52,11 +53,17 @@ export function MessageContent({ message }: MessageContentProps) {
           }
           aria-label="Abrir imagem em tamanho completo"
         >
-          <img
+          {/* `width`/`height` são o teto do balão, não a medida real da imagem
+              — o backend não devolve as dimensões. Servem para o browser
+              reservar a caixa antes do byte chegar; o `h-auto` deixa a
+              proporção verdadeira assumir depois. */}
+          <Image
             src={message.media_url}
             alt={message.content_text ?? "Imagem"}
-            className="max-w-[280px] rounded-xl object-cover"
-            loading="lazy"
+            width={280}
+            height={280}
+            className="h-auto max-w-[280px] rounded-xl object-cover"
+            unoptimized
           />
         </button>
       ) : null;
@@ -71,11 +78,13 @@ export function MessageContent({ message }: MessageContentProps) {
           }
           aria-label="Abrir GIF em tamanho completo"
         >
-          <img
+          <Image
             src={message.media_url}
             alt={message.content_text ?? "GIF"}
-            className="max-w-[200px] rounded-xl"
-            loading="lazy"
+            width={200}
+            height={200}
+            className="h-auto max-w-[200px] rounded-xl"
+            unoptimized
           />
         </button>
       ) : null;
