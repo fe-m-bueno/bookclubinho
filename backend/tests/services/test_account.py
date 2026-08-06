@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.security import PasswordPolicyError
 from app.services.account import AccountError, change_password, initiate_email_change
 from tests.conftest import mock_db_returning
 
@@ -78,13 +79,31 @@ class TestChangePassword:
         user = _make_local_user()
         db = mock_db_returning(None)
 
+        # PasswordPolicyError e não AccountError: a política de senha é uma só,
+        # e pelo endpoint essa entrada já era 422 pelo schema — o serviço
+        # respondia 400 para exatamente a mesma coisa.
         with patch("app.services.account.verify_password", return_value=True):
-            with pytest.raises(AccountError, match="8 caracteres"):
+            with pytest.raises(PasswordPolicyError, match="8 caracteres"):
                 await change_password(
                     db=db,
                     user=user,
                     current_password="oldpass",
                     new_password="short",
+                )
+
+    @pytest.mark.asyncio
+    async def test_too_long_raises(self) -> None:
+        """Acima de 72 bytes o bcrypt levanta ValueError — antes virava 500."""
+        user = _make_local_user()
+        db = mock_db_returning(None)
+
+        with patch("app.services.account.verify_password", return_value=True):
+            with pytest.raises(PasswordPolicyError, match="longa demais"):
+                await change_password(
+                    db=db,
+                    user=user,
+                    current_password="oldpass",
+                    new_password="a" * 73,
                 )
 
     @pytest.mark.asyncio

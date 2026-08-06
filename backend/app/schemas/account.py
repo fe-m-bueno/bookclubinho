@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr
+
+from app.schemas.password import Password
 
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
-    new_password: str
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_new_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Nova senha deve ter pelo menos 8 caracteres.")
-        return v
+    new_password: Password
 
 
 class ChangeEmailRequest(BaseModel):

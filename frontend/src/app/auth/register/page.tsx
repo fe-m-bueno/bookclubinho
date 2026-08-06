@@ -21,12 +21,13 @@ import { FormField } from "@/components/auth/form-field";
 import { PasswordInput } from "@/components/auth/password-input";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { useResendCooldown } from "@/hooks/use-resend-cooldown";
+import { passwordField } from "@/lib/password";
 
 const registerSchema = z
   .object({
     display_name: z.string().min(1, "Nome é obrigatório"),
     email: z.string().min(1, "E-mail é obrigatório").email("E-mail inválido"),
-    password: z.string().min(8, "Mínimo de 8 caracteres"),
+    password: passwordField,
     confirmPassword: z.string().min(1, "Confirme sua senha"),
   })
   .refine((data) => data.password === data.confirmPassword, {

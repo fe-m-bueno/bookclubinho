@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 from app.core.config import settings
 from app.core.exceptions import ServiceError
-from app.core.security import hash_password, safe_compare, verify_password
+from app.core.security import hash_password, safe_compare, validate_password, verify_password
 from app.db.models.user import User
 from app.services.email import send_email_change_email
 
@@ -44,8 +44,9 @@ async def change_password(
     if not user.hashed_password or not verify_password(current_password, user.hashed_password):
         raise AccountError("Senha atual incorreta.", status_code=400)
 
-    if len(new_password) < 8:
-        raise AccountError("Nova senha deve ter pelo menos 8 caracteres.")
+    # Mesma política do cadastro. Fica aqui além do schema porque o serviço é
+    # chamado direto pelos testes e pode vir a ser por outro caminho.
+    validate_password(new_password)
 
     if verify_password(new_password, user.hashed_password):
         raise AccountError("Nova senha deve ser diferente da atual.")

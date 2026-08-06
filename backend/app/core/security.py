@@ -5,17 +5,75 @@ from typing import Any
 
 import bcrypt
 import jwt
+import structlog
 from jwt import PyJWTError
 
 from app.core.config import settings
+from app.core.exceptions import ServiceError
+
+logger = structlog.get_logger(__name__)
+
+
+MIN_PASSWORD_LENGTH = 8
+
+# Limite do próprio algoritmo: bcrypt só considera os primeiros 72 bytes. Até a
+# versão 3.x a biblioteca truncava em silêncio; da 4.x em diante ela levanta
+# ValueError. Truncar por conta própria seria pior que recusar — faria duas
+# senhas diferentes autenticarem a mesma conta.
+MAX_PASSWORD_BYTES = 72
+
+
+class PasswordPolicyError(ServiceError):
+    """Senha fora da política.
+
+    Herda de ServiceError para virar 422 pelo handler da aplicação, e não 500.
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, status_code=422)
+
+
+def validate_password(plain: str) -> str:
+    """A política de senha, em um lugar só.
+
+    A regra dos 8 caracteres estava escrita três vezes — dois validadores Pydantic
+    e uma checagem no serviço de conta — e o limite superior, em nenhuma.
+    """
+    if len(plain) < MIN_PASSWORD_LENGTH:
+        raise PasswordPolicyError(f"A senha deve ter pelo menos {MIN_PASSWORD_LENGTH} caracteres.")
+    if len(plain.encode("utf-8")) > MAX_PASSWORD_BYTES:
+        # Em bytes, não em caracteres: uma frase com acentos chega ao limite
+        # antes do que o comprimento visível sugere.
+        raise PasswordPolicyError(
+            f"A senha é longa demais (máximo {MAX_PASSWORD_BYTES} bytes; acentos e emoji contam mais de um byte cada)."
+        )
+    return plain
 
 
 def hash_password(password: str) -> str:
+    # A validação mora aqui, e não só nos schemas, para que nenhum caminho de
+    # escrita de senha possa esquecê-la.
+    validate_password(password)
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    """Senha confere?
+
+    Nunca levanta. bcrypt recusa hash malformado e senha acima de 72 bytes com
+    ValueError, e os dois casos são "não confere", não erro de servidor: um hash
+    fora do padrão não pode autenticar ninguém, e uma senha longa demais não pode
+    ser a senha de conta nenhuma, já que `hash_password` a recusaria.
+
+    Importa porque `authenticate_user` se esforça para responder sempre a mesma
+    coisa — hash dummy em tempo constante, mensagem genérica, contador de falhas.
+    Uma exceção escapando dali sai como 500 com traceback no log.
+    """
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except ValueError:
+        logger.warning("password_verify_rejected_input")
+        return False
 
 
 _RESERVED_CLAIMS = frozenset({"sub", "exp", "type", "jti"})
