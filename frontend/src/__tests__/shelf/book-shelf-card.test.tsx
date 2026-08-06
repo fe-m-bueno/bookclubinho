@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { BookShelfCard } from "@/components/shelf/book-shelf-card";
 import type { ShelfBook } from "@/lib/types/shelf";
 
@@ -92,6 +92,61 @@ describe("BookShelfCard", () => {
     render(<BookShelfCard book={mockBook} />);
     fireEvent.click(screen.getByRole("button", { name: /Ver detalhes/i }));
     expect(screen.getByText(/Épico!/)).toBeInTheDocument();
+  });
+
+  // O carrossel deixou de manter um setInterval próprio: quem conta os cinco
+  // segundos é o tick compartilhado do tick-store.
+  it("gira os one-liners a cada cinco segundos", () => {
+    vi.useFakeTimers();
+    try {
+      render(<BookShelfCard book={mockBook} />);
+      fireEvent.click(screen.getByRole("button", { name: /Ver detalhes/i }));
+      expect(screen.getByText(/Épico!/)).toBeInTheDocument();
+
+      act(() => vi.advanceTimersByTime(5_000));
+      expect(screen.getByText(/Mudou minha vida/)).toBeInTheDocument();
+
+      act(() => vi.advanceTimersByTime(5_000));
+      expect(screen.getByText(/Épico!/)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clicar num ponto mostra o one-liner escolhido e reinicia a contagem", () => {
+    vi.useFakeTimers();
+    try {
+      render(<BookShelfCard book={mockBook} />);
+      fireEvent.click(screen.getByRole("button", { name: /Ver detalhes/i }));
+
+      act(() => vi.advanceTimersByTime(3_000));
+      fireEvent.click(screen.getByRole("button", { name: "One-liner 2" }));
+      expect(screen.getByText(/Mudou minha vida/)).toBeInTheDocument();
+
+      // Faltavam 2s para a virada automática; a escolha zerou o relógio.
+      act(() => vi.advanceTimersByTime(2_000));
+      expect(screen.getByText(/Mudou minha vida/)).toBeInTheDocument();
+
+      act(() => vi.advanceTimersByTime(3_000));
+      expect(screen.getByText(/Épico!/)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("um one-liner só não gira nem mostra os pontos", () => {
+    vi.useFakeTimers();
+    try {
+      const single: ShelfBook = { ...mockBook, top_oneliners: ["Épico!"] };
+      render(<BookShelfCard book={single} />);
+      fireEvent.click(screen.getByRole("button", { name: /Ver detalhes/i }));
+
+      expect(screen.queryByRole("button", { name: /One-liner/ })).toBeNull();
+      act(() => vi.advanceTimersByTime(10_000));
+      expect(screen.getByText(/Épico!/)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows BookOpen icon fallback when no cover", () => {

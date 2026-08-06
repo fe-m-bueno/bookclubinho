@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Timer, Pause, Play, Square, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useTimerStore } from "@/stores/use-timer-store";
-import { subscribeTick, getTickSnapshot, getServerSnapshot } from "@/stores/tick-store";
+import { useTick } from "@/hooks/use-tick";
 import { ApiError, api } from "@/lib/api";
 
 function formatElapsed(ms: number): string {
@@ -62,11 +62,7 @@ export function FloatingTimerButton() {
   const [starting, setStarting] = useState(false);
 
   // Only tick (re-render every 1s) when the timer is actively running
-  useSyncExternalStore(
-    status === "running" ? subscribeTick : () => () => {},
-    status === "running" ? getTickSnapshot : () => 0,
-    getServerSnapshot,
-  );
+  useTick(status === "running");
 
   const elapsedMs =
     status === "running" && startedAtMs !== null

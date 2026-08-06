@@ -76,6 +76,7 @@ vi.mock("next/navigation", () => ({
 import { useGroup } from "@/lib/contexts/group-context";
 import { useCurrentRound } from "@/hooks/use-current-round";
 import { RoundNominatingClient } from "../round-nominating-client";
+import { ApiError } from "@/lib/api";
 
 const mockedUseGroup = vi.mocked(useGroup);
 const mockedUseCurrentRound = vi.mocked(useCurrentRound);
@@ -90,7 +91,7 @@ describe("RoundNominatingClient", () => {
     vi.useFakeTimers();
     mockedUseCurrentRound.mockReturnValue({
       round: null,
-      loading: true,
+      isLoading: true,
       error: null,
       refetch: mockRefetch,
     });
@@ -105,8 +106,8 @@ describe("RoundNominatingClient", () => {
   it("shows error with retry button", () => {
     mockedUseCurrentRound.mockReturnValue({
       round: null,
-      loading: false,
-      error: "Erro ao carregar rodada. Tente novamente.",
+      isLoading: false,
+      error: new ApiError(500, "Erro ao carregar rodada. Tente novamente."),
       refetch: mockRefetch,
     });
 
@@ -123,7 +124,7 @@ describe("RoundNominatingClient", () => {
   it("shows empty state with create button for admin when no round", () => {
     mockedUseCurrentRound.mockReturnValue({
       round: null,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: mockRefetch,
     });
@@ -140,7 +141,7 @@ describe("RoundNominatingClient", () => {
     mockedUseGroup.mockReturnValue({ group: memberGroup, refetch: mockRefetch });
     mockedUseCurrentRound.mockReturnValue({
       round: null,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: mockRefetch,
     });
@@ -156,7 +157,7 @@ describe("RoundNominatingClient", () => {
   it("renders nominating UI when round is in nominating status", () => {
     mockedUseCurrentRound.mockReturnValue({
       round: nominatingRound,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: mockRefetch,
     });
@@ -173,7 +174,7 @@ describe("RoundNominatingClient", () => {
   it("admin sees start voting button in nominating phase", () => {
     mockedUseCurrentRound.mockReturnValue({
       round: nominatingRound,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: mockRefetch,
     });
@@ -189,7 +190,7 @@ describe("RoundNominatingClient", () => {
     mockedUseGroup.mockReturnValue({ group: memberGroup, refetch: mockRefetch });
     mockedUseCurrentRound.mockReturnValue({
       round: nominatingRound,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: mockRefetch,
     });

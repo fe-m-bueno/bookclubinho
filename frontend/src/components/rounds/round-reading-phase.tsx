@@ -35,7 +35,7 @@ export function RoundReadingPhase({
   const [progressOpen, setProgressOpen] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const { progress, roundStartedAt, loading: progressLoading, refetch: refetchGroupProgress } =
+  const { progress, roundStartedAt, isLoading: progressLoading, refetch: refetchGroupProgress } =
     useGroupProgress(round.id);
 
   // Current user's progress derived from group progress — single source of truth

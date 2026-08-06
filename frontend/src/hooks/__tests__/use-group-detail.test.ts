@@ -22,7 +22,7 @@ describe("useGroupDetail", () => {
 
     const { result } = renderApiHook(() => useGroupDetail("g1"));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(get).toHaveBeenCalledWith("/groups/g1");
     expect(result.current.group).toEqual(group);
   });

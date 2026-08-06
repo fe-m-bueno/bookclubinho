@@ -24,7 +24,7 @@ describe("useGroupProgress", () => {
 
     const { result } = renderApiHook(() => useGroupProgress("r1"));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(get).toHaveBeenCalledWith("/rounds/r1/progress");
     expect(result.current.progress).toHaveLength(1);
     expect(result.current.roundStartedAt).toBe("2026-01-01T00:00:00Z");
@@ -35,7 +35,7 @@ describe("useGroupProgress", () => {
 
     const { result } = renderApiHook(() => useGroupProgress("r1"));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.roundStartedAt).toBeNull();
   });
 });

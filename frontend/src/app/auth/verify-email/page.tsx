@@ -9,9 +9,13 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useCountdown } from "@/hooks/use-countdown";
 import { ApiError, api } from "@/lib/api";
 
 type Status = "loading" | "success" | "error-expired" | "error-invalid";
+
+/** Tempo de leitura do "Email verificado!" antes de mandar para o login. */
+const REDIRECT_SECONDS = 3;
 
 const STATUS_CONFIG = {
   "error-expired": { heading: "Link expirado ou inválido" },
@@ -66,7 +70,7 @@ function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>("loading");
-  const [countdown, setCountdown] = useState(3);
+  const [redirectAt, setRedirectAt] = useState<number | null>(null);
   const hasVerified = useRef(false);
 
   useEffect(() => {
@@ -87,6 +91,7 @@ function VerifyEmailContent() {
           `/auth/verify-email?token=${encodeURIComponent(token!)}`,
         );
         setStatus("success");
+        setRedirectAt(Date.now() + REDIRECT_SECONDS * 1_000);
       } catch (err) {
         setStatus(
           err instanceof ApiError && err.status === 400
@@ -99,23 +104,15 @@ function VerifyEmailContent() {
     verify();
   }, [searchParams, router]);
 
+  const remainingMs = useCountdown(redirectAt);
+  const countdown =
+    redirectAt === null ? REDIRECT_SECONDS : Math.ceil(remainingMs / 1_000);
+
   useEffect(() => {
-    if (status !== "success") return;
-
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          // Schedule redirect outside of updater to avoid side effects in render
-          queueMicrotask(() => router.push("/auth/login"));
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [status, router]);
+    if (redirectAt !== null && remainingMs === 0) {
+      router.push("/auth/login");
+    }
+  }, [redirectAt, remainingMs, router]);
 
   const isError = status === "error-expired" || status === "error-invalid";
 

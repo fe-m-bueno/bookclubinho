@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { errorMessage } from "@/hooks/use-api-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import type {
@@ -15,8 +14,8 @@ import type {
 interface UseBadgesReturn {
   myBadges: Record<string, BadgeResponse[]>;
   catalog: BadgeResponse[];
-  loading: boolean;
-  error: string | null;
+  isLoading: boolean;
+  error: Error | null;
   refetch: () => void;
 }
 
@@ -37,12 +36,8 @@ export function useBadges(): UseBadgesReturn {
   return {
     myBadges: mine.data?.badges ?? {},
     catalog: catalog.data?.badges ?? [],
-    loading: mine.isPending || catalog.isPending,
-    error: mine.error
-      ? errorMessage(mine.error)
-      : catalog.error
-        ? errorMessage(catalog.error)
-        : null,
+    isLoading: mine.isPending || catalog.isPending,
+    error: mine.error ?? catalog.error,
     refetch: () => {
       void mine.refetch();
       void catalog.refetch();

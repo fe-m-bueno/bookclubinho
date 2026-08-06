@@ -25,7 +25,7 @@ describe("useBookSearch", () => {
     const { result } = renderApiHook(() => useBookSearch("a"));
     expect(get).not.toHaveBeenCalled();
     expect(result.current.results).toEqual([]);
-    expect(result.current.loading).toBe(false);
+    expect(result.current.isLoading).toBe(false);
   });
 
   it("busca depois do debounce", async () => {
@@ -44,7 +44,7 @@ describe("useBookSearch", () => {
     const { result } = renderApiHook(() => useBookSearch("duna"));
 
     await vi.advanceTimersByTimeAsync(400);
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.results).toEqual([]);
   });
 });

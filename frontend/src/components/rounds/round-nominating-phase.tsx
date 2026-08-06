@@ -28,7 +28,7 @@ export function RoundNominatingPhase({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
 
-  const { results: searchResults, loading: searchLoading } =
+  const { results: searchResults, isLoading: searchLoading } =
     useBookSearch(searchQuery);
 
   return (

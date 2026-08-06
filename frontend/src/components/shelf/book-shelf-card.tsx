@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
@@ -14,7 +14,12 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { StarsDisplay } from "@/components/ui/stars-display";
+import { useTick } from "@/hooks/use-tick";
+import { getTickSnapshot } from "@/stores/tick-store";
 import type { ShelfBook } from "@/lib/types/shelf";
+
+/** Segundos que cada one-liner fica na tela antes do próximo. */
+const ONELINER_SECONDS = 5;
 
 interface BookShelfCardProps {
   book: ShelfBook;
@@ -35,18 +40,23 @@ function formatReadDate(dateStr: string | null): string | null {
 }
 
 function OnelinerCarousel({ oneliners }: { oneliners: string[] }) {
-  const [current, setCurrent] = useState(0);
+  // A âncora diz de qual índice contar e a partir de qual tick — clicar num
+  // ponto reancora, então a rotação recomeça do zero a partir da escolha.
+  const [anchor, setAnchor] = useState(() => ({
+    tick: getTickSnapshot(),
+    index: 0,
+  }));
 
-  useEffect(() => {
-    setCurrent(0);
-    if (oneliners.length <= 1) return;
-    const id = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % oneliners.length);
-    }, 5000);
-    return () => clearInterval(id);
-  }, [oneliners]);
+  const rotating = oneliners.length > 1;
+  const tick = useTick(rotating);
 
   if (!oneliners.length) return null;
+
+  const current = rotating
+    ? (anchor.index +
+        Math.floor((tick - anchor.tick) / ONELINER_SECONDS)) %
+      oneliners.length
+    : 0;
 
   return (
     <div className="space-y-2">
@@ -70,7 +80,7 @@ function OnelinerCarousel({ oneliners }: { oneliners: string[] }) {
             <button
               key={i}
               type="button"
-              onClick={() => setCurrent(i)}
+              onClick={() => setAnchor({ tick: getTickSnapshot(), index: i })}
               className={`h-1.5 w-1.5 rounded-full transition-colors ${
                 i === current
                   ? "bg-foreground"

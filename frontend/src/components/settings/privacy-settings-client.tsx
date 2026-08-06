@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 import { useRequestDataExport, useDeleteAccount } from "@/hooks/use-data-export";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
+import { useCountdown } from "@/hooks/use-countdown";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { formatCountdown } from "@/lib/format-countdown";
 import { PrivacySettingsSkeleton } from "./privacy-settings-skeleton";
 import { PasswordInput } from "@/components/auth/password-input";
 import { Button } from "@/components/ui/button";
@@ -26,72 +28,46 @@ const EXPORT_COOLDOWN_KEY = "data_export_cooldown";
 
 function DataExportCard() {
   const exportMutation = useRequestDataExport();
-  const [cooldownUntil, setCooldownUntil] = useState<Date | null>(null);
-  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+
+  const remainingMs = useCountdown(cooldownUntil);
+  const inCooldown = remainingMs > 0;
+  const timeLeft = inCooldown ? formatCountdown(remainingMs) : null;
 
   // On mount: read cooldown from localStorage
   useEffect(() => {
     const stored = localStorage.getItem(EXPORT_COOLDOWN_KEY);
-    if (stored) {
-      const until = new Date(stored);
-      if (until > new Date()) {
-        setCooldownUntil(until);
-      } else {
-        localStorage.removeItem(EXPORT_COOLDOWN_KEY);
-      }
+    if (!stored) return;
+    const until = new Date(stored).getTime();
+    if (until > Date.now()) {
+      setCooldownUntil(until);
+    } else {
+      localStorage.removeItem(EXPORT_COOLDOWN_KEY);
     }
   }, []);
 
-  // Update countdown every second while in cooldown
+  // Prazo vencido: a chave no localStorage não serve mais para nada.
   useEffect(() => {
-    if (!cooldownUntil) {
-      setTimeLeft(null);
-      return;
+    if (cooldownUntil !== null && remainingMs === 0) {
+      setCooldownUntil(null);
+      localStorage.removeItem(EXPORT_COOLDOWN_KEY);
     }
-
-    function updateLeft() {
-      if (!cooldownUntil) return;
-      const diff = cooldownUntil.getTime() - Date.now();
-      if (diff <= 0) {
-        setCooldownUntil(null);
-        setTimeLeft(null);
-        localStorage.removeItem(EXPORT_COOLDOWN_KEY);
-        return;
-      }
-      const hours = Math.floor(diff / 3_600_000);
-      const minutes = Math.floor((diff % 3_600_000) / 60_000);
-      const seconds = Math.floor((diff % 60_000) / 1_000);
-      if (hours > 0) {
-        setTimeLeft(`${hours}h ${minutes}m`);
-      } else if (minutes > 0) {
-        setTimeLeft(`${minutes}m ${seconds}s`);
-      } else {
-        setTimeLeft(`${seconds}s`);
-      }
-    }
-
-    updateLeft();
-    const interval = setInterval(updateLeft, 1_000);
-    return () => clearInterval(interval);
-  }, [cooldownUntil]);
+  }, [cooldownUntil, remainingMs]);
 
   async function handleExport() {
     try {
       const result = await exportMutation.mutateAsync();
-      toast.success("Solicitacao enviada! Voce recebera um e-mail em breve.");
+      toast.success("Solicitação enviada! Você receberá um e-mail em breve.");
       if (result.cooldown_until) {
-        const until = new Date(result.cooldown_until);
-        setCooldownUntil(until);
+        setCooldownUntil(new Date(result.cooldown_until).getTime());
         localStorage.setItem(EXPORT_COOLDOWN_KEY, result.cooldown_until);
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Erro ao solicitar exportacao.",
+        err instanceof Error ? err.message : "Erro ao solicitar exportação.",
       );
     }
   }
-
-  const inCooldown = cooldownUntil !== null && cooldownUntil > new Date();
 
   return (
     <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
@@ -108,8 +84,8 @@ function DataExportCard() {
         {exportMutation.isPending
           ? "Solicitando..."
           : inCooldown && timeLeft
-            ? `Disponivel em ${timeLeft}`
-            : "Solicitar exportacao"}
+            ? `Disponível em ${timeLeft}`
+            : "Solicitar exportação"}
       </Button>
     </div>
   );
@@ -161,7 +137,7 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
         current_password:
           authProvider === "local" ? dialog.password : undefined,
       });
-      toast.success("Conta excluida.");
+      toast.success("Conta excluída.");
       router.push("/auth/login");
     } catch (err) {
       toast.error(
@@ -185,7 +161,7 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
           Excluir minha conta
         </h2>
         <p className="text-sm text-muted-foreground">
-          Esta acao e permanente e nao pode ser desfeita.
+          Esta ação é permanente e não pode ser desfeita.
         </p>
         <Button
           variant="destructive"
@@ -210,13 +186,13 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
                   Ao excluir sua conta:
                 </p>
                 <ul className="space-y-2 list-disc list-inside text-muted-foreground">
-                  <li>Seu nome e foto serao anonimizados</li>
-                  <li>Voce perdera acesso imediatamente</li>
+                  <li>Seu nome e foto serão anonimizados</li>
+                  <li>Você perderá acesso imediatamente</li>
                   <li>
-                    Dados de leitura serao mantidos de forma anonimizada para
-                    estatisticas do clube
+                    Dados de leitura serão mantidos de forma anonimizada para
+                    estatísticas do clube
                   </li>
-                  <li>Esta acao nao pode ser desfeita</li>
+                  <li>Esta ação não pode ser desfeita</li>
                 </ul>
               </div>
               <DialogFooter>
@@ -288,7 +264,7 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
               </DialogHeader>
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Digite sua senha atual para confirmar a exclusao da conta.
+                  Digite sua senha atual para confirmar a exclusão da conta.
                 </p>
                 <div className="space-y-1.5">
                   <label

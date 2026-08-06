@@ -22,7 +22,7 @@ describe("useWrapped", () => {
 
     const { result } = renderApiHook(() => useWrapped("g1", 2026));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(get).toHaveBeenCalledWith("/groups/g1/wrapped/2026");
     expect(result.current.data).toEqual({ year: 2026 });
   });
@@ -32,7 +32,7 @@ describe("useWrapped", () => {
 
     const { result } = renderApiHook(() => useWrapped("g1", 2026));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data).toBeNull();
     expect(result.current.error).toBeNull();
   });

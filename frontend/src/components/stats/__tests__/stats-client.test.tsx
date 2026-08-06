@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { StatsClient } from "@/components/stats/stats-client";
 import type { GroupStatsResponse } from "@/lib/types/stats";
 import type { ShelfResponse } from "@/lib/types/shelf";
+import { ApiError } from "@/lib/api";
 
 // Mock hooks
 const mockUseGroupStats = vi.fn();
@@ -65,7 +66,7 @@ const mockShelf: ShelfResponse = {
 function setupShelf(overrides?: Partial<ReturnType<typeof mockUseShelf>>) {
   mockUseShelf.mockReturnValue({
     data: mockShelf,
-    loading: false,
+    isLoading: false,
     error: null,
     refetch: vi.fn(),
     ...overrides,
@@ -81,7 +82,7 @@ describe("StatsClient", () => {
     vi.useFakeTimers();
     mockUseGroupStats.mockReturnValue({
       data: null,
-      loading: true,
+      isLoading: true,
       error: null,
       refetch: vi.fn(),
     });
@@ -98,8 +99,8 @@ describe("StatsClient", () => {
     const refetch = vi.fn();
     mockUseGroupStats.mockReturnValue({
       data: null,
-      loading: false,
-      error: "Erro ao carregar as estatísticas. Tente novamente.",
+      isLoading: false,
+      error: new ApiError(500, "Erro ao carregar as estatísticas. Tente novamente."),
       refetch,
     });
     setupShelf();
@@ -118,8 +119,8 @@ describe("StatsClient", () => {
     const refetch = vi.fn();
     mockUseGroupStats.mockReturnValue({
       data: null,
-      loading: false,
-      error: "Erro",
+      isLoading: false,
+      error: new ApiError(500, "Erro"),
       refetch,
     });
     setupShelf();
@@ -134,7 +135,7 @@ describe("StatsClient", () => {
   it("shows empty state when total_books_read is 0", () => {
     mockUseGroupStats.mockReturnValue({
       data: { ...mockStats, total_books_read: 0 },
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -148,7 +149,7 @@ describe("StatsClient", () => {
   it("shows empty state when data is null", () => {
     mockUseGroupStats.mockReturnValue({
       data: null,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -162,7 +163,7 @@ describe("StatsClient", () => {
   it("renders all main sections when data is available", () => {
     mockUseGroupStats.mockReturnValue({
       data: mockStats,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -180,7 +181,7 @@ describe("StatsClient", () => {
   it("shows emotional stats section when total_reviews > 0", () => {
     mockUseGroupStats.mockReturnValue({
       data: mockStats,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -197,7 +198,7 @@ describe("StatsClient", () => {
         ...mockStats,
         emotional_stats: { ...mockStats.emotional_stats, total_reviews: 0 },
       },
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -213,7 +214,7 @@ describe("StatsClient", () => {
   it("renders badges link", () => {
     mockUseGroupStats.mockReturnValue({
       data: mockStats,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -231,7 +232,7 @@ describe("StatsClient", () => {
 
     mockUseGroupStats.mockReturnValue({
       data: mockStats,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -248,7 +249,7 @@ describe("StatsClient", () => {
 
     mockUseGroupStats.mockReturnValue({
       data: mockStats,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -263,7 +264,7 @@ describe("StatsClient", () => {
   it("passes groupId to useGroupStats", () => {
     mockUseGroupStats.mockReturnValue({
       data: null,
-      loading: true,
+      isLoading: true,
       error: null,
       refetch: vi.fn(),
     });

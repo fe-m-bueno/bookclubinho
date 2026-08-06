@@ -1,22 +1,32 @@
 "use client";
 
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useQuery } from "@tanstack/react-query";
+
+import { getOrNull } from "@/lib/get-or-null";
 import { queryKeys } from "@/lib/query-keys";
 import type { RoundDetailResponse } from "@/lib/types/round";
 
 interface UseCurrentRoundReturn {
   round: RoundDetailResponse | null;
-  loading: boolean;
-  error: string | null;
+  isLoading: boolean;
+  error: Error | null;
   refetch: () => void;
 }
 
 export function useCurrentRound(groupId: string): UseCurrentRoundReturn {
   // Clube sem rodada ativa devolve 404 — é resposta legítima, não erro.
-  const { data, loading, error, refetch } = useApiQuery<RoundDetailResponse>(
-    queryKeys.rounds.current(groupId),
-    `/groups/${groupId}/rounds/current`,
-    { notFoundAsNull: true },
-  );
-  return { round: data, loading, error, refetch };
+  const query = useQuery<RoundDetailResponse | null, Error>({
+    queryKey: queryKeys.rounds.current(groupId),
+    queryFn: () =>
+      getOrNull<RoundDetailResponse>(`/groups/${groupId}/rounds/current`),
+  });
+
+  return {
+    round: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: () => {
+      void query.refetch();
+    },
+  };
 }

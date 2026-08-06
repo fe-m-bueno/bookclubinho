@@ -1,7 +1,9 @@
 /**
  * Módulo puro (sem React) que emite ticks a cada 1s.
- * Usado com useSyncExternalStore para atualizar o timer sem useEffect.
  * O intervalo só roda enquanto há subscribers (auto-cleanup).
+ *
+ * Quem consome do lado do React é `hooks/use-tick.ts` — não assine daqui
+ * direto num componente, senão volta a ser um timer por call site.
  */
 const listeners = new Set<() => void>();
 let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -26,8 +28,4 @@ export function subscribeTick(cb: () => void): () => void {
 
 export function getTickSnapshot(): number {
   return tick;
-}
-
-export function getServerSnapshot(): number {
-  return 0;
 }

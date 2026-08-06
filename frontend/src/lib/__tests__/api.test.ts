@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, UnauthorizedError, api } from "@/lib/api";
+import { ApiError, UnauthorizedError, api, errorMessage } from "@/lib/api";
 
 vi.mock("@/lib/csrf", () => ({
   ensureCsrf: vi.fn(async () => {}),
@@ -191,5 +191,27 @@ describe("abort", () => {
     await expect(
       api.get("/books/x", { signal: controller.signal }),
     ).rejects.not.toBeInstanceOf(ApiError);
+  });
+});
+
+/**
+ * A tradução do erro para a frase que o usuário lê morava em `use-api-query`,
+ * a ponte que foi apagada. Continua sendo a mesma regra, num lugar só.
+ */
+describe("errorMessage", () => {
+  it("erro do backend chega com a frase do backend", () => {
+    expect(errorMessage(new ApiError(403, "Sem acesso a esta rodada."))).toBe(
+      "Sem acesso a esta rodada.",
+    );
+  });
+
+  it("rede fora do ar não tem detail — a mensagem é de conexão", () => {
+    expect(errorMessage(new TypeError("Failed to fetch"))).toBe(
+      "Erro de conexão. Verifique sua internet.",
+    );
+  });
+
+  it("qualquer coisa que não seja erro também vira mensagem de conexão", () => {
+    expect(errorMessage(null)).toBe("Erro de conexão. Verifique sua internet.");
   });
 });

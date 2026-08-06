@@ -3,7 +3,6 @@
 import { useCallback } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
-import { errorMessage } from "@/hooks/use-api-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import type {
@@ -20,10 +19,10 @@ interface UseQuotesParams {
 
 interface UseQuotesReturn {
   quotes: QuoteResponse[];
-  loading: boolean;
+  isLoading: boolean;
   loadingMore: boolean;
   hasMore: boolean;
-  error: string | null;
+  error: Error | null;
   loadMore: () => void;
   refetch: () => void;
 }
@@ -53,10 +52,10 @@ export function useQuotes({
 
   return {
     quotes: query.data?.pages.flatMap((p) => p.quotes) ?? [],
-    loading: query.isPending,
+    isLoading: query.isPending,
     loadingMore: query.isFetchingNextPage,
     hasMore: query.hasNextPage,
-    error: query.error ? errorMessage(query.error) : null,
+    error: query.error,
     loadMore: () => {
       if (query.hasNextPage && !query.isFetchingNextPage) {
         void query.fetchNextPage();

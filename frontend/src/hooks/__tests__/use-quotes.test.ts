@@ -31,7 +31,7 @@ describe("useQuotes", () => {
       useQuotes({ groupId: "g1", sort: "votes" }),
     );
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.quotes).toHaveLength(2);
     expect(get).toHaveBeenCalledWith("/groups/g1/quotes?sort=votes&limit=20");
   });
@@ -43,7 +43,7 @@ describe("useQuotes", () => {
       useQuotes({ groupId: "g1", sort: "votes" }),
     );
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.hasMore).toBe(true);
   });
 
@@ -84,7 +84,7 @@ describe("useQuotes", () => {
       useQuotes({ groupId: "g1", sort: "votes" }),
     );
 
-    await waitFor(() => expect(result.current.error).toBe("Sem acesso a este clube."));
+    await waitFor(() => expect(result.current.error?.message).toBe("Sem acesso a este clube."));
   });
 });
 

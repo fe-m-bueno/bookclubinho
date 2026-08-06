@@ -10,8 +10,7 @@ import {
 } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { errorMessage } from "@/hooks/use-api-query";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import type { GroupDetailResponse, MemberSummary } from "@/lib/types/group";
 
 interface GroupMembersSectionProps {
