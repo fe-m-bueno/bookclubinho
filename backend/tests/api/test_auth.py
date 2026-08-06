@@ -39,6 +39,29 @@ class TestRegisterRequest:
         with pytest.raises(ValidationError, match="8 caracteres"):
             RegisterRequest(email="a@b.com", password="short", display_name="X")
 
+    def test_password_too_long_is_rejected_not_crashed(self) -> None:
+        """Sem limite superior, o cadastro devolvia 500.
+
+        bcrypt recusa entradas acima de 72 bytes com ValueError desde a 4.x, e
+        `hash_password` a repassava crua. O schema não tinha máximo nenhum, então
+        bastava digitar uma frase-senha para derrubar o endpoint.
+        """
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="longa demais"):
+            RegisterRequest(email="a@b.com", password="a" * 73, display_name="X")
+
+    def test_limite_conta_bytes_e_nao_caracteres(self) -> None:
+        from pydantic import ValidationError
+
+        # 40 caracteres, 80 bytes em UTF-8 — passa de qualquer contagem por len().
+        with pytest.raises(ValidationError, match="longa demais"):
+            RegisterRequest(email="a@b.com", password="ç" * 40, display_name="X")
+
+    def test_senha_no_limite_exato_e_aceita(self) -> None:
+        req = RegisterRequest(email="a@b.com", password="a" * 72, display_name="X")
+        assert len(req.password) == 72
+
     def test_empty_display_name(self) -> None:
         from pydantic import ValidationError
 

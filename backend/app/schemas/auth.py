@@ -2,18 +2,13 @@
 
 from pydantic import BaseModel, EmailStr, field_validator
 
+from app.schemas.password import Password
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: Password
     display_name: str
-
-    @field_validator("password")
-    @classmethod
-    def password_min_length(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("A senha deve ter pelo menos 8 caracteres.")
-        return v
 
     @field_validator("display_name")
     @classmethod
