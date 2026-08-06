@@ -12,8 +12,12 @@ class MessageCreateRequest(BaseModel):
     content_type: Literal["text", "image", "gif", "video_link", "quote", "chapter_marker", "page_marker", "system"]
     content_text: str | None = Field(default=None, max_length=4000)
     content_rich_json: dict | None = None
-    media_url: str | None = None
-    thumbnail_url: str | None = None
+    # Mídia enviada pelo chat: o cliente devolve a *chave* do upload, nunca a URL.
+    # O backend valida a chave contra o grupo e resolve a URL na serialização.
+    media_key: str | None = Field(default=None, max_length=512)
+    thumbnail_key: str | None = Field(default=None, max_length=512)
+    # Só para video_link — link externo (YouTube etc.), não vem do nosso bucket.
+    media_url: str | None = Field(default=None, max_length=2048)
     reference_type: Literal["chapter", "page", "quote"] | None = None
     reference_value: str | None = None
     is_spoiler: bool = False
@@ -26,8 +30,22 @@ class MessageCreateRequest(BaseModel):
         ct = self.content_type
         if ct == "text" and not self.content_text and not self.content_rich_json:
             raise ValueError("Mensagens de texto precisam de content_text ou content_rich_json.")
-        if ct in ("image", "gif", "video_link") and not self.media_url:
-            raise ValueError(f"Mensagens do tipo '{ct}' precisam de media_url.")
+
+        if ct in ("image", "gif"):
+            if not self.media_key:
+                raise ValueError(f"Mensagens do tipo '{ct}' precisam de media_key.")
+            if self.media_url:
+                raise ValueError("media_url não é aceito para imagens — envie media_key.")
+        else:
+            if self.media_key or self.thumbnail_key:
+                raise ValueError(f"Mensagens do tipo '{ct}' não aceitam media_key.")
+            if ct == "video_link":
+                if not self.media_url:
+                    raise ValueError("Mensagens do tipo 'video_link' precisam de media_url.")
+                if not self.media_url.startswith(("http://", "https://")):
+                    raise ValueError("media_url precisa ser um link http(s).")
+            elif self.media_url:
+                raise ValueError(f"Mensagens do tipo '{ct}' não aceitam media_url.")
         return self
 
 

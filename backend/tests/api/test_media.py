@@ -23,8 +23,10 @@ FAKE_MEMBER.user_id = FAKE_USER.id
 FAKE_MEMBER.group_id = FAKE_GROUP_ID
 
 _FAKE_RESULT = {
-    "media_url": "https://cdn.example.com/media/g/f.webp",
-    "thumbnail_url": "https://cdn.example.com/media/g/f_thumb.webp",
+    "media_key": "media/g/f.webp",
+    "thumbnail_key": "media/g/f_thumb.webp",
+    "media_url": "https://cdn.example.com/media/g/f.webp?X-Amz-Signature=abc",
+    "thumbnail_url": "https://cdn.example.com/media/g/f_thumb.webp?X-Amz-Signature=abc",
     "width": 100,
     "height": 100,
 }
@@ -64,8 +66,9 @@ def test_upload_returns_201() -> None:
 
     assert resp.status_code == 201
     body = resp.json()
+    assert body["media_key"] == _FAKE_RESULT["media_key"]
+    assert body["thumbnail_key"] == _FAKE_RESULT["thumbnail_key"]
     assert body["media_url"] == _FAKE_RESULT["media_url"]
-    assert body["thumbnail_url"] == _FAKE_RESULT["thumbnail_url"]
 
 
 def test_upload_too_large_returns_413() -> None:

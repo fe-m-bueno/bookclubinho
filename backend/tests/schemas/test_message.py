@@ -30,21 +30,51 @@ class TestMessageCreateRequest:
         )
         assert req.content_rich_json is not None
 
-    def test_image_without_media_url_raises(self) -> None:
+    def test_image_without_media_key_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
             MessageCreateRequest(content_type="image")
-        assert "media_url" in str(exc_info.value)
+        assert "media_key" in str(exc_info.value)
 
-    def test_image_with_media_url_is_valid(self) -> None:
+    def test_image_with_media_key_is_valid(self) -> None:
         req = MessageCreateRequest(
             content_type="image",
-            media_url="https://example.com/img.jpg",
+            media_key="media/g/f.webp",
+            thumbnail_key="media/g/f_thumb.webp",
         )
-        assert req.media_url == "https://example.com/img.jpg"
+        assert req.media_key == "media/g/f.webp"
 
-    def test_gif_without_media_url_raises(self) -> None:
+    def test_image_with_media_url_raises(self) -> None:
+        """O cliente não escolhe a URL da imagem — só devolve a chave do upload."""
+        with pytest.raises(ValidationError) as exc_info:
+            MessageCreateRequest(
+                content_type="image",
+                media_key="media/g/f.webp",
+                media_url="https://tracker.example.com/pixel.gif",
+            )
+        assert "media_url" in str(exc_info.value)
+
+    def test_gif_without_media_key_raises(self) -> None:
         with pytest.raises(ValidationError):
             MessageCreateRequest(content_type="gif")
+
+    def test_text_message_with_media_key_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            MessageCreateRequest(
+                content_type="text",
+                content_text="oi",
+                media_key="media/g/f.webp",
+            )
+
+    def test_video_link_with_external_url_is_valid(self) -> None:
+        req = MessageCreateRequest(
+            content_type="video_link",
+            media_url="https://youtube.com/watch?v=abc",
+        )
+        assert req.media_url == "https://youtube.com/watch?v=abc"
+
+    def test_video_link_with_non_http_url_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            MessageCreateRequest(content_type="video_link", media_url="javascript:alert(1)")
 
     def test_video_link_without_media_url_raises(self) -> None:
         with pytest.raises(ValidationError):

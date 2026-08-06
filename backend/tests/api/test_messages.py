@@ -46,6 +46,8 @@ def _make_chat_msg_response(**overrides: object) -> MagicMock:
     msg.content_type = "text"
     msg.content_text = overrides.get("content_text", "Hello!")
     msg.content_rich_json = None
+    msg.media_key = None
+    msg.thumbnail_key = None
     msg.media_url = None
     msg.thumbnail_url = None
     msg.reference_type = None
@@ -72,6 +74,8 @@ def _make_group_message_orm(**overrides: object) -> MagicMock:
     msg.content_type = "text"
     msg.content_text = overrides.get("content_text", "Hello!")
     msg.content_rich_json = None
+    msg.media_key = None
+    msg.thumbnail_key = None
     msg.media_url = None
     msg.thumbnail_url = None
     msg.reference_type = None
@@ -172,7 +176,7 @@ class TestSendMessage:
 
         response = client.post(
             f"/api/v1/groups/{FAKE_GROUP_ID}/messages",
-            json={"content_type": "image"},  # missing media_url
+            json={"content_type": "image"},  # missing media_key
         )
 
         assert response.status_code == 422

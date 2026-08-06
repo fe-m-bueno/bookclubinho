@@ -81,6 +81,11 @@ class GroupMessage(CreatedAtMixin, Base):
     content_type: Mapped[str] = mapped_column(Text, nullable=False)
     content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_rich_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Chave do objeto no bucket (media/{group_id}/{uuid}.webp) — o dado durável
+    # para mídia enviada pelo chat. A URL é resolvida na serialização.
+    media_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    thumbnail_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # URL externa — só para video_link. Nunca uma presigned URL do nosso bucket.
     media_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     reference_type: Mapped[str | None] = mapped_column(Text, nullable=True)
