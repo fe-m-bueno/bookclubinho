@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -94,8 +93,38 @@ function getInitials(displayName: string | null, username: string | null, email:
   return name.slice(0, 2).toUpperCase();
 }
 
+/**
+ * O form só monta com o usuário em mão.
+ *
+ * Antes era um `useForm` sem `defaultValues` mais um `reset()` num `useEffect`,
+ * e a tela não podia ser salva no primeiro carregamento. O `Select` de fuso do
+ * Radix montava com `value` `undefined` — descontrolado — e o `reset` chegava
+ * depois. Pior: dando `defaultValues` com `timezone: ""`, o Select montava
+ * controlado com `""` e, quando o `reset` mudava o prop, **devolvia o `""`
+ * antigo pelo `onValueChange`**, que caía no `setValue` e apagava o valor. Os
+ * dois caminhos terminavam igual: `timezone: z.string().min(1)` reprovava, o
+ * `handleSubmit` nunca chamava o `onSubmit`, e o botão não dava sinal — a
+ * mensagem ficava no rodapé do form, longe de quem clicou.
+ *
+ * Sem a corrida não há o que sincronizar: `defaultValues` sai do `user` no
+ * primeiro render e o Select nasce controlado com o valor certo.
+ *
+ * De quebra, sai um efeito colateral que ninguém pediu: o `reset` antigo
+ * disparava a cada identidade nova de `user`, então um refetch de
+ * `currentUser` — o upload de avatar faz um — apagava o que a pessoa estava
+ * digitando.
+ */
 export function ProfileSettingsClient() {
   const { data: user, isLoading } = useCurrentUser();
+  const { showSkeleton } = useSkeletonState(isLoading);
+
+  if (showSkeleton) return <ProfileSettingsSkeleton />;
+  if (!user) return null;
+
+  return <ProfileForm user={user} />;
+}
+
+function ProfileForm({ user }: { user: UserMe }) {
   const queryClient = useQueryClient();
 
   const {
@@ -107,19 +136,14 @@ export function ProfileSettingsClient() {
     formState: { errors, isDirty, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      display_name: user.display_name ?? "",
+      username: user.username ?? "",
+      status_text: user.status_text ?? "",
+      preferred_genres: user.preferred_genres,
+      timezone: user.timezone,
+    },
   });
-
-  useEffect(() => {
-    if (user) {
-      reset({
-        display_name: user.display_name ?? "",
-        username: user.username ?? "",
-        status_text: user.status_text ?? "",
-        preferred_genres: user.preferred_genres,
-        timezone: user.timezone,
-      });
-    }
-  }, [user, reset]);
 
   const username = watch("username") ?? "";
   const statusText = watch("status_text") ?? "";
@@ -154,10 +178,6 @@ export function ProfileSettingsClient() {
       }
     }
   }
-
-  const { showSkeleton } = useSkeletonState(isLoading);
-  if (showSkeleton) return <ProfileSettingsSkeleton />;
-  if (!user) return null;
 
   const initials = getInitials(user.display_name, user.username, user.email);
 

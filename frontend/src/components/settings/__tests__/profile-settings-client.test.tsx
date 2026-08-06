@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import type { UserMe } from "@/lib/types/user";
+import { jsonResponse } from "@/test-utils/http";
 
 // Mock all heavy dependencies
 vi.mock("@/hooks/use-current-user", () => ({
@@ -91,5 +92,87 @@ describe("ProfileSettingsClient", () => {
   it("renders auth method badge", () => {
     render(<ProfileSettingsClient />);
     expect(screen.getByText("Senha")).toBeTruthy();
+  });
+
+  /**
+   * O form não podia ser salvo no primeiro carregamento.
+   *
+   * `useForm` não declarava `defaultValues`, então no primeiro render
+   * `watch("timezone")` era `undefined` e o `Select` do Radix montava
+   * descontrolado. O `reset()` do `useEffect` chegava depois, com o `user`
+   * carregado, e o trigger ficava preso no "Selecione..." — o React avisava a
+   * troca de descontrolado para controlado no console.
+   *
+   * O efeito era pior que o visual: `timezone: z.string().min(1)` reprovava, o
+   * `handleSubmit` nunca chamava o `onSubmit`, e o botão não dava sinal nenhum.
+   * A mensagem aparecia no rodapé do form, longe de quem clicou.
+   *
+   * Reproduzido no browser: mudar o Status e salvar não disparava requisição
+   * nenhuma. Escolhendo o fuso à mão — um valor que o usuário já tinha — o save
+   * funcionava.
+   */
+  describe("salvar no primeiro carregamento", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      global.fetch = vi.fn().mockImplementation(async () => jsonResponse(mockUser));
+    });
+
+    /**
+     * O botão é `disabled={!isDirty}` de propósito, então a repro precisa de uma
+     * edição de verdade — foi como o bug apareceu no browser: mudar o Status e
+     * salvar não disparava requisição nenhuma.
+     */
+    function editarStatus() {
+      fireEvent.change(screen.getByLabelText("Status"), {
+        target: { value: "lendo bastante" },
+      });
+    }
+
+    it("o fuso do usuário aparece no select, não o placeholder", () => {
+      render(<ProfileSettingsClient />);
+      expect(screen.queryByText("Selecione...")).not.toBeInTheDocument();
+    });
+
+    it("submete sem que o usuário toque no fuso horário", async () => {
+      render(<ProfileSettingsClient />);
+      editarStatus();
+
+      fireEvent.click(screen.getByRole("button", { name: /salvar/i }));
+
+      await waitFor(() =>
+        expect(global.fetch).toHaveBeenCalledWith(
+          "/api/v1/users/me",
+          expect.objectContaining({ method: "PATCH" }),
+        ),
+      );
+    });
+
+    it("manda o fuso que o usuário já tinha", async () => {
+      render(<ProfileSettingsClient />);
+      editarStatus();
+
+      fireEvent.click(screen.getByRole("button", { name: /salvar/i }));
+
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      const [, init] = vi.mocked(global.fetch).mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(init.body as string);
+      expect(body.timezone).toBe("America/Sao_Paulo");
+      expect(body.status_text).toBe("lendo bastante");
+    });
+
+    it("não reprova a validação do fuso", async () => {
+      render(<ProfileSettingsClient />);
+      editarStatus();
+
+      fireEvent.click(screen.getByRole("button", { name: /salvar/i }));
+
+      // A validação é assíncrona: sem esperar, a asserção passa antes de a
+      // mensagem existir e não afirma nada.
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      // A mensagem morava no rodapé do form, fora da vista de quem clicou.
+      expect(
+        screen.queryByText("Selecione um fuso horário"),
+      ).not.toBeInTheDocument();
+    });
   });
 });
