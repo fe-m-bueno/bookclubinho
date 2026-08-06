@@ -74,25 +74,48 @@ def _make_rating_rows(raw_ratings: list[int]) -> list[MagicMock]:
     return rows
 
 
+def _make_grouped_rows(mapping: dict, key_attr: str, **value_attrs: str) -> list[MagicMock]:
+    """Rows de um `GROUP BY key_attr`, a partir de {key: valor} ou {key: (v1, v2)}.
+
+    `value_attrs` mapeia posição → nome do atributo, na ordem da tupla.
+    """
+    names = list(value_attrs.values())
+    rows = []
+    for key, value in mapping.items():
+        row = MagicMock()
+        setattr(row, key_attr, key)
+        values = value if isinstance(value, tuple) else (value,)
+        for name, val in zip(names, values, strict=True):
+            setattr(row, name, val)
+        rows.append(row)
+    return rows
+
+
 def _make_group_stats_db_mocks(
     *,
     rounds: list[MagicMock] | None = None,
     avg_rating: float | None = None,
-    total_time: int = 0,
     members: list[tuple[MagicMock, MagicMock]] | None = None,
+    reviews_by_user: dict | None = None,
+    times_by_user: dict | None = None,
+    badges_by_user: dict | None = None,
     raw_ratings: list[int] | None = None,
     emotional_row: MagicMock | None = None,
 ) -> tuple[AsyncMock, list[MagicMock]]:
     """Builds a sequence of db.execute side_effect mocks for _compute_group_stats.
 
     The call order is:
-        1. finished_rounds   → scalars().all()
-        2. avg_rating        → scalar_one_or_none()
-        3. total_time        → scalar_one()
-        4. members           → all()
-        [per-member queries omitted here — pass empty members list for simplicity]
-        5. rating_distribution → all()   (GROUP BY query, rows have .star_rating and .cnt)
-        6. emotional_stats   → one()
+        1. finished_rounds     → scalars().all()
+        2. avg_rating          → scalar_one_or_none()
+        3. members             → all()
+        4. reviews_by_user     → all()   (GROUP BY user_id)
+        5. times_by_user       → all()   (GROUP BY user_id — só se houver rodada finalizada)
+        6. badges_by_user      → all()   (GROUP BY user_id — só se houver membro)
+        7. rating_distribution → all()   (GROUP BY star_rating)
+        8. emotional_stats     → one()
+
+    As agregações por usuário são fixas em número: nada depende da quantidade de
+    membros. É o que o teste de contagem de queries protege.
 
     Returns the db AsyncMock and the list of result mocks in call order.
     """
@@ -108,11 +131,19 @@ def _make_group_stats_db_mocks(
     res_avg = MagicMock()
     res_avg.scalar_one_or_none.return_value = avg_rating
 
-    res_time = MagicMock()
-    res_time.scalar_one.return_value = total_time
-
     res_members = MagicMock()
     res_members.all.return_value = members
+
+    res_reviews = MagicMock()
+    res_reviews.all.return_value = _make_grouped_rows(
+        reviews_by_user or {}, "user_id", v0="reviews_count", v1="avg_rating"
+    )
+
+    res_times = MagicMock()
+    res_times.all.return_value = _make_grouped_rows(times_by_user or {}, "user_id", v0="minutes")
+
+    res_badges = MagicMock()
+    res_badges.all.return_value = _make_grouped_rows(badges_by_user or {}, "user_id", v0="badges_count")
 
     res_ratings = MagicMock()
     res_ratings.all.return_value = _make_rating_rows(raw_ratings)
@@ -120,8 +151,14 @@ def _make_group_stats_db_mocks(
     res_emotional = MagicMock()
     res_emotional.one.return_value = emotional_row
 
+    side_effects = [res_rounds, res_avg, res_members, res_reviews]
+    if rounds:
+        side_effects.append(res_times)
+    if members:
+        side_effects.append(res_badges)
+    side_effects += [res_ratings, res_emotional]
+
     db = AsyncMock()
-    side_effects = [res_rounds, res_avg, res_time, res_members, res_ratings, res_emotional]
     db.execute = AsyncMock(side_effect=side_effects)
 
     return db, side_effects
@@ -200,6 +237,157 @@ async def test_get_group_stats_cache_miss_no_member() -> None:
         result = await get_group_stats(db, group_id=group_id)
 
     assert result["member_leaderboard"] == []
+
+
+# ── member_leaderboard ─────────────────────────────────────────────────────────
+
+
+def _no_cache_redis() -> AsyncMock:
+    """Redis mock com cache sempre vazio."""
+    redis = AsyncMock()
+    redis.get = AsyncMock(return_value=None)
+    redis.set = AsyncMock()
+    return redis
+
+
+def _make_members(count: int) -> list[tuple[MagicMock, MagicMock]]:
+    """`count` pares (GroupMember, User) como o join do leaderboard retorna."""
+    return [(MagicMock(), _make_user(username=f"leitor{i}", display_name=f"Leitor {i}")) for i in range(count)]
+
+
+@pytest.mark.asyncio
+async def test_leaderboard_query_count_is_independent_of_member_count() -> None:
+    """A contagem de queries de _compute_group_stats não pode crescer com os membros.
+
+    O bug era N+1: três queries por membro dentro do loop (24 round-trips no teto
+    de 8 membros). Este teste é o que impede a regressão voltar.
+    """
+    rounds = [_make_round()]
+
+    async def _count_queries(member_count: int) -> int:
+        members = _make_members(member_count)
+        db, _ = _make_group_stats_db_mocks(
+            rounds=rounds,
+            members=members,
+            reviews_by_user={user.id: (1, 4.0) for _m, user in members},
+            times_by_user={user.id: 30 for _m, user in members},
+            badges_by_user={user.id: 2 for _m, user in members},
+        )
+        with patch("app.services.stats.get_redis", return_value=_no_cache_redis()):
+            await get_group_stats(db, group_id=uuid.uuid4())
+        return db.execute.await_count
+
+    one_member = await _count_queries(1)
+    eight_members = await _count_queries(8)
+
+    assert one_member == eight_members, "a contagem de queries deve ser constante no número de membros"
+    assert eight_members == 8, "1 rodadas + 1 avg + 1 membros + 3 agregações por usuário + 1 ratings + 1 emocional"
+
+
+@pytest.mark.asyncio
+async def test_leaderboard_no_execute_inside_loop() -> None:
+    """Oito membros com dados completos ainda cabem em 8 queries."""
+    members = _make_members(8)
+    db, _ = _make_group_stats_db_mocks(
+        rounds=[_make_round(), _make_round()],
+        members=members,
+        reviews_by_user={user.id: (i, 5.0) for i, (_m, user) in enumerate(members)},
+        times_by_user={user.id: i * 10 for i, (_m, user) in enumerate(members)},
+        badges_by_user={user.id: i for i, (_m, user) in enumerate(members)},
+    )
+
+    with patch("app.services.stats.get_redis", return_value=_no_cache_redis()):
+        result = await get_group_stats(db, group_id=uuid.uuid4())
+
+    assert len(result["member_leaderboard"]) == 8
+    assert db.execute.await_count == 8
+
+
+@pytest.mark.asyncio
+async def test_leaderboard_maps_aggregates_to_the_right_member() -> None:
+    """Cada linha do leaderboard recebe os números do próprio usuário."""
+    members = _make_members(3)
+    alice, bob, carol = (user for _m, user in members)
+
+    db, _ = _make_group_stats_db_mocks(
+        rounds=[_make_round()],
+        members=members,
+        reviews_by_user={alice.id: (3, 4.5), carol.id: (1, 2.0)},
+        times_by_user={alice.id: 120, carol.id: 45},
+        badges_by_user={alice.id: 7, bob.id: 1},
+    )
+
+    with patch("app.services.stats.get_redis", return_value=_no_cache_redis()):
+        result = await get_group_stats(db, group_id=uuid.uuid4())
+
+    by_user = {row["user_id"]: row for row in result["member_leaderboard"]}
+
+    assert by_user[str(alice.id)]["books_finished"] == 3
+    assert by_user[str(alice.id)]["reviews_count"] == 3
+    assert by_user[str(alice.id)]["avg_rating"] == 4.5
+    assert by_user[str(alice.id)]["reading_time_minutes"] == 120
+    assert by_user[str(alice.id)]["badges_count"] == 7
+
+    # Bob não tem review nem sessão — zeros, não KeyError
+    assert by_user[str(bob.id)]["books_finished"] == 0
+    assert by_user[str(bob.id)]["avg_rating"] is None
+    assert by_user[str(bob.id)]["reading_time_minutes"] == 0
+    assert by_user[str(bob.id)]["badges_count"] == 1
+
+    assert by_user[str(carol.id)]["reading_time_minutes"] == 45
+    assert by_user[str(carol.id)]["badges_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_leaderboard_sorted_by_books_finished_desc() -> None:
+    """O ordenamento do leaderboard segue books_finished decrescente."""
+    members = _make_members(4)
+    users = [user for _m, user in members]
+
+    db, _ = _make_group_stats_db_mocks(
+        rounds=[_make_round()],
+        members=members,
+        reviews_by_user={users[0].id: (1, 3.0), users[2].id: (5, 4.0), users[3].id: (2, 5.0)},
+    )
+
+    with patch("app.services.stats.get_redis", return_value=_no_cache_redis()):
+        result = await get_group_stats(db, group_id=uuid.uuid4())
+
+    assert [row["books_finished"] for row in result["member_leaderboard"]] == [5, 2, 1, 0]
+
+
+@pytest.mark.asyncio
+async def test_total_reading_time_derived_from_member_sums() -> None:
+    """total_reading_time_minutes é a soma das agregações por membro — sem query própria."""
+    members = _make_members(3)
+    users = [user for _m, user in members]
+
+    db, _ = _make_group_stats_db_mocks(
+        rounds=[_make_round()],
+        members=members,
+        times_by_user={users[0].id: 100, users[1].id: 25, users[2].id: 5},
+    )
+
+    with patch("app.services.stats.get_redis", return_value=_no_cache_redis()):
+        result = await get_group_stats(db, group_id=uuid.uuid4())
+
+    assert result["total_reading_time_minutes"] == 130
+    assert sum(row["reading_time_minutes"] for row in result["member_leaderboard"]) == 130
+
+
+@pytest.mark.asyncio
+async def test_no_finished_round_skips_reading_session_aggregation() -> None:
+    """Sem rodada finalizada não se monta um `IN ()` — a query de sessões nem roda."""
+    members = _make_members(2)
+    db, _ = _make_group_stats_db_mocks(members=members, reviews_by_user={members[0][1].id: (1, 4.0)})
+
+    with patch("app.services.stats.get_redis", return_value=_no_cache_redis()):
+        result = await get_group_stats(db, group_id=uuid.uuid4())
+
+    assert db.execute.await_count == 7, "a agregação de sessões é dispensada quando não há rodada finalizada"
+    assert result["total_reading_time_minutes"] == 0
+    # Reviews de rodadas ainda não finalizadas continuam contando no leaderboard
+    assert result["member_leaderboard"][0]["books_finished"] == 1
 
 
 # ── rating_distribution ────────────────────────────────────────────────────────

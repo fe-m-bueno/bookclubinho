@@ -109,54 +109,60 @@ async def _compute_group_stats(
     avg_rating_raw = avg_rating_result.scalar_one_or_none()
     average_rating = float(avg_rating_raw) if avg_rating_raw is not None else None
 
-    # ── Total reading time ────────────────────────────────────────────────────
-    # Get all round_ids for this group
-    round_ids = [r.id for r in finished_rounds]
-    total_time_result = await db.execute(
-        select(func.coalesce(func.sum(ReadingSession.duration_minutes), 0)).where(
-            ReadingSession.round_id.in_(round_ids)
-        )
-    )
-    total_reading_time = int(total_time_result.scalar_one())
-
     # ── Member leaderboard ────────────────────────────────────────────────────
     members_result = await db.execute(
         select(GroupMember, User).join(User, User.id == GroupMember.user_id).where(GroupMember.group_id == group_id)
     )
     members_rows = members_result.all()
+    member_ids = [user.id for _member, user in members_rows]
+
+    # Três agregações com GROUP BY user_id resolvem o leaderboard inteiro. Antes
+    # eram três queries *por membro* dentro do loop — 24 round-trips no teto de
+    # 8 membros, todas pagas em cada miss de cache.
+    reviews_result = await db.execute(
+        select(
+            BookReview.user_id,
+            func.count(BookReview.id).label("reviews_count"),
+            func.avg(BookReview.star_rating).label("avg_rating"),
+        )
+        .where(BookReview.group_id == group_id)
+        .group_by(BookReview.user_id)
+    )
+    reviews_by_user = {row.user_id: (int(row.reviews_count or 0), row.avg_rating) for row in reviews_result.all()}
+
+    # `round_ids` vazio geraria `IN ()`; sem rodada finalizada não há sessão a somar.
+    round_ids = [r.id for r in finished_rounds]
+    times_by_user: dict[uuid.UUID, int] = {}
+    if round_ids:
+        times_result = await db.execute(
+            select(
+                ReadingSession.user_id,
+                func.coalesce(func.sum(ReadingSession.duration_minutes), 0).label("minutes"),
+            )
+            .where(ReadingSession.round_id.in_(round_ids))
+            .group_by(ReadingSession.user_id)
+        )
+        times_by_user = {row.user_id: int(row.minutes) for row in times_result.all()}
+
+    badges_by_user: dict[uuid.UUID, int] = {}
+    if member_ids:
+        badges_result = await db.execute(
+            select(UserBadge.user_id, func.count(UserBadge.id).label("badges_count"))
+            .where(UserBadge.user_id.in_(member_ids))
+            .group_by(UserBadge.user_id)
+        )
+        badges_by_user = {row.user_id: int(row.badges_count or 0) for row in badges_result.all()}
+
+    # ── Total reading time ────────────────────────────────────────────────────
+    # Sai de graça da agregação por membro — antes era uma query própria somando
+    # exatamente o mesmo conjunto de sessões.
+    total_reading_time = sum(times_by_user.values())
 
     leaderboard = []
     for _member, user in members_rows:
-        # Count reviews (each review = 1 finished book in a round)
-        member_reviews_result = await db.execute(
-            select(
-                func.count(BookReview.id).label("reviews_count"),
-                func.avg(BookReview.star_rating).label("avg_rating"),
-            ).where(
-                BookReview.group_id == group_id,
-                BookReview.user_id == user.id,
-            )
-        )
-        member_review_row = member_reviews_result.one()
-        reviews_count = int(member_review_row.reviews_count or 0)
-        avg_r = float(member_review_row.avg_rating) if member_review_row.avg_rating else None
-
-        # Reading time for this member in this group
-        member_time_result = await db.execute(
-            select(func.coalesce(func.sum(ReadingSession.duration_minutes), 0)).where(
-                ReadingSession.user_id == user.id,
-                ReadingSession.round_id.in_(round_ids),
-            )
-        )
-        member_time = int(member_time_result.scalar_one())
-
-        # Badge count (group-specific + global)
-        member_badges_result = await db.execute(
-            select(func.count(UserBadge.id)).where(
-                UserBadge.user_id == user.id,
-            )
-        )
-        badges_count = int(member_badges_result.scalar_one() or 0)
+        # Cada review = 1 livro terminado numa rodada
+        reviews_count, avg_rating_raw_member = reviews_by_user.get(user.id, (0, None))
+        avg_r = float(avg_rating_raw_member) if avg_rating_raw_member else None
 
         leaderboard.append(
             {
@@ -167,9 +173,9 @@ async def _compute_group_stats(
                 "books_finished": reviews_count,
                 "avg_rating": avg_r,
                 "current_streak": user.streak_current,
-                "reading_time_minutes": member_time,
+                "reading_time_minutes": times_by_user.get(user.id, 0),
                 "reviews_count": reviews_count,
-                "badges_count": badges_count,
+                "badges_count": badges_by_user.get(user.id, 0),
             }
         )
 
