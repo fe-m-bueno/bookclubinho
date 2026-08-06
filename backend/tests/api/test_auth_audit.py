@@ -87,11 +87,42 @@ class _RecordingSession:
         return None
 
 
+class _RollbackOnErrorSession(_RecordingSession):
+    """Como o `get_session`: o que não foi commitado morre no rollback.
+
+    O dublê que só registra `add` não distingue "a linha foi escrita" de "a
+    linha foi adicionada e descartada", e é exatamente aí que estava o buraco do
+    `login_failed`.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.committed: list[object] = []
+
+    async def commit(self) -> None:
+        self.commits += 1
+        self.committed.extend(self.added)
+        self.added = []
+
+    async def rollback(self) -> None:
+        self.added = []
+
+    @property
+    def audit_rows(self) -> list[AuditLog]:
+        return [o for o in (*self.committed, *self.added) if isinstance(o, AuditLog)]
+
+
 def _client(session: _RecordingSession) -> TestClient:
     from app.core.deps import get_session
 
     async def fake_session():
-        yield session
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        else:
+            await session.commit()
 
     app.dependency_overrides[get_session] = fake_session
     return TestClient(
@@ -158,10 +189,24 @@ class TestLoginAudit:
         assert row is not None
         assert row.user_id == user.id, "a linha de login não é atribuível a ninguém"
 
-    def test_failed_login_still_audited_with_origin(self) -> None:
+    def test_failed_login_survives_the_rollback(self) -> None:
+        """A linha de `login_failed` era perdida — zero linhas na tabela inteira.
+
+        O handler chamava `log_event` e levantava `HTTPException` em seguida.
+        `log_event` não commita de propósito (o caller é dono da transação), mas
+        no caminho de erro não existe caller que commite: `get_session` faz
+        rollback quando a exceção sobe, e a linha ia com ele.
+
+        Medido no banco de e2e depois de uma tentativa de login errada pela UI:
+        `select count(*) from audit_log where action = 'login_failed'` → 0, com
+        `login_success`, `register` e `logout` todos presentes.
+
+        O dublê aqui faz rollback como o `get_session` faz. Sem isso o teste
+        passa afirmando só que a chamada aconteceu, não que a linha sobreviveu.
+        """
         from app.services.auth import AuthError
 
-        session = _RecordingSession()
+        session = _RollbackOnErrorSession()
         with patch(
             "app.api.v1.endpoints.auth.authenticate_user",
             new_callable=AsyncMock,

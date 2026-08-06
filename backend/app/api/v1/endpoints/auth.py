@@ -53,6 +53,7 @@ from app.services.audit import (
     REGISTER,
     SESSION_REVOKED,
     log_event,
+    log_event_now,
 )
 from app.services.auth import (
     AuthError,
@@ -196,7 +197,9 @@ async def login(
     try:
         user = await authenticate_user(db=db, email=form_data.username, password=form_data.password)
     except AuthError as exc:
-        await log_event(db, LOGIN_FAILED, request=request)
+        # `log_event_now` e não `log_event`: o `raise` abaixo faz o `get_session`
+        # dar rollback, e a linha ia com ele — a tabela tinha zero `login_failed`.
+        await log_event_now(db, LOGIN_FAILED, request=request)
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     await establish_session(

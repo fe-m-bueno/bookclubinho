@@ -34,7 +34,7 @@ from app.core.security import (
 from app.db.models.user import User
 from app.db.models.user_session import UserSession
 from app.security.sanitizer import sanitize
-from app.services.audit import ACCOUNT_LOCKED, log_event
+from app.services.audit import ACCOUNT_LOCKED, log_event_now
 from app.services.email import email_service, send_magic_link_email, send_verification_email
 
 logger = structlog.get_logger(__name__)
@@ -557,7 +557,8 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
             # deixava rastro: `ACCOUNT_LOCKED` era constante definida e nunca
             # chamada. Sem `request` aqui — o service não o tem —, mas com o
             # `user_id` quando dá para identificar, que é o que falta na busca.
-            await log_event(
+            # `log_event_now`: o `raise` logo abaixo faz o rollback levar a linha.
+            await log_event_now(
                 db,
                 ACCOUNT_LOCKED,
                 user_id=user.id if user is not None else None,
