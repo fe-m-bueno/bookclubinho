@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import type { MessageCreatePayload } from "@/lib/types/chat";
 
 interface ChatInputProps {
-  groupId: string;
   onSend: (text: string, richJson: Record<string, unknown>) => void;
   onTyping: () => void;
   onImageSelect: (file: File) => void;
@@ -21,7 +20,6 @@ interface ChatInputProps {
 }
 
 export function ChatInput({
-  groupId,
   onSend,
   onTyping,
   onImageSelect,
@@ -123,7 +121,6 @@ export function ChatInput({
       <div className="flex items-end gap-2">
         {/* Toolbar toggle + expanded action buttons */}
         <InputToolbar
-          groupId={groupId}
           onImageSelect={onImageSelect}
           onSendSpecial={onSendSpecial}
           onSpoilerChange={onSpoilerChange}

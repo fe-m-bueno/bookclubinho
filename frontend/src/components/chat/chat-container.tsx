@@ -230,7 +230,6 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
         )}
       </div>
       <ChatInput
-        groupId={groupId}
         onSend={handleSend}
         onTyping={sendTyping}
         onImageSelect={handleImageSelect}
