@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { errorMessage } from "@/hooks/use-api-query";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import type { WrappedResponse } from "@/lib/types/wrapped";
 
 interface UseGenerateWrappedReturn {

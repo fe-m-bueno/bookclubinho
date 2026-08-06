@@ -17,16 +17,17 @@ import { BookDetailDrawer } from "./book-detail-drawer";
 import { NominationList } from "./nomination-list";
 import { StartVotingButton } from "./start-voting-button";
 import type { BookResult } from "@/lib/types/book";
+import { errorMessage } from "@/lib/api";
 
 export function RoundNominatingClient() {
   const { group } = useGroup();
   const isAdmin = group.invite_code !== null;
-  const { round, loading, error, refetch } = useCurrentRound(group.id);
+  const { round, isLoading, error, refetch } = useCurrentRound(group.id);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState<BookResult | null>(null);
 
-  const { results: searchResults, loading: searchLoading } =
+  const { results: searchResults, isLoading: searchLoading } =
     useBookSearch(searchQuery);
 
   const { submit: createRound, loading: creatingRound } = useAuthSubmit({
@@ -37,13 +38,13 @@ export function RoundNominatingClient() {
     },
   });
 
-  const { showSkeleton } = useSkeletonState(loading);
+  const { showSkeleton } = useSkeletonState(isLoading);
   if (showSkeleton) return <RoundSkeleton />;
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-        <p className="text-muted-foreground">{error}</p>
+        <p className="text-muted-foreground">{errorMessage(error)}</p>
         <Button type="button" onClick={refetch}>
           Tentar novamente
         </Button>

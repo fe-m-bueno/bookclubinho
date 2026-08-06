@@ -15,7 +15,7 @@ const get = api.get as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => vi.clearAllMocks());
 
-// As mecânicas (loading, erro, refetch, credenciais) são de useApiQuery e
+// As mecânicas (loading, erro, refetch, credenciais) são do React Query e de
 // lib/api, testadas lá. Aqui fica só o que é deste hook: caminho e formato.
 describe("useGroupStats", () => {
   it("busca as estatísticas do grupo", async () => {
@@ -24,7 +24,7 @@ describe("useGroupStats", () => {
 
     const { result } = renderApiHook(() => useGroupStats("g1"));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(get).toHaveBeenCalledWith("/groups/g1/stats");
     expect(result.current.data).toEqual(stats);
   });

@@ -17,8 +17,7 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { errorMessage } from "@/hooks/use-api-query";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, errorMessage } from "@/lib/api";
 import { AUTH_PROVIDER_LABELS } from "@/lib/auth-provider-labels";
 import { passwordField } from "@/lib/password";
 

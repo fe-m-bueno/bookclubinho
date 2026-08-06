@@ -23,7 +23,7 @@ describe("useCurrentRound", () => {
 
     const { result } = renderApiHook(() => useCurrentRound("g1"));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(get).toHaveBeenCalledWith("/groups/g1/rounds/current");
     expect(result.current.round).toEqual(round);
   });
@@ -35,7 +35,7 @@ describe("useCurrentRound", () => {
 
     const { result } = renderApiHook(() => useCurrentRound("g1"));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.round).toBeNull();
     expect(result.current.error).toBeNull();
   });

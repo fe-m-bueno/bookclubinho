@@ -29,8 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { errorMessage } from "@/hooks/use-api-query";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, errorMessage } from "@/lib/api";
 import type { UserMe } from "@/lib/types/user";
 import { AUTH_PROVIDER_LABELS } from "@/lib/auth-provider-labels";
 

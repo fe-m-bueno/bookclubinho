@@ -13,6 +13,7 @@ import { GenreBreakdownChart } from "./genre-breakdown-chart";
 import { MemberLeaderboard } from "./member-leaderboard";
 import { EmotionalStatsSection } from "./emotional-stats-section";
 import { ReadingTimeline } from "./reading-timeline";
+import { errorMessage } from "@/lib/api";
 
 
 function WrappedBanner({ groupId, year }: { groupId: string; year: number }) {
@@ -57,12 +58,12 @@ function ShelfTimeline({ groupId }: { groupId: string }) {
 }
 
 export function StatsClient({ groupId }: StatsClientProps) {
-  const { data, loading, error, refetch } = useGroupStats(groupId);
+  const { data, isLoading, error, refetch } = useGroupStats(groupId);
   const now = new Date();
   const currentYear = now.getFullYear();
   const isDecember = now.getMonth() === 11;
 
-  const { showSkeleton } = useSkeletonState(loading);
+  const { showSkeleton } = useSkeletonState(isLoading);
   if (showSkeleton) {
     return <StatsSkeleton />;
   }
@@ -70,7 +71,7 @@ export function StatsClient({ groupId }: StatsClientProps) {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <p className="text-sm text-muted-foreground">{error}</p>
+        <p className="text-sm text-muted-foreground">{errorMessage(error)}</p>
         <Button variant="outline" size="sm" onClick={refetch}>
           Tentar novamente
         </Button>

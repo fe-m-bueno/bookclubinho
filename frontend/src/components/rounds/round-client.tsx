@@ -16,11 +16,12 @@ import { VotingReveal } from "./voting-reveal";
 import { RoundReadingPhase } from "./round-reading-phase";
 import { RoundReviewingPhase } from "./round-reviewing-phase";
 import type { FinalizeResponse } from "@/lib/types/round";
+import { errorMessage } from "@/lib/api";
 
 export function RoundClient() {
   const { group } = useGroup();
   const isAdmin = group.invite_code !== null;
-  const { round, loading, error, refetch } = useCurrentRound(group.id);
+  const { round, isLoading, error, refetch } = useCurrentRound(group.id);
   const [revealSeen, setRevealSeen] = useState(false);
 
   useEffect(() => {
@@ -38,14 +39,14 @@ export function RoundClient() {
     },
   });
 
-  const { showSkeleton } = useSkeletonState(loading);
+  const { showSkeleton } = useSkeletonState(isLoading);
   if (showSkeleton) return <RoundSkeleton />;
-  if (loading) return null;
+  if (isLoading) return null;
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-        <p className="text-muted-foreground">{error}</p>
+        <p className="text-muted-foreground">{errorMessage(error)}</p>
         <Button type="button" onClick={refetch}>
           Tentar novamente
         </Button>

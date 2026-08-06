@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { ShelfClient } from "@/components/shelf/shelf-client";
 import type { ShelfResponse } from "@/lib/types/shelf";
+import { ApiError } from "@/lib/api";
 
 // Mock useGroup
 vi.mock("@/lib/contexts/group-context", () => ({
@@ -72,7 +73,7 @@ describe("ShelfClient", () => {
     vi.useFakeTimers();
     mockUseShelf.mockReturnValue({
       data: null,
-      loading: true,
+      isLoading: true,
       error: null,
       refetch: vi.fn(),
     });
@@ -86,8 +87,8 @@ describe("ShelfClient", () => {
     const refetch = vi.fn();
     mockUseShelf.mockReturnValue({
       data: null,
-      loading: false,
-      error: "Erro ao carregar.",
+      isLoading: false,
+      error: new ApiError(500, "Erro ao carregar."),
       refetch,
     });
     render(<ShelfClient />);
@@ -98,7 +99,7 @@ describe("ShelfClient", () => {
   it("shows empty state when books array is empty", () => {
     mockUseShelf.mockReturnValue({
       data: { group_name: "G", group_photo_url: null, books: [] },
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -109,7 +110,7 @@ describe("ShelfClient", () => {
   it("renders ShelfGrid with books when data is available", () => {
     mockUseShelf.mockReturnValue({
       data: mockShelf,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -121,7 +122,7 @@ describe("ShelfClient", () => {
   it("shows book count in header", () => {
     mockUseShelf.mockReturnValue({
       data: mockShelf,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -132,7 +133,7 @@ describe("ShelfClient", () => {
   it("shows share button", () => {
     mockUseShelf.mockReturnValue({
       data: mockShelf,
-      loading: false,
+      isLoading: false,
       error: null,
       refetch: vi.fn(),
     });

@@ -8,6 +8,7 @@ import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useWrapped } from "@/hooks/use-wrapped";
 import { useGenerateWrapped } from "@/hooks/use-generate-wrapped";
 import { WrappedStories } from "./wrapped-stories";
+import { errorMessage } from "@/lib/api";
 
 interface WrappedClientProps {
   groupId: string;
@@ -28,7 +29,7 @@ function CloseButton({ onClick }: { onClick: () => void }) {
 
 export function WrappedClient({ groupId, year }: WrappedClientProps) {
   const router = useRouter();
-  const { data, loading, error, refetch } = useWrapped(groupId, year);
+  const { data, isLoading, error, refetch } = useWrapped(groupId, year);
   const { generate, loading: generating, error: generateError } = useGenerateWrapped();
 
   async function handleGenerate() {
@@ -38,7 +39,7 @@ export function WrappedClient({ groupId, year }: WrappedClientProps) {
     }
   }
 
-  const { showSkeleton } = useSkeletonState(loading);
+  const { showSkeleton } = useSkeletonState(isLoading);
   if (showSkeleton) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-4">
@@ -78,7 +79,7 @@ export function WrappedClient({ groupId, year }: WrappedClientProps) {
       )}
       {error && (
         <>
-          <p className="text-destructive text-sm">{error}</p>
+          <p className="text-destructive text-sm">{errorMessage(error)}</p>
           <Button variant="ghost" size="sm" onClick={refetch}>
             Tentar novamente
           </Button>

@@ -10,6 +10,7 @@ import { GroupHeader } from "./group-header";
 import { GroupTabBar } from "./group-tab-bar";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { GroupLayoutSkeleton } from "./group-layout-skeleton";
+import { errorMessage } from "@/lib/api";
 
 interface GroupLayoutShellProps {
   groupId: string;
@@ -17,22 +18,22 @@ interface GroupLayoutShellProps {
 }
 
 export function GroupLayoutShell({ groupId, children }: GroupLayoutShellProps) {
-  const { group, loading, error, refetch } = useGroupDetail(groupId);
+  const { group, isLoading, error, refetch } = useGroupDetail(groupId);
   const showTimer = useTimerStore((s) => s.status !== "idle" || s.roundContext !== null);
 
   const hasMeetingSoon = useMeetingsBadge(groupId);
 
-  const { showSkeleton } = useSkeletonState(loading);
+  const { showSkeleton } = useSkeletonState(isLoading);
   if (showSkeleton) {
     return <GroupLayoutSkeleton />;
   }
-  if (loading) return null;
+  if (isLoading) return null;
 
   if (error || !group) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4">
         <p className="text-muted-foreground text-center">
-          {error || "Erro ao carregar grupo."}
+          {error ? errorMessage(error) : "Erro ao carregar grupo."}
         </p>
         <Button type="button" onClick={refetch}>
           Tentar novamente

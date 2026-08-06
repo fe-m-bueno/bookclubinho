@@ -12,6 +12,7 @@ import { QuoteMasonryGrid } from "./quote-masonry-grid";
 import { QuoteFullView } from "./quote-full-view";
 import { CreateQuoteDialog } from "./create-quote-dialog";
 import type { QuoteResponse } from "@/lib/types/quote";
+import { errorMessage } from "@/lib/api";
 
 interface QuotesClientProps {
   groupId: string;
@@ -27,9 +28,9 @@ export function QuotesClient({ groupId }: QuotesClientProps) {
   );
   const [showCreate, setShowCreate] = useState(false);
 
-  const { quotes, loading, loadingMore, hasMore, error, loadMore, refetch } =
+  const { quotes, isLoading, loadingMore, hasMore, error, loadMore, refetch } =
     useQuotes({ groupId, sort });
-  const { showSkeleton } = useSkeletonState(loading);
+  const { showSkeleton } = useSkeletonState(isLoading);
 
   const { toggleVote, deleteQuote } = useQuoteMutations(groupId);
 
@@ -106,9 +107,9 @@ export function QuotesClient({ groupId }: QuotesClientProps) {
       {/* Content */}
       {showSkeleton ? (
         <QuotesSkeleton />
-      ) : !loading && error ? (
+      ) : !isLoading && error ? (
         <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-          <p className="text-muted-foreground text-sm">{error}</p>
+          <p className="text-muted-foreground text-sm">{errorMessage(error)}</p>
           <Button type="button" variant="outline" size="sm" onClick={refetch}>
             Tentar novamente
           </Button>

@@ -14,8 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useGroupCodeCheck } from "@/hooks/use-group-code-check";
-import { errorMessage } from "@/hooks/use-api-query";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 
 interface JoinGroupDialogProps {
   open: boolean;

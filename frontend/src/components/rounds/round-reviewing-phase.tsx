@@ -24,6 +24,7 @@ import { RoundStatusBadge } from "./round-status-badge";
 import { ReviewWizard } from "./review-wizard";
 import { ReviewsList, ReviewsListSkeleton } from "./reviews-list";
 import type { RoundDetailResponse } from "@/lib/types/round";
+import { errorMessage } from "@/lib/api";
 
 interface RoundReviewingPhaseProps {
   round: RoundDetailResponse;
@@ -36,7 +37,7 @@ export function RoundReviewingPhase({
   isAdmin,
   refetch,
 }: RoundReviewingPhaseProps) {
-  const { review: myReview, loading: myReviewLoading, refetch: refetchMyReview } =
+  const { review: myReview, isLoading: myReviewLoading, refetch: refetchMyReview } =
     useMyReview(round.id);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const { showSkeleton: showMyReviewSkeleton } = useSkeletonState(myReviewLoading);
@@ -109,14 +110,16 @@ export function RoundReviewingPhase({
 }
 
 function AllReviewsSection({ roundId }: { roundId: string }) {
-  const { reviews, loading: reviewsLoading, error } = useReviews(roundId);
+  const { reviews, isLoading: reviewsLoading, error } = useReviews(roundId);
   const { stats } = useReviewStats(roundId);
   const { showSkeleton: showReviewsSkeleton } = useSkeletonState(reviewsLoading);
 
   if (showReviewsSkeleton) return <ReviewsListSkeleton />;
   if (error) {
     return (
-      <p className="text-sm text-muted-foreground text-center">{error}</p>
+      <p className="text-sm text-muted-foreground text-center">
+        {errorMessage(error)}
+      </p>
     );
   }
   if (!reviews || reviews.length === 0) {

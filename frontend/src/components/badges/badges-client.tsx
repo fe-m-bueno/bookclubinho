@@ -10,6 +10,7 @@ import { useBadges } from "@/hooks/use-badges";
 import { BadgesSkeleton } from "./badges-skeleton";
 import { BadgeGrid } from "./badge-grid";
 import type { BadgeResponse } from "@/lib/types/badge";
+import { errorMessage } from "@/lib/api";
 
 const TABS = [
   { value: "all", label: "Todas" },
@@ -23,8 +24,8 @@ const TABS = [
 type TabValue = (typeof TABS)[number]["value"];
 
 export function BadgesClient() {
-  const { myBadges, catalog, loading, error, refetch } = useBadges();
-  const { showSkeleton } = useSkeletonState(loading);
+  const { myBadges, catalog, isLoading, error, refetch } = useBadges();
+  const { showSkeleton } = useSkeletonState(isLoading);
   const [activeTab, setActiveTab] = useState<TabValue>("all");
 
   const earnedMap = useMemo(() => {
@@ -76,7 +77,7 @@ export function BadgesClient() {
           <h1 className="text-2xl font-display font-bold tracking-tight md:text-3xl">
             Conquistas
           </h1>
-          {!loading && !showSkeleton && !error && (
+          {!isLoading && !showSkeleton && !error && (
             <p className="mt-1 text-sm text-muted-foreground">
               {earnedCount} de {totalCount} desbloqueadas
             </p>
@@ -85,16 +86,16 @@ export function BadgesClient() {
 
         {showSkeleton && <BadgesSkeleton />}
 
-        {!loading && !showSkeleton && error != null && (
+        {!isLoading && !showSkeleton && error != null && (
           <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-            <p className="text-muted-foreground">{error}</p>
+            <p className="text-muted-foreground">{errorMessage(error)}</p>
             <Button type="button" onClick={refetch}>
               Tentar novamente
             </Button>
           </div>
         )}
 
-        {!loading && !showSkeleton && error == null && (
+        {!isLoading && !showSkeleton && error == null && (
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as TabValue)}

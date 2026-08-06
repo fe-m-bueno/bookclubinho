@@ -12,7 +12,7 @@ const MIN_LENGTH = 2;
 
 interface UseBookSearchReturn {
   results: BookResult[];
-  loading: boolean;
+  isLoading: boolean;
 }
 
 export function useBookSearch(query: string): UseBookSearchReturn {
@@ -34,6 +34,6 @@ export function useBookSearch(query: string): UseBookSearchReturn {
     // Busca sem resultado e busca que falhou aparecem iguais para o usuário —
     // era o comportamento anterior, que engolia o erro devolvendo [].
     results: search.data ?? [],
-    loading: enabled && (settling || search.isPending),
+    isLoading: enabled && (settling || search.isPending),
   };
 }

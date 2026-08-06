@@ -7,8 +7,7 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
-import { errorMessage } from "@/hooks/use-api-query";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 
 const MAX_GENRES = 10;
 const SKELETON_ITEMS = Array.from({ length: 12 });

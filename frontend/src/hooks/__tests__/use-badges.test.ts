@@ -31,7 +31,7 @@ describe("useBadges", () => {
 
     const { result } = renderApiHook(() => useBadges());
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.myBadges).toEqual(MY.badges);
     expect(result.current.catalog).toHaveLength(2);
   });
@@ -43,7 +43,7 @@ describe("useBadges", () => {
 
     const { result } = renderApiHook(() => useBadges());
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     const paths = get.mock.calls.map((c) => c[0]);
     expect(paths).toContain("/users/me/badges");
     expect(paths).toContain("/badges");
@@ -58,7 +58,7 @@ describe("useBadges", () => {
     const { result } = renderApiHook(() => useBadges());
 
     await waitFor(() => expect(result.current.error).not.toBeNull());
-    expect(result.current.error).toBe("Catálogo indisponível.");
+    expect(result.current.error?.message).toBe("Catálogo indisponível.");
   });
 });
 

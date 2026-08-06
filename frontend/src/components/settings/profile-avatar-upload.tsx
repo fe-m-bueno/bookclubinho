@@ -7,8 +7,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { errorMessage } from "@/hooks/use-api-query";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB

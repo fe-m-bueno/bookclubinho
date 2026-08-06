@@ -8,8 +8,7 @@ import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Switch } from "@/components/ui/switch";
 import { NotificationsSettingsSkeleton } from "./notifications-settings-skeleton";
-import { errorMessage } from "@/hooks/use-api-query";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import type { EmailNotificationPreferences, UserMe } from "@/lib/types/user";
 

@@ -34,6 +34,19 @@ const PREFIX = "/api/v1";
 // call sites já as procuram.
 export { ApiError, UnauthorizedError };
 
+/**
+ * A mensagem que o usuário lê para um erro qualquer.
+ *
+ * Rede fora do ar não tem `detail` — qualquer outra coisa vem do backend, que
+ * escreve a frase certa para o caso ("Sem acesso a esta rodada.", e não um
+ * genérico "erro ao carregar"). Morava em `use-api-query`; ficou aqui quando a
+ * ponte foi apagada, ao lado do `ApiError` de onde a mensagem sai.
+ */
+export function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.detail;
+  return "Erro de conexão. Verifique sua internet.";
+}
+
 // `object` e não `Record<string, unknown>`: uma interface declarada não tem
 // index signature, então não é atribuível ao Record e todo caller precisaria de
 // cast.

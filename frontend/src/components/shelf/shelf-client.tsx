@@ -8,18 +8,19 @@ import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { ShelfSkeleton } from "./shelf-skeleton";
 import { ShelfEmptyState } from "./shelf-empty-state";
 import { ShelfGrid } from "./shelf-grid";
+import { errorMessage } from "@/lib/api";
 
 export function ShelfClient() {
   const { group } = useGroup();
-  const { data, loading, error, refetch } = useShelf(group.id);
+  const { data, isLoading, error, refetch } = useShelf(group.id);
 
-  const { showSkeleton } = useSkeletonState(loading);
+  const { showSkeleton } = useSkeletonState(isLoading);
   if (showSkeleton) return <ShelfSkeleton />;
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-        <p className="text-muted-foreground">{error}</p>
+        <p className="text-muted-foreground">{errorMessage(error)}</p>
         <Button type="button" onClick={refetch}>
           Tentar novamente
         </Button>
