@@ -498,6 +498,311 @@ async def test_member_superlatives_computed() -> None:
 
 
 @pytest.mark.asyncio
+async def test_compute_wrapped_empty_path_full_payload() -> None:
+    """Sem rodada finalizada no ano, o payload é o vazio conhecido — mas com membros.
+
+    O caminho vazio não é totalmente vazio: `longest_streak_member`, `member_avatars`
+    e o superlative "Sequência Imbatível" continuam sendo computados a partir dos
+    membros do grupo, independente de existir rodada.
+    """
+    group_id = uuid.UUID("00000000-0000-0000-0000-0000000000aa")
+    group = _make_group(id=group_id, name="Clube Vazio", photo_url="https://cdn.test/g.jpg")
+
+    member = _make_user(
+        id=uuid.UUID("00000000-0000-0000-0000-0000000000b1"),
+        username="solitario",
+        display_name="Leitor Solitário",
+        avatar_url="https://cdn.test/a.jpg",
+        streak_longest=12,
+    )
+
+    db = _build_compute_db(group=group, rounds=[], streak_user=member, members=[member])
+
+    result = await _compute_wrapped_data(db, group_id=group_id, year=2025)
+
+    assert result == {
+        "year": 2025,
+        "group_name": "Clube Vazio",
+        "group_photo_url": "https://cdn.test/g.jpg",
+        "total_books_read": 0,
+        "total_pages": 0,
+        "total_reading_hours": 0.0,
+        "genre_breakdown": [],
+        "highest_rated_book": None,
+        "most_active_member": None,
+        "longest_streak_member": {
+            "user_id": str(member.id),
+            "username": "solitario",
+            "display_name": "Leitor Solitário",
+            "avatar_url": "https://cdn.test/a.jpg",
+        },
+        "funniest_oneliner": None,
+        "most_emotional_book": None,
+        "member_superlatives": [
+            {
+                "user_id": str(member.id),
+                "username": "solitario",
+                "display_name": "Leitor Solitário",
+                "avatar_url": "https://cdn.test/a.jpg",
+                "title": "Sequência Imbatível",
+                "emoji": "🔥",
+                "stat_label": "Maior streak",
+                "stat_value": "12 dias",
+            }
+        ],
+        "emotional_stats": {
+            "total_reviews": 0,
+            "cried_count": 0,
+            "loved_it_count": 0,
+            "felt_aroused_count": 0,
+            "found_heavy_count": 0,
+            "wants_more_count": 0,
+        },
+        "member_avatars": [
+            {
+                "user_id": str(member.id),
+                "username": "solitario",
+                "display_name": "Leitor Solitário",
+                "avatar_url": "https://cdn.test/a.jpg",
+            }
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_compute_wrapped_payload_snapshot() -> None:
+    """Snapshot do payload JSONB com dataset fixo — trava o formato contra refactors."""
+    group_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    group = _make_group(id=group_id, name="Clube do Livro", photo_url="https://cdn.test/group.png")
+
+    round_a_id = uuid.UUID("00000000-0000-0000-0000-0000000000a1")
+    round_b_id = uuid.UUID("00000000-0000-0000-0000-0000000000a2")
+    round_a = _make_round(
+        id=round_a_id,
+        group_id=group_id,
+        book_title="Dom Casmurro",
+        book_author="Machado de Assis",
+        book_cover_url="https://cdn.test/casmurro.jpg",
+        book_page_count=256,
+        book_genres=["ficção", "clássico"],
+    )
+    round_b = _make_round(
+        id=round_b_id,
+        group_id=group_id,
+        book_title="A Culpa é das Estrelas",
+        book_author="John Green",
+        book_cover_url=None,
+        book_page_count=300,
+        book_genres=["ficção"],
+    )
+
+    speed_user = _make_user(
+        id=uuid.UUID("00000000-0000-0000-0000-0000000000c1"),
+        username="relampago",
+        display_name="Relâmpago",
+        avatar_url="https://cdn.test/c1.png",
+        streak_longest=7,
+    )
+    critic_user = _make_user(
+        id=uuid.UUID("00000000-0000-0000-0000-0000000000c2"),
+        username="critico",
+        display_name=None,
+        streak_longest=3,
+    )
+    quotes_user = _make_user(
+        id=uuid.UUID("00000000-0000-0000-0000-0000000000c3"),
+        username="citador",
+        display_name="Citador",
+        streak_longest=1,
+    )
+    crier_user = _make_user(
+        id=uuid.UUID("00000000-0000-0000-0000-0000000000c4"),
+        username="chorao",
+        display_name="Chorão",
+        streak_longest=42,
+    )
+    members = [speed_user, critic_user, quotes_user, crier_user]
+
+    avg_row = MagicMock()
+    avg_row.round_id = round_a_id
+    avg_row.avg_rating = 4.6666
+
+    review = MagicMock()
+    review.funny_oneliner = "Li em dois dias e chorei nos dois."
+
+    emo_row = MagicMock()
+    emo_row.round_id = round_b_id
+    emo_row.total = 3
+    emo_row.cried_count = 2
+
+    es_row = MagicMock()
+    es_row.total_reviews = 7
+    es_row.cried_count = 4
+    es_row.loved_it_count = 6
+    es_row.felt_aroused_count = 1
+    es_row.found_heavy_count = 2
+    es_row.wants_more_count = 5
+
+    def _row(user_id: object, **kwargs: object) -> MagicMock:
+        r = MagicMock()
+        r.user_id = user_id
+        for k, v in kwargs.items():
+            setattr(r, k, v)
+        return r
+
+    db = _build_compute_db(
+        group=group,
+        rounds=[round_a, round_b],
+        total_minutes=930,
+        avg_rating_row=avg_row,
+        active_user=critic_user,
+        streak_user=crier_user,
+        oneliner_row=(review, quotes_user),
+        emotional_row=emo_row,
+        es_row=es_row,
+        members=members,
+        superlative_rows=[
+            _row(speed_user.id, total_minutes=310, book_count=2),
+            _row(critic_user.id, review_count=5),
+            _row(quotes_user.id, quote_count=9),
+            _row(crier_user.id, total=3, cried_count=2),
+        ],
+    )
+
+    result = await _compute_wrapped_data(db, group_id=group_id, year=2025)
+
+    assert result == {
+        "year": 2025,
+        "group_name": "Clube do Livro",
+        "group_photo_url": "https://cdn.test/group.png",
+        "total_books_read": 2,
+        "total_pages": 556,
+        "total_reading_hours": 15.5,
+        "genre_breakdown": [
+            {"genre": "ficção", "count": 2, "percentage": 66.67},
+            {"genre": "clássico", "count": 1, "percentage": 33.33},
+        ],
+        "highest_rated_book": {
+            "title": "Dom Casmurro",
+            "cover_url": "https://cdn.test/casmurro.jpg",
+            "author": "Machado de Assis",
+            "avg_rating": 4.67,
+        },
+        "most_active_member": {
+            "user_id": str(critic_user.id),
+            "username": "critico",
+            "display_name": None,
+            "avatar_url": None,
+        },
+        "longest_streak_member": {
+            "user_id": str(crier_user.id),
+            "username": "chorao",
+            "display_name": "Chorão",
+            "avatar_url": None,
+        },
+        "funniest_oneliner": {
+            "text": "Li em dois dias e chorei nos dois.",
+            "author_username": "citador",
+            "author_display_name": "Citador",
+            "author_avatar_url": None,
+            "vote_count": 0,
+        },
+        "most_emotional_book": {
+            "title": "A Culpa é das Estrelas",
+            "cover_url": None,
+            "author": "John Green",
+            "cried_percentage": 66.67,
+        },
+        "member_superlatives": [
+            {
+                "user_id": str(speed_user.id),
+                "username": "relampago",
+                "display_name": "Relâmpago",
+                "avatar_url": "https://cdn.test/c1.png",
+                "title": "Leitor Relâmpago",
+                "emoji": "⚡",
+                "stat_label": "Tempo médio por livro",
+                "stat_value": "155 min",
+            },
+            {
+                "user_id": str(critic_user.id),
+                "username": "critico",
+                "display_name": None,
+                "avatar_url": None,
+                "title": "Crítico Literário",
+                "emoji": "📝",
+                "stat_label": "Reviews enviadas",
+                "stat_value": "5",
+            },
+            {
+                "user_id": str(quotes_user.id),
+                "username": "citador",
+                "display_name": "Citador",
+                "avatar_url": None,
+                "title": "Mestre das Citações",
+                "emoji": "💬",
+                "stat_label": "Citações adicionadas",
+                "stat_value": "9",
+            },
+            {
+                "user_id": str(crier_user.id),
+                "username": "chorao",
+                "display_name": "Chorão",
+                "avatar_url": None,
+                "title": "Chorão Oficial",
+                "emoji": "😭",
+                "stat_label": "Livros que fizeram chorar",
+                "stat_value": "67%",
+            },
+            {
+                "user_id": str(crier_user.id),
+                "username": "chorao",
+                "display_name": "Chorão",
+                "avatar_url": None,
+                "title": "Sequência Imbatível",
+                "emoji": "🔥",
+                "stat_label": "Maior streak",
+                "stat_value": "42 dias",
+            },
+        ],
+        "emotional_stats": {
+            "total_reviews": 7,
+            "cried_count": 4,
+            "loved_it_count": 6,
+            "felt_aroused_count": 1,
+            "found_heavy_count": 2,
+            "wants_more_count": 5,
+        },
+        "member_avatars": [
+            {
+                "user_id": str(speed_user.id),
+                "username": "relampago",
+                "display_name": "Relâmpago",
+                "avatar_url": "https://cdn.test/c1.png",
+            },
+            {
+                "user_id": str(critic_user.id),
+                "username": "critico",
+                "display_name": None,
+                "avatar_url": None,
+            },
+            {
+                "user_id": str(quotes_user.id),
+                "username": "citador",
+                "display_name": "Citador",
+                "avatar_url": None,
+            },
+            {
+                "user_id": str(crier_user.id),
+                "username": "chorao",
+                "display_name": "Chorão",
+                "avatar_url": None,
+            },
+        ],
+    }
+
+
+@pytest.mark.asyncio
 async def test_genre_breakdown_percentages_sum_100() -> None:
     """Os percentages no genre_breakdown devem somar 100 (com tolerância de float)."""
     group_id = uuid.uuid4()
