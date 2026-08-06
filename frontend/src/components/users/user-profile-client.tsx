@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -113,10 +114,13 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
       {/* Header */}
       <div className="flex flex-col items-center gap-3 text-center">
         {profile.avatar_url ? (
-          <img
+          <Image
             src={profile.avatar_url}
             alt={profile.display_name ?? profile.username ?? "Avatar"}
+            width={96}
+            height={96}
             className="h-24 w-24 rounded-full object-cover ring-2 ring-sage-300 dark:ring-sage-700"
+            unoptimized
           />
         ) : (
           <div className="h-24 w-24 rounded-full bg-sage-100 dark:bg-sage-800 flex items-center justify-center ring-2 ring-sage-300 dark:ring-sage-700">
@@ -238,10 +242,13 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     {group.photo_url ? (
-                      <img
+                      <Image
                         src={group.photo_url}
                         alt={group.name}
+                        width={32}
+                        height={32}
                         className="h-8 w-8 rounded-lg object-cover shrink-0"
+                        unoptimized
                       />
                     ) : (
                       <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">

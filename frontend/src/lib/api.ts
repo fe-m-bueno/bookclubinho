@@ -25,32 +25,14 @@
  */
 
 import { ensureCsrf, withCsrf } from "@/lib/csrf";
+import { ApiError, UnauthorizedError, readError } from "@/lib/api-error";
 
 const PREFIX = "/api/v1";
 
-export class ApiError extends Error {
-  readonly status: number;
-  readonly detail: string;
-
-  constructor(status: number, detail: string) {
-    super(detail);
-    this.name = "ApiError";
-    this.status = status;
-    this.detail = detail;
-  }
-}
-
-/**
- * 401. Lançado, não tratado aqui: quem decide o redirect é o `Providers`, num
- * lugar só. O cliente antigo recebia um `router` e navegava, o que obrigava todo
- * caller a carregar um — era a razão de existir do `useRouterRef`.
- */
-export class UnauthorizedError extends ApiError {
-  constructor(detail = "Não autenticado") {
-    super(401, detail);
-    this.name = "UnauthorizedError";
-  }
-}
+// As classes de erro moram em `api-error.ts` — um módulo neutro, que o
+// `serverApi` também importa. Reexportadas daqui porque `@/lib/api` é onde os
+// call sites já as procuram.
+export { ApiError, UnauthorizedError };
 
 // `object` e não `Record<string, unknown>`: uma interface declarada não tem
 // index signature, então não é atribuível ao Record e todo caller precisaria de
@@ -77,21 +59,6 @@ function encode(body: Body): { body?: BodyInit; headers: Record<string, string> 
     body: JSON.stringify(body),
     headers: { "Content-Type": "application/json" },
   };
-}
-
-async function readError(res: Response): Promise<string> {
-  try {
-    const data = (await res.json()) as { detail?: unknown };
-    if (typeof data?.detail === "string") return data.detail;
-    // 422 do FastAPI: detail é uma lista de erros de validação
-    if (Array.isArray(data?.detail)) {
-      const first = data.detail[0] as { msg?: string } | undefined;
-      if (first?.msg) return first.msg;
-    }
-  } catch {
-    // corpo vazio ou não-JSON
-  }
-  return `Erro ao processar a requisição (${res.status})`;
 }
 
 /**

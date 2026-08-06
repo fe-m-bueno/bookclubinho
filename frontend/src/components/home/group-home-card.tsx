@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -73,11 +74,13 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
                   "-3px 2px 8px rgba(0,0,0,0.2), 1px 2px 6px rgba(0,0,0,0.08)",
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={round.book_cover_url!}
                 alt={round.book_title!}
-                className="h-full w-full object-cover"
+                fill
+                sizes="60px"
+                className="object-cover"
+                unoptimized
               />
               {/* Spine shadow overlay */}
               <div

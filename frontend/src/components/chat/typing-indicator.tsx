@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import type { TypingUser } from "@/lib/types/chat";
 
@@ -52,10 +53,13 @@ export function TypingIndicator({ users }: TypingIndicatorProps) {
                 className="w-6 h-6 rounded-full bg-muted border-2 border-background overflow-hidden flex-shrink-0"
               >
                 {user.avatarUrl ? (
-                  <img
+                  <Image
                     src={user.avatarUrl}
                     alt={user.displayName}
+                    width={24}
+                    height={24}
                     className="w-full h-full object-cover"
+                    unoptimized
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[10px] font-medium text-muted-foreground">
