@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
+import { queryKeys } from "@/lib/query-keys";
 
 interface Genre {
   slug: string;
@@ -35,7 +36,7 @@ export function GenreSelector({
   max = 10,
 }: GenreSelectorProps) {
   const { data: genres = [], isLoading } = useQuery({
-    queryKey: ["genres"],
+    queryKey: queryKeys.books.genres(),
     queryFn: fetchGenres,
     staleTime: 5 * 60 * 1000, // 5 min — genre list rarely changes
   });

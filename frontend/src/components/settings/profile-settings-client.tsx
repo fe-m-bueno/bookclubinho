@@ -15,6 +15,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { USERNAME_REGEX } from "@/hooks/use-username-check";
 import { ProfileSettingsSkeleton } from "./profile-settings-skeleton";
 import { ProfileAvatarUpload } from "./profile-avatar-upload";
+import { queryKeys } from "@/lib/query-keys";
 import { GenreSelector } from "@/components/shared/genre-selector";
 import { UsernameField } from "@/components/onboarding/username-field";
 import { FormField } from "@/components/auth/form-field";
@@ -140,7 +141,7 @@ export function ProfileSettingsClient() {
 
       if (res.ok) {
         const updated = await res.json();
-        await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.user.me() });
         reset({
           display_name: updated.display_name ?? "",
           username: updated.username ?? "",

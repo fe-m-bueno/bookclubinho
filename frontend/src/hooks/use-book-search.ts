@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import type { BookResult } from "@/lib/types/book";
 
 const DEBOUNCE_MS = 300;
@@ -20,7 +21,7 @@ export function useBookSearch(query: string): UseBookSearchReturn {
   const settling = query !== debounced && query.length >= MIN_LENGTH;
 
   const search = useQuery<BookResult[], Error>({
-    queryKey: ["bookSearch", debounced],
+    queryKey: queryKeys.books.search(debounced),
     queryFn: () =>
       api.get<BookResult[]>(
         `/books/search?q=${encodeURIComponent(debounced)}&limit=10`,

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { errorMessage } from "@/hooks/use-api-query";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import type {
   BadgeCatalogResponse,
   BadgeProgressResponse,
@@ -24,11 +25,11 @@ export function useBadges(): UseBadgesReturn {
   // mas agora cada uma tem sua própria chave de cache, então o catálogo (que é
   // igual para todo mundo) não é refetchado junto com as conquistas do usuário.
   const mine = useQuery<MyBadgesResponse, Error>({
-    queryKey: ["myBadges"],
+    queryKey: queryKeys.badges.mine(),
     queryFn: () => api.get<MyBadgesResponse>("/users/me/badges"),
   });
   const catalog = useQuery<BadgeCatalogResponse, Error>({
-    queryKey: ["badgeCatalog"],
+    queryKey: queryKeys.badges.catalog(),
     queryFn: () => api.get<BadgeCatalogResponse>("/badges"),
     staleTime: 10 * 60_000,
   });

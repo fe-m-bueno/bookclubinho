@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 
 export const USERNAME_REGEX = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
 const DEBOUNCE_MS = 500;
@@ -17,7 +18,7 @@ export function useUsernameCheck(username: string) {
   const settling = username !== debounced && USERNAME_REGEX.test(username);
 
   const query = useQuery<{ available: boolean }, Error>({
-    queryKey: ["usernameCheck", debounced],
+    queryKey: queryKeys.user.usernameCheck(debounced),
     queryFn: () =>
       api.get<{ available: boolean }>(
         `/users/check-username/${encodeURIComponent(debounced)}`,

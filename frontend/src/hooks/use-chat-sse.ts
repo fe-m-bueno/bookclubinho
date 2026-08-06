@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChatStore } from "@/stores/chat-store";
+import { queryKeys } from "@/lib/query-keys";
 import type { ChatSSEEvent } from "@/lib/types/chat";
 
 interface UseChatSSEOptions {
@@ -46,14 +47,14 @@ export function useChatSSE({ groupId, currentUserId }: UseChatSSEOptions) {
             }
           }
           queryClient.invalidateQueries({
-            queryKey: ["chat-messages", groupId],
+            queryKey: queryKeys.chat.ofGroup(groupId),
           });
           return;
         }
 
         // message_edited, message_deleted, reaction_added, reaction_removed
         queryClient.invalidateQueries({
-          queryKey: ["chat-messages", groupId],
+          queryKey: queryKeys.chat.ofGroup(groupId),
         });
       } catch {
         // Ignore malformed events

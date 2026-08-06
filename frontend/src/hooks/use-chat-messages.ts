@@ -3,6 +3,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import type { ChatMessage, MessageListResponse } from "@/lib/types/chat";
 
 interface UseChatMessagesOptions {
@@ -18,7 +19,7 @@ export function useChatMessages({
 }: UseChatMessagesOptions) {
 
   const query = useInfiniteQuery<MessageListResponse, Error>({
-    queryKey: ["chat-messages", groupId, { roundId, chapterFilter }],
+    queryKey: queryKeys.chat.messages(groupId, { roundId, chapterFilter }),
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       params.set("limit", "30");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useApiQuery } from "@/hooks/use-api-query";
+import { queryKeys } from "@/lib/query-keys";
 import type { GroupStatsResponse } from "@/lib/types/stats";
 
 interface UseGroupStatsReturn {
@@ -12,7 +13,7 @@ interface UseGroupStatsReturn {
 
 export function useGroupStats(groupId: string): UseGroupStatsReturn {
   return useApiQuery<GroupStatsResponse>(
-    ["groupStats", groupId],
+    queryKeys.groups.stats(groupId),
     `/groups/${groupId}/stats`,
   );
 }

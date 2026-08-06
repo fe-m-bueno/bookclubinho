@@ -1,6 +1,7 @@
 "use client";
 
 import { useApiQuery } from "@/hooks/use-api-query";
+import { queryKeys } from "@/lib/query-keys";
 import type { GroupProgressResponse, MemberProgressSummary } from "@/lib/types/round";
 
 interface UseGroupProgressReturn {
@@ -13,7 +14,7 @@ interface UseGroupProgressReturn {
 
 export function useGroupProgress(roundId: string): UseGroupProgressReturn {
   const { data, loading, error, refetch } = useApiQuery<GroupProgressResponse>(
-    ["groupProgress", roundId],
+    queryKeys.rounds.progress(roundId),
     `/rounds/${roundId}/progress`,
     // O setInterval de 30s que o hook mantinha à mão: agora é o React Query que
     // agenda, e ele pausa quando a aba está em background.

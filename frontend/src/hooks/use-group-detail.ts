@@ -1,6 +1,7 @@
 "use client";
 
 import { useApiQuery } from "@/hooks/use-api-query";
+import { queryKeys } from "@/lib/query-keys";
 import type { GroupDetailResponse } from "@/lib/types/group";
 
 interface UseGroupDetailReturn {
@@ -12,7 +13,7 @@ interface UseGroupDetailReturn {
 
 export function useGroupDetail(groupId: string): UseGroupDetailReturn {
   const { data, loading, error, refetch } = useApiQuery<GroupDetailResponse>(
-    ["groupDetail", groupId],
+    queryKeys.groups.detail(groupId),
     `/groups/${groupId}`,
   );
   return { group: data, loading, error, refetch };

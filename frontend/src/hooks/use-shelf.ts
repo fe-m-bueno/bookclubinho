@@ -1,6 +1,7 @@
 "use client";
 
 import { useApiQuery } from "@/hooks/use-api-query";
+import { queryKeys } from "@/lib/query-keys";
 import type { ShelfResponse } from "@/lib/types/shelf";
 
 interface UseShelfReturn {
@@ -11,5 +12,8 @@ interface UseShelfReturn {
 }
 
 export function useShelf(groupId: string): UseShelfReturn {
-  return useApiQuery<ShelfResponse>(["shelf", groupId], `/groups/${groupId}/shelf`);
+  return useApiQuery<ShelfResponse>(
+    queryKeys.groups.shelf(groupId),
+    `/groups/${groupId}/shelf`,
+  );
 }

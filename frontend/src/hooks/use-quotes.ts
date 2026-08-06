@@ -5,6 +5,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { errorMessage } from "@/hooks/use-api-query";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import type {
   QuoteCreateRequest,
   QuoteListResponse,
@@ -37,7 +38,7 @@ export function useQuotes({
   // useInfiniteQuery já é isso, e guarda as páginas por chave — voltar para uma
   // ordenação já vista não refaz o fetch.
   const query = useInfiniteQuery<QuoteListResponse, Error>({
-    queryKey: ["quotes", groupId, { sort, roundId: roundId ?? null }],
+    queryKey: queryKeys.quotes.list(groupId, { sort, roundId: roundId ?? null }),
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ sort, limit: "20" });
       if (pageParam) params.set("cursor", pageParam as string);
