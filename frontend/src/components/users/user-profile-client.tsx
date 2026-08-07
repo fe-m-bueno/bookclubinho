@@ -171,7 +171,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
           icon={<BookOpen className="h-3.5 w-3.5" />}
         />
         <StatCard
-          label="Sequencia atual"
+          label="Sequência atual"
           value={`${profile.streak_current} dias`}
           icon={<Flame className="h-3.5 w-3.5" />}
         />
@@ -181,7 +181,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
           icon={<BookOpen className="h-3.5 w-3.5" />}
         />
         <StatCard
-          label="Maior sequencia"
+          label="Maior sequência"
           value={`${profile.streak_longest} dias`}
           icon={<Trophy className="h-3.5 w-3.5" />}
         />
@@ -190,7 +190,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
       {/* Genres */}
       {profile.preferred_genres.length > 0 && (
         <div className="bg-card rounded-2xl p-5 shadow-warm-sm space-y-3">
-          <h2 className="font-semibold text-sm">Generos favoritos</h2>
+          <h2 className="font-semibold text-sm">Gêneros favoritos</h2>
           <div className="flex flex-wrap gap-2">
             {profile.preferred_genres.map((genre) => (
               <Badge key={genre} variant="secondary" className="rounded-full">
@@ -206,20 +206,28 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
         <div className="bg-card rounded-2xl p-5 shadow-warm-sm space-y-3">
           <h2 className="font-semibold text-sm">Conquistas</h2>
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-            {profile.badges.slice(0, 12).map((badge) => (
-              <div
-                key={badge.slug}
-                className="flex flex-col items-center gap-1 text-center"
-                title={badge.slug}
-              >
-                <span className="text-2xl" aria-label={badge.slug}>
-                  {badge.emoji ?? "🏅"}
-                </span>
-                <span className="text-xs text-muted-foreground truncate w-full text-center">
-                  {badge.slug}
-                </span>
-              </div>
-            ))}
+            {profile.badges.slice(0, 12).map((badge) => {
+              // O mesmo badge conquistado em vários clubes vem agrupado com
+              // `count` — a repetição vira um multiplicador, não uma linha nova.
+              const rotulo =
+                badge.count > 1 ? `${badge.name} ×${badge.count}` : badge.name;
+              return (
+                <div
+                  key={badge.slug}
+                  className="flex flex-col items-center gap-1 text-center"
+                  title={rotulo}
+                >
+                  <span className="text-2xl" aria-hidden="true">
+                    {badge.emoji ?? "🏅"}
+                  </span>
+                  {/* `truncate` cortava "Fundador ×2" em 375px, onde a célula
+                      tem ~70px. Nome de badge é curto: duas linhas cabem. */}
+                  <span className="w-full text-center text-xs leading-tight text-muted-foreground line-clamp-2">
+                    {rotulo}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

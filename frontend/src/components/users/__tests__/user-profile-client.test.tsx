@@ -20,8 +20,8 @@ const mockProfile: PublicProfile = {
   created_at: "2025-03-01T00:00:00Z",
   total_books_finished: 12,
   badges: [
-    { slug: "primeiro-livro", emoji: "📚" },
-    { slug: "leitor-dedicado", emoji: "🔥" },
+    { slug: "primeiro-livro", name: "Primeiro Livro", emoji: "📚", count: 1 },
+    { slug: "leitor-dedicado", name: "Leitor Dedicado", emoji: "🔥", count: 1 },
   ],
   shared_group_count: 1,
 };
@@ -59,8 +59,18 @@ const mockCurrentUser: UserMe = {
   updated_at: "2026-01-01T00:00:00Z",
 };
 
+/** Perfil servido pelo hook; `setProfile` deixa um teste variar só o que precisa. */
+let currentProfile: PublicProfile = mockProfile;
+function setProfile(profile: PublicProfile) {
+  currentProfile = profile;
+}
+
 vi.mock("@/hooks/use-public-profile", () => ({
-  usePublicProfile: () => ({ data: mockProfile, isLoading: false, error: null }),
+  usePublicProfile: () => ({
+    data: currentProfile,
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 vi.mock("@/hooks/use-shared-groups", () => ({
@@ -91,6 +101,7 @@ import { UserProfileClient } from "../user-profile-client";
 describe("UserProfileClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setProfile(mockProfile);
   });
 
   it("renders skeleton when loading", () => {
@@ -140,6 +151,26 @@ describe("UserProfileClient", () => {
     render(<UserProfileClient username="booklover" />);
     expect(screen.getByText("📚")).toBeTruthy();
     expect(screen.getByText("🔥")).toBeTruthy();
+  });
+
+  it("mostra o nome do badge, não o slug", () => {
+    render(<UserProfileClient username="booklover" />);
+    expect(screen.getByText("Primeiro Livro")).toBeTruthy();
+    expect(screen.queryByText("primeiro-livro")).toBeNull();
+  });
+
+  it("mostra o multiplicador quando o badge foi conquistado em mais de um clube", () => {
+    // `founder` sai uma vez por clube fundado. Antes vinham duas entradas com a
+    // mesma `key` — React avisava e a lista repetia a mesma conquista.
+    setProfile({
+      ...mockProfile,
+      badges: [{ slug: "founder", name: "Fundador", emoji: "🏗️", count: 2 }],
+    });
+
+    render(<UserProfileClient username="booklover" />);
+
+    expect(screen.getByText("Fundador ×2")).toBeTruthy();
+    expect(screen.getAllByText("🏗️")).toHaveLength(1);
   });
 
   it("renders shared groups section", () => {

@@ -115,15 +115,31 @@ async def get_public_profile(
     count_result = await db.execute(select(func.count()).select_from(BookReview).where(BookReview.user_id == user.id))
     total_books_finished = count_result.scalar_one() or 0
 
-    # Fetch up to 12 most recent badges
+    # Fetch up to 12 most recent badges.
+    #
+    # `user_badges` tem `group_id`: o mesmo badge é conquistado uma vez por
+    # clube, então quem fundou dois clubes tem duas linhas de `founder`. Sem o
+    # agrupamento o perfil listava o badge repetido — e o limite de 12 gastava
+    # espaço com repetição em vez de mostrar conquistas distintas. `count` diz
+    # quantas vezes, para quem quiser exibir.
+    earned_at = func.max(UserBadge.earned_at)
     badges_result = await db.execute(
-        select(Badge.slug, Badge.emoji)
+        select(
+            Badge.slug,
+            Badge.name,
+            Badge.emoji,
+            func.count().label("count"),
+        )
         .join(UserBadge, UserBadge.badge_id == Badge.id)
         .where(UserBadge.user_id == user.id)
-        .order_by(UserBadge.earned_at.desc())
+        .group_by(Badge.slug, Badge.name, Badge.emoji)
+        .order_by(earned_at.desc())
         .limit(_MAX_PROFILE_BADGES)
     )
-    badges = [{"slug": row.slug, "emoji": row.emoji} for row in badges_result]
+    badges = [
+        {"slug": row.slug, "name": row.name, "emoji": row.emoji, "count": row.count}
+        for row in badges_result
+    ]
 
     return {
         "id": user.id,
