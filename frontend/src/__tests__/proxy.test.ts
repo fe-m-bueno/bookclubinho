@@ -122,6 +122,60 @@ describe("middleware", () => {
     });
   });
 
+  describe("root route", () => {
+    it("passes through / when there is no token (landing page)", () => {
+      const res = proxy(makeRequest("/"));
+      expect(res.headers.get("Location")).toBeNull();
+    });
+
+    it("passes through / when the token is garbage (landing page)", () => {
+      const res = proxy(makeRequest("/", { access_token: "garbage" }));
+      expect(res.headers.get("Location")).toBeNull();
+    });
+
+    it("passes through / when the token is expired (landing page)", () => {
+      const token = encodeJwtPayload({
+        sub: "user-1",
+        exp: Math.floor(Date.now() / 1000) - 3600,
+        onb: false,
+      });
+      const res = proxy(makeRequest("/", { access_token: token }));
+      expect(res.headers.get("Location")).toBeNull();
+    });
+
+    it("redirects / to /onboarding when onb is false", () => {
+      const token = encodeJwtPayload({
+        sub: "user-1",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        onb: false,
+      });
+      const res = proxy(makeRequest("/", { access_token: token }));
+      expect(res.status).toBe(307);
+      expect(new URL(res.headers.get("Location")!).pathname).toBe("/onboarding");
+    });
+
+    it("redirects / to /onboarding when the onb claim is missing", () => {
+      const token = encodeJwtPayload({
+        sub: "user-1",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      const res = proxy(makeRequest("/", { access_token: token }));
+      expect(res.status).toBe(307);
+      expect(new URL(res.headers.get("Location")!).pathname).toBe("/onboarding");
+    });
+
+    it("passes through / and sets x-user-id when onb is true", () => {
+      const token = encodeJwtPayload({
+        sub: "user-42",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        onb: true,
+      });
+      const res = proxy(makeRequest("/", { access_token: token }));
+      expect(res.headers.get("Location")).toBeNull();
+      expect(res.headers.get("x-user-id")).toBe("user-42");
+    });
+  });
+
   describe("authenticated passthrough", () => {
     it("passes through and sets x-user-id header", () => {
       const token = encodeJwtPayload({
