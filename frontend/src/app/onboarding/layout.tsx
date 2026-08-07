@@ -1,5 +1,8 @@
-import { ThemeToggle } from "@/components/theme-toggle";
-
+/**
+ * O toggle de tema vive dentro do card (ver `OnboardingWizard`), não solto no
+ * canto: em 375px o card ocupa a largura toda e um botão `absolute` no canto
+ * superior direito cobria o último passo do indicador de progresso.
+ */
 export default function OnboardingLayout({
   children,
 }: {
@@ -7,9 +10,6 @@ export default function OnboardingLayout({
 }) {
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
       {children}
     </div>
   );

@@ -64,7 +64,7 @@ describe("JoinGroupPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Convite invalido ou clube nao encontrado."),
+        screen.getByText("Convite inválido ou clube não encontrado."),
       ).toBeInTheDocument();
     });
   });
@@ -106,7 +106,7 @@ describe("JoinGroupPage", () => {
     render(<JoinGroupPage />, { wrapper: QueryWrapper });
 
     expect(
-      screen.getByText("Codigo de convite nao informado."),
+      screen.getByText("Código de convite não informado."),
     ).toBeInTheDocument();
 
     // Restore for other tests

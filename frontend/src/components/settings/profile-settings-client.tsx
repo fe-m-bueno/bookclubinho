@@ -38,7 +38,10 @@ const schema = z.object({
   username: z
     .string()
     .trim()
-    .regex(USERNAME_REGEX, "Username deve começar com letra, ter 3-20 chars e usar apenas letras, números e _"),
+    .regex(
+      USERNAME_REGEX,
+      "Deve começar com letra, ter de 3 a 20 caracteres e usar apenas letras, números e _",
+    ),
   status_text: z.string().max(100, "Máximo 100 caracteres").optional(),
   preferred_genres: z.array(z.string()).min(1, "Selecione ao menos 1 gênero"),
   timezone: z.string().min(1, "Selecione um fuso horário"),
@@ -171,7 +174,7 @@ function ProfileForm({ user }: { user: UserMe }) {
       // O 422 do FastAPI já é desembrulhado pelo cliente, que devolve a primeira
       // mensagem de validação em `detail`.
       if (err instanceof ApiError && err.status === 409) {
-        toast.error("Username já está em uso.");
+        toast.error("Nome de usuário já está em uso.");
       } else {
         toast.error(errorMessage(err));
       }

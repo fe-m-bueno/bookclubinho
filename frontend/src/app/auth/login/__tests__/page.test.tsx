@@ -157,6 +157,60 @@ describe("LoginPage", () => {
     fetchSpy.mockRestore();
   });
 
+  it("mostra e oculta a senha pelo toggle", async () => {
+    const user = userEvent.setup();
+    render(<LoginPage />);
+
+    const password = screen.getByLabelText("Senha");
+    expect(password).toHaveAttribute("type", "password");
+
+    await user.click(screen.getByRole("button", { name: "Mostrar senha" }));
+    expect(password).toHaveAttribute("type", "text");
+
+    await user.click(screen.getByRole("button", { name: "Ocultar senha" }));
+    expect(password).toHaveAttribute("type", "password");
+  });
+
+  it("'Esqueci minha senha' leva ao fluxo de link mágico", async () => {
+    const user = userEvent.setup();
+    render(<LoginPage />);
+
+    await user.type(screen.getByLabelText("E-mail"), "test@example.com");
+    await user.click(screen.getByRole("button", { name: "Esqueci minha senha" }));
+
+    expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Enviar link mágico" })
+    ).toBeInTheDocument();
+    // O e-mail já digitado não se perde no caminho.
+    expect(screen.getByLabelText("E-mail")).toHaveValue("test@example.com");
+  });
+
+  it("responde igual para e-mail existente e inexistente no link mágico", async () => {
+    const { toast } = await import("sonner");
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 404 }));
+
+    const user = userEvent.setup();
+    render(<LoginPage />);
+
+    await user.click(screen.getByRole("button", { name: "Esqueci minha senha" }));
+    await user.type(screen.getByLabelText("E-mail"), "nao-existe@example.com");
+    await user.click(
+      screen.getByRole("button", { name: "Enviar link mágico" })
+    );
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith(
+        "Link enviado! Verifique seu e-mail."
+      );
+    });
+    expect(toast.error).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
+  });
+
   it("renders register link", () => {
     render(<LoginPage />);
 
