@@ -1,28 +1,30 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { HomeHeader, HomeMain, HomeShell } from "./home-shell";
 
+/**
+ * Fidelidade aproximada de propósito: blocos de volume parecido, sem replicar o
+ * layout item a item. O que precisa bater é o *container* — é dele que vem o
+ * salto ao carregar — e ele vem do `HomeShell`, o mesmo da `HomeClient`.
+ */
 export function HomeSkeleton() {
   return (
-    <div className="flex flex-col bg-background">
-      {/* Greeting area */}
-      <header className="px-6 pt-10 pb-8">
-        <div className="mx-auto flex max-w-2xl items-end justify-between">
-          <div className="flex flex-col gap-1.5">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-9 w-44" />
-          </div>
-          <Skeleton className="h-10 w-10 rounded-full" />
+    <HomeShell>
+      <HomeHeader>
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-44" />
         </div>
-      </header>
+        <Skeleton className="h-10 w-10 rounded-full" />
+      </HomeHeader>
 
-      <main className="mx-auto w-full max-w-2xl px-6">
-        {/* Ornament divider placeholder */}
+      <HomeMain>
+        {/* Divisor ornamentado */}
         <div className="mb-6 flex items-center gap-3">
           <Skeleton className="h-px flex-1" />
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-px flex-1" />
         </div>
 
-        {/* Group cards — apenas 2 para não criar scroll */}
         <div className="space-y-4">
           {[0, 1].map((i) => (
             <div
@@ -66,7 +68,7 @@ export function HomeSkeleton() {
             </div>
           ))}
         </div>
-      </main>
-    </div>
+      </HomeMain>
+    </HomeShell>
   );
 }

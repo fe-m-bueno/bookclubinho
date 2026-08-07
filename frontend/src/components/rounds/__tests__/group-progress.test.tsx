@@ -50,7 +50,9 @@ describe("GroupProgress", () => {
       <GroupProgress {...defaultProps} progress={null} loading={true} />,
     );
     act(() => vi.advanceTimersByTime(250));
-    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('[data-slot="skeleton"]').length,
+    ).toBeGreaterThan(0);
     vi.useRealTimers();
   });
 

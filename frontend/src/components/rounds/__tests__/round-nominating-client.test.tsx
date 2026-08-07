@@ -98,8 +98,8 @@ describe("RoundNominatingClient", () => {
 
     const { container } = renderWithProviders(<RoundNominatingClient />);
     act(() => vi.advanceTimersByTime(250));
-    // Skeleton renders with animate-pulse divs
-    expect(container.querySelector(".animate-pulse")).toBeTruthy();
+    // O marcador estável é o data-slot do primitivo, não a classe de animação.
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeTruthy();
     vi.useRealTimers();
   });
 
