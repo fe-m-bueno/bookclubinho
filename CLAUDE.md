@@ -107,11 +107,18 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
 
 ## Design Visual
 
-- Light: `#F8DFBF` (warm sand) — Dark: `#30261D` (deep brown)
-- Shades via oklch — não sair da paleta
-- Dark mode via next-themes + cookie (sem flash)
+**A fonte da verdade da paleta é `frontend/src/app/globals.css`.** Este arquivo descreve o que está lá; ao divergirem, o código ganha e esta seção é que se corrige.
+
+- **Superfícies:** creme quente no light (`oklch(0.96 0.028 78)`), carvão quente no dark (`oklch(0.17 0.018 75)`). É carvão quente, **não marrom** — marrom cheio compete com as capas de livro, que são o conteúdo.
+- **Acento:** sage green (`oklch(0.52 0.08 152)` / `oklch(0.68 0.07 152)` no dark). Fora da rampa neutra.
+- **Croma tem dois níveis:** superfícies carregam o calor porque são 100% da tela; texto sobe menos da metade do mesmo caminho. Croma alto em corpo de texto lê como filtro sépia e cansa em leitura longa. Teto de texto: `0.04`.
+- **Shades via oklch, sempre.** Zero hex de 6 dígitos em componente — o lint e `src/app/__tests__/palette.test.ts` cobrem isso.
+- **Escala `brand-*`** é a rampa quente de celebração (wrapped, badges), mais cromática que as superfícies comuns. Não usar como superfície de UI cotidiana.
+- Dark mode via next-themes + cookie (sem flash). O cookie é lido no servidor; o cliente usa `localStorage` com a mesma chave.
 - Animações: Framer Motion 150-300ms, respeitar `prefers-reduced-motion`
 - Touch targets mínimo 44px, mobile-first sempre
+
+**Armadilha:** o bloco `em-emoji-picker` no `globals.css` duplica tokens como triplets RGB — o Web Component não aceita `var()`. Mudar um token citado ali exige recalcular o triplet; o teste de paleta é o que avisa.
 
 ---
 

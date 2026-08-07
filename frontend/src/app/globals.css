@@ -58,18 +58,21 @@
      superfície e some; com 0.7 o ciclo inteiro fica na faixa visível. */
   --animate-skeleton-pulse: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
-  /* Brand color scale — cream to warm charcoal via oklch */
-  --color-brand-50: oklch(0.98 0.01 80);
-  --color-brand-100: oklch(0.95 0.02 78);
-  --color-brand-200: oklch(0.90 0.03 75);
-  --color-brand-300: oklch(0.84 0.04 72);
-  --color-brand-400: oklch(0.74 0.04 72);
-  --color-brand-500: oklch(0.60 0.03 78);
-  --color-brand-600: oklch(0.48 0.025 80);
-  --color-brand-700: oklch(0.38 0.02 80);
-  --color-brand-800: oklch(0.28 0.015 80);
-  --color-brand-900: oklch(0.20 0.012 80);
-  --color-brand-950: oklch(0.15 0.01 80);
+  /* Brand color scale — cream to warm charcoal via oklch.
+     Sobe pelo mesmo fator da rampa neutra: senão brand-800/900/950 ficariam
+     menos cromáticos que as superfícies do dark, e uma superfície de
+     celebração leria mais fria que o app comum. */
+  --color-brand-50: oklch(0.98 0.019 80);
+  --color-brand-100: oklch(0.95 0.037 78);
+  --color-brand-200: oklch(0.90 0.056 75);
+  --color-brand-300: oklch(0.84 0.074 72);
+  --color-brand-400: oklch(0.74 0.074 72);
+  --color-brand-500: oklch(0.60 0.056 78);
+  --color-brand-600: oklch(0.48 0.046 80);
+  --color-brand-700: oklch(0.38 0.037 80);
+  --color-brand-800: oklch(0.28 0.028 80);
+  --color-brand-900: oklch(0.20 0.022 80);
+  --color-brand-950: oklch(0.15 0.019 80);
 
   /* Sage green scale — accent */
   --color-sage-50: oklch(0.97 0.02 152);
@@ -87,29 +90,32 @@
 :root {
   --radius: 0.875rem;
 
-  /* Light mode — warm cream parchment */
-  --background: oklch(0.96 0.015 78);
-  --foreground: oklch(0.20 0.015 80);
+  /* Light mode — warm cream parchment
+     Superfícies carregam o calor: são 100% da tela. O texto sobe menos da
+     metade do mesmo caminho — croma alto em corpo de texto lê como filtro
+     sépia e cansa em leitura longa. Sage e destructive ficam fora da rampa. */
+  --background: oklch(0.96 0.028 78);
+  --foreground: oklch(0.20 0.021 80);
 
-  --card: oklch(0.98 0.01 76);
-  --card-foreground: oklch(0.20 0.015 80);
-  --popover: oklch(0.98 0.01 76);
-  --popover-foreground: oklch(0.20 0.015 80);
+  --card: oklch(0.98 0.019 76);
+  --card-foreground: oklch(0.20 0.021 80);
+  --popover: oklch(0.98 0.019 76);
+  --popover-foreground: oklch(0.20 0.021 80);
 
   --primary: oklch(0.52 0.08 152);
   --primary-foreground: oklch(0.99 0.005 152);
 
-  --secondary: oklch(0.93 0.015 78);
-  --secondary-foreground: oklch(0.30 0.02 80);
-  --muted: oklch(0.94 0.012 78);
-  --muted-foreground: oklch(0.48 0.025 80);
-  --accent: oklch(0.93 0.015 78);
-  --accent-foreground: oklch(0.30 0.02 80);
+  --secondary: oklch(0.93 0.028 78);
+  --secondary-foreground: oklch(0.30 0.028 80);
+  --muted: oklch(0.94 0.022 78);
+  --muted-foreground: oklch(0.48 0.035 80);
+  --accent: oklch(0.93 0.028 78);
+  --accent-foreground: oklch(0.30 0.028 80);
 
   --destructive: oklch(0.577 0.245 27.325);
 
-  --border: oklch(0.89 0.02 76);
-  --input: oklch(0.93 0.015 78);
+  --border: oklch(0.89 0.037 76);
+  --input: oklch(0.93 0.028 78);
   --ring: oklch(0.52 0.08 152);
 
   /* Skeleton translúcido de propósito: `--card` e `--background` têm lightness
@@ -124,35 +130,36 @@
   --chart-4: oklch(0.58 0.08 280);
   --chart-5: oklch(0.60 0.06 100);
 
-  --sidebar: oklch(0.94 0.012 78);
-  --sidebar-foreground: oklch(0.20 0.015 80);
+  --sidebar: oklch(0.94 0.022 78);
+  --sidebar-foreground: oklch(0.20 0.021 80);
   --sidebar-primary: oklch(0.52 0.08 152);
   --sidebar-primary-foreground: oklch(0.99 0.005 152);
-  --sidebar-accent: oklch(0.93 0.015 78);
-  --sidebar-accent-foreground: oklch(0.30 0.02 80);
-  --sidebar-border: oklch(0.89 0.02 76);
+  --sidebar-accent: oklch(0.93 0.028 78);
+  --sidebar-accent-foreground: oklch(0.30 0.028 80);
+  --sidebar-border: oklch(0.89 0.037 76);
   --sidebar-ring: oklch(0.52 0.08 152);
 }
 
 .dark {
-  /* Dark mode — warm charcoal (NOT brown) */
-  --background: oklch(0.17 0.01 75);
-  --foreground: oklch(0.91 0.02 78);
+  /* Dark mode — warm charcoal (NOT brown)
+     Mesma regra do light: superfície carrega o calor, texto sobe menos. */
+  --background: oklch(0.17 0.018 75);
+  --foreground: oklch(0.91 0.027 78);
 
-  --card: oklch(0.21 0.012 76);
-  --card-foreground: oklch(0.91 0.02 78);
-  --popover: oklch(0.23 0.013 76);
-  --popover-foreground: oklch(0.91 0.02 78);
+  --card: oklch(0.21 0.022 76);
+  --card-foreground: oklch(0.91 0.027 78);
+  --popover: oklch(0.23 0.023 76);
+  --popover-foreground: oklch(0.91 0.027 78);
 
   --primary: oklch(0.68 0.07 152);
-  --primary-foreground: oklch(0.15 0.01 80);
+  --primary-foreground: oklch(0.15 0.014 80);
 
-  --secondary: oklch(0.24 0.012 78);
-  --secondary-foreground: oklch(0.86 0.02 78);
-  --muted: oklch(0.22 0.012 76);
-  --muted-foreground: oklch(0.62 0.025 78);
-  --accent: oklch(0.24 0.012 78);
-  --accent-foreground: oklch(0.86 0.02 78);
+  --secondary: oklch(0.24 0.022 78);
+  --secondary-foreground: oklch(0.86 0.027 78);
+  --muted: oklch(0.22 0.022 76);
+  --muted-foreground: oklch(0.62 0.034 78);
+  --accent: oklch(0.24 0.022 78);
+  --accent-foreground: oklch(0.86 0.027 78);
 
   --destructive: oklch(0.704 0.191 22.216);
 
@@ -168,12 +175,12 @@
   --chart-4: oklch(0.68 0.08 280);
   --chart-5: oklch(0.68 0.06 100);
 
-  --sidebar: oklch(0.21 0.012 76);
-  --sidebar-foreground: oklch(0.91 0.02 78);
+  --sidebar: oklch(0.21 0.022 76);
+  --sidebar-foreground: oklch(0.91 0.027 78);
   --sidebar-primary: oklch(0.68 0.07 152);
-  --sidebar-primary-foreground: oklch(0.15 0.01 80);
-  --sidebar-accent: oklch(0.24 0.012 78);
-  --sidebar-accent-foreground: oklch(0.86 0.02 78);
+  --sidebar-primary-foreground: oklch(0.15 0.014 80);
+  --sidebar-accent: oklch(0.24 0.022 78);
+  --sidebar-accent-foreground: oklch(0.86 0.027 78);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.68 0.07 152);
 }
@@ -183,54 +190,61 @@
    boundary. emoji-mart reads --rgb-* (triplets) and --color-border* (full
    rgba values) as fallbacks inside its [data-theme] selector.
    Light: warm cream palette / Dark: warm charcoal palette
+
+   Os triplets abaixo são a conversão sRGB dos tokens citados em cada comentário
+   — o formato exige número, não `var()`, então a duplicação é inevitável e
+   silenciosa: mudar um token aqui em cima não propaga. Os oito valores
+   anteriores estavam errados (--primary vinha como 53,133,100 quando o real é
+   67,118,82) e ninguém notou. Ao mexer num token citado, rasterize o oklch e
+   traga o valor de volta; não converta de cabeça.
    ─────────────────────────────────────────────────────────────────────────── */
 em-emoji-picker {
-  /* oklch(0.98 0.01 76) warm cream popover */
-  --rgb-background: 251, 245, 237;
-  /* oklch(0.20 0.015 80) dark foreground */
-  --rgb-color: 39, 33, 26;
-  /* oklch(0.52 0.08 152) sage green primary */
-  --rgb-accent: 53, 133, 100;
-  /* oklch(0.93 0.015 78) muted/input */
-  --rgb-input: 239, 233, 223;
-  /* border colors as full rgba values */
-  --color-border: rgba(205, 196, 184, 0.6);
-  --color-border-over: rgba(160, 150, 138, 0.5);
+  /* --popover  oklch(0.98 0.019 76) */
+  --rgb-background: 255, 247, 235;
+  /* --foreground  oklch(0.20 0.021 80) */
+  --rgb-color: 27, 21, 11;
+  /* --primary  oklch(0.52 0.08 152) */
+  --rgb-accent: 67, 118, 82;
+  /* --input  oklch(0.93 0.028 78) */
+  --rgb-input: 242, 230, 212;
+  /* --border  oklch(0.89 0.037 76), e um passo mais escuro para o hover */
+  --color-border: rgba(233, 216, 192, 0.6);
+  --color-border-over: rgba(181, 161, 134, 0.5);
 }
 
 .dark em-emoji-picker {
-  /* oklch(0.23 0.013 76) dark popover */
-  --rgb-background: 45, 39, 33;
-  /* oklch(0.91 0.02 78) light foreground */
-  --rgb-color: 234, 227, 215;
-  /* oklch(0.68 0.07 152) sage green lighter */
-  --rgb-accent: 90, 177, 140;
-  /* oklch(0.24 0.012 78) dark muted */
-  --rgb-input: 47, 42, 36;
+  /* --popover  oklch(0.23 0.023 76) */
+  --rgb-background: 35, 27, 17;
+  /* --foreground  oklch(0.91 0.027 78) */
+  --rgb-color: 235, 224, 206;
+  /* --primary  oklch(0.68 0.07 152) */
+  --rgb-accent: 120, 165, 131;
+  /* --muted  oklch(0.22 0.022 76) */
+  --rgb-input: 33, 25, 15;
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-over: rgba(255, 255, 255, 0.15);
 }
 
-/* Custom warm shadow utilities */
+/* Custom warm shadow utilities — o tinte segue o croma da rampa neutra. */
 @utility shadow-warm-sm {
   box-shadow:
-    0 1px 2px oklch(0.40 0.02 75 / 6%),
-    0 2px 6px oklch(0.40 0.02 75 / 8%);
+    0 1px 2px oklch(0.40 0.037 75 / 6%),
+    0 2px 6px oklch(0.40 0.037 75 / 8%);
 }
 @utility shadow-warm {
   box-shadow:
-    0 2px 4px oklch(0.40 0.02 75 / 6%),
-    0 4px 16px oklch(0.40 0.02 75 / 10%);
+    0 2px 4px oklch(0.40 0.037 75 / 6%),
+    0 4px 16px oklch(0.40 0.037 75 / 10%);
 }
 @utility shadow-warm-md {
   box-shadow:
-    0 4px 8px oklch(0.40 0.02 75 / 8%),
-    0 8px 24px oklch(0.40 0.02 75 / 12%);
+    0 4px 8px oklch(0.40 0.037 75 / 8%),
+    0 8px 24px oklch(0.40 0.037 75 / 12%);
 }
 @utility shadow-warm-lg {
   box-shadow:
-    0 8px 16px oklch(0.40 0.02 75 / 10%),
-    0 16px 48px oklch(0.40 0.02 75 / 14%);
+    0 8px 16px oklch(0.40 0.037 75 / 10%),
+    0 16px 48px oklch(0.40 0.037 75 / 14%);
 }
 
 /* Font display utility — Fraunces with optical size variation */
@@ -244,7 +258,7 @@ em-emoji-picker {
   display: flex;
   align-items: center;
   gap: 1rem;
-  color: oklch(0.75 0.03 78);
+  color: oklch(0.75 0.056 78);
   font-family: var(--font-display);
   font-size: 0.875rem;
   letter-spacing: 0.15em;
@@ -278,11 +292,11 @@ em-emoji-picker {
 
   :root {
     scrollbar-width: thin;
-    scrollbar-color: oklch(0.75 0.03 78) transparent;
+    scrollbar-color: oklch(0.75 0.056 78) transparent;
   }
 
   .dark {
-    scrollbar-color: oklch(0.35 0.02 78) transparent;
+    scrollbar-color: oklch(0.35 0.036 78) transparent;
   }
 
   body {
@@ -322,12 +336,12 @@ em-emoji-picker {
   /* Sage green text selection */
   ::selection {
     background: oklch(0.52 0.08 152 / 20%);
-    color: oklch(0.20 0.015 80);
+    color: oklch(0.20 0.021 80);
   }
 
   .dark ::selection {
     background: oklch(0.68 0.07 152 / 25%);
-    color: oklch(0.91 0.02 78);
+    color: oklch(0.91 0.027 78);
   }
 
   @media (prefers-reduced-motion: no-preference) {

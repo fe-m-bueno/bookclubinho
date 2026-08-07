@@ -16,24 +16,30 @@ import { ReadingTimeline } from "./reading-timeline";
 import { errorMessage } from "@/lib/api";
 
 
+/**
+ * Superfície de celebração: mais quente que o app comum de propósito, por isso
+ * usa a escala `brand-*` em vez dos tokens de superfície. Tinha 16 hex cravados
+ * — era o único componente que seguia o CLAUDE.md ao pé da letra, e por isso o
+ * único que destoava do resto (#288).
+ */
 function WrappedBanner({ groupId, year }: { groupId: string; year: number }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F8DFBF] via-[#EDCB96] to-[#DFB98A] dark:from-[#3D2E1A] dark:via-[#4A3520] dark:to-[#3D2E1A] p-6">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-200 via-brand-300 to-brand-400 dark:from-brand-800 dark:via-brand-700 dark:to-brand-800 p-6">
       <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-amber-700 dark:text-amber-400" />
-            <h3 className="font-display text-lg font-bold text-[#30261D] dark:text-[#F8DFBF]">
+            <Sparkles className="h-5 w-5 text-brand-700 dark:text-brand-300" />
+            <h3 className="font-display text-lg font-bold text-brand-900 dark:text-brand-100">
               Wrapped {year}
             </h3>
           </div>
-          <p className="text-sm text-[#5A4032] dark:text-[#C4A882]">
+          <p className="text-sm text-brand-700 dark:text-brand-300">
             Reviva os melhores momentos do clube em {year}.
           </p>
         </div>
         <Button
           asChild
-          className="shrink-0 bg-[#30261D] text-[#F8DFBF] hover:bg-[#3D2E1A] dark:bg-[#F8DFBF] dark:text-[#30261D] dark:hover:bg-[#EDCB96]"
+          className="shrink-0 bg-brand-900 text-brand-50 hover:bg-brand-800 dark:bg-brand-100 dark:text-brand-900 dark:hover:bg-brand-200"
         >
           <Link href={`/groups/${groupId}/wrapped/${year}`}>
             Ver agora →
@@ -41,8 +47,8 @@ function WrappedBanner({ groupId, year }: { groupId: string; year: number }) {
         </Button>
       </div>
       {/* decorative blobs */}
-      <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-amber-300/30 dark:bg-amber-600/20 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-4 left-8 h-16 w-16 rounded-full bg-orange-300/20 dark:bg-orange-700/20 blur-xl" />
+      <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-100/40 dark:bg-brand-600/20 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-4 left-8 h-16 w-16 rounded-full bg-brand-400/25 dark:bg-brand-500/20 blur-xl" />
     </div>
   );
 }
