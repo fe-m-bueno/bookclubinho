@@ -223,9 +223,9 @@ export function FloatingTimerButton() {
         ) : (
           <motion.button
             key="fab"
-            initial={{ scale: 0, opacity: 0 }}
+            initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
+            exit={{ scale: 0.95, opacity: 0 }}
             transition={{
               delay: status === "idle" ? 0.5 : 0,
               type: "spring",

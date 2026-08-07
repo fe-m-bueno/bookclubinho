@@ -195,7 +195,7 @@ export function LandingPage() {
           <Button
             asChild
             size="lg"
-            className="h-12 px-8 text-base rounded-xl shadow-warm-md hover:shadow-warm-lg transition-shadow"
+            className="h-12 px-8 text-base rounded-xl shadow-warm-md hover:shadow-warm-lg"
           >
             <Link href="/auth/register">Criar meu clube</Link>
           </Button>
