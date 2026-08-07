@@ -50,6 +50,15 @@ function TestComponent() {
   return <span>{connected ? "online" : "offline"}</span>;
 }
 
+function StatusComponent() {
+  const { status } = useChatSSE({
+    groupId: "group-123",
+    currentUserId: "user-1",
+  });
+
+  return <span>{status}</span>;
+}
+
 describe("useChatSSE", () => {
   const originalEventSource = globalThis.EventSource;
 
@@ -74,7 +83,7 @@ describe("useChatSSE", () => {
 
     expect(MockEventSource.instances).toHaveLength(1);
     expect(MockEventSource.instances[0]?.url).toBe(
-      "/api/v1/groups/group-123/chat/stream"
+      "/api/chat-stream/group-123"
     );
     expect(MockEventSource.instances[0]?.withCredentials).toBe(true);
   });
@@ -95,6 +104,58 @@ describe("useChatSSE", () => {
     });
 
     expect(screen.getByText("online")).toBeInTheDocument();
+  });
+
+  /**
+   * #273: antes da correção, `connected` nascia `false` e a UI não distinguia
+   * "abrindo agora" de "caiu depois de funcionar" — as duas liam igual.
+   */
+  it("começa como 'connecting', não 'disconnected'", () => {
+    const queryClient = new QueryClient();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <StatusComponent />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText("connecting")).toBeInTheDocument();
+  });
+
+  it("um erro antes do primeiro 'connected' continua 'connecting', não 'disconnected'", () => {
+    const queryClient = new QueryClient();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <StatusComponent />
+      </QueryClientProvider>,
+    );
+
+    act(() => {
+      MockEventSource.instances[0]?.onerror?.();
+    });
+
+    expect(screen.getByText("connecting")).toBeInTheDocument();
+  });
+
+  it("só vira 'disconnected' depois de já ter estado 'connected'", () => {
+    const queryClient = new QueryClient();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <StatusComponent />
+      </QueryClientProvider>,
+    );
+
+    act(() => {
+      MockEventSource.instances[0]?.emit("connected");
+    });
+    expect(screen.getByText("connected")).toBeInTheDocument();
+
+    act(() => {
+      MockEventSource.instances[0]?.onerror?.();
+    });
+    expect(screen.getByText("disconnected")).toBeInTheDocument();
   });
 });
 

@@ -48,7 +48,7 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
     fetchNextPage,
   } = useChatMessages({ groupId, chapterFilter });
 
-  const { connected } = useChatSSE({ groupId, currentUserId });
+  const { status: sseStatus } = useChatSSE({ groupId, currentUserId });
   const viewerChapter = useViewerChapter(groupId, currentUserId);
   const { sendTyping, typingUsers } = useTypingIndicator(
     groupId,
@@ -204,7 +204,7 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
         group={group}
         chapterFilter={chapterFilter}
         onClearFilter={handleClearFilter}
-        connected={connected}
+        sseStatus={sseStatus}
       />
       <div ref={chatAreaRef} className="relative flex-1 min-h-0">
         <MessageList
