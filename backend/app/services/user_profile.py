@@ -136,10 +136,7 @@ async def get_public_profile(
         .order_by(earned_at.desc())
         .limit(_MAX_PROFILE_BADGES)
     )
-    badges = [
-        {"slug": row.slug, "name": row.name, "emoji": row.emoji, "count": row.count}
-        for row in badges_result
-    ]
+    badges = [{"slug": row.slug, "name": row.name, "emoji": row.emoji, "count": row.count} for row in badges_result]
 
     return {
         "id": user.id,
