@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -39,13 +40,26 @@ def _make_member(**overrides: object) -> MagicMock:
     return m
 
 
+_DEFAULT_USER_TZ = "America/Sao_Paulo"
+
+
+def _today_in_user_tz(tz_name: str = _DEFAULT_USER_TZ) -> date:
+    """A data de hoje no timezone do usuário — o mesmo cálculo de `_update_streak`.
+
+    `date.today()` usaria a data local do runner, que divergiria da data do
+    usuário na janela em que os dois fusos estão em dias diferentes (para
+    America/Sao_Paulo em UTC, entre 00:00 e 03:00 UTC).
+    """
+    return datetime.now(ZoneInfo(tz_name)).date()
+
+
 def _make_user(**overrides: object) -> MagicMock:
     u = MagicMock()
     u.id = overrides.get("id", uuid.uuid4())
     u.streak_current = overrides.get("streak_current", 0)
     u.streak_longest = overrides.get("streak_longest", 0)
     u.streak_last_update = overrides.get("streak_last_update")
-    u.timezone = overrides.get("timezone", "America/Sao_Paulo")
+    u.timezone = overrides.get("timezone", _DEFAULT_USER_TZ)
     return u
 
 
@@ -77,7 +91,7 @@ def _db_for_log(round_: MagicMock, member: MagicMock, user: MagicMock | None = N
     res_fast = MagicMock()
     fast_row = MagicMock()
     fast_row.streak_last_update = u.streak_last_update
-    fast_row.timezone = "America/Sao_Paulo"
+    fast_row.timezone = u.timezone
     res_fast.one_or_none.return_value = fast_row
 
     # FOR UPDATE streak lock: SELECT User (.scalar_one_or_none())
@@ -337,7 +351,7 @@ async def test_record_progress_stores_note_and_total_pages() -> None:
 async def test_record_progress_streak_today_no_change() -> None:
     """If streak_last_update == today, streak_current doesn't change."""
     user_id = uuid.uuid4()
-    today = date.today()
+    today = _today_in_user_tz()
     user = _make_user(streak_current=5, streak_last_update=today)
     round_ = _make_round(status=RoundStatus.READING)
     member = _make_member(user_id=user_id)
@@ -360,7 +374,7 @@ async def test_record_progress_streak_today_no_change() -> None:
 async def test_record_progress_streak_yesterday_increments() -> None:
     """If streak_last_update == yesterday, streak_current += 1."""
     user_id = uuid.uuid4()
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = _today_in_user_tz() - timedelta(days=1)
     user = _make_user(streak_current=3, streak_longest=3, streak_last_update=yesterday)
     round_ = _make_round(status=RoundStatus.READING)
     member = _make_member(user_id=user_id)
@@ -384,7 +398,7 @@ async def test_record_progress_streak_yesterday_increments() -> None:
 async def test_record_progress_streak_missed_day_resets_to_1() -> None:
     """If streak_last_update is older than yesterday, streak_current resets to 1."""
     user_id = uuid.uuid4()
-    two_days_ago = date.today() - timedelta(days=2)
+    two_days_ago = _today_in_user_tz() - timedelta(days=2)
     user = _make_user(streak_current=10, streak_longest=10, streak_last_update=two_days_ago)
     round_ = _make_round(status=RoundStatus.READING)
     member = _make_member(user_id=user_id)
@@ -716,7 +730,7 @@ def _db_for_mark_finished(
     res_fast = MagicMock()
     fast_row = MagicMock()
     fast_row.streak_last_update = u.streak_last_update
-    fast_row.timezone = "America/Sao_Paulo"
+    fast_row.timezone = u.timezone
     res_fast.one_or_none.return_value = fast_row
 
     res_user = MagicMock()
