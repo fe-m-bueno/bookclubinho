@@ -107,6 +107,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       paddingStart: (hasNextPage ? TOP_ZONE_HEIGHT : 0) + LIST_PADDING,
       paddingEnd: LIST_PADDING,
       overscan: 6,
+      // `measureElement` entra como `ref` lá embaixo, e o React chama ref na
+      // fase de commit. Ao medir, o virtualizador reajusta o scroll e pede um
+      // rerender síncrono — `flushSync` no meio do commit, que o React recusa
+      // com erro no console a cada abertura do chat (#274).
+      //
+      // Desligar não custa nada aqui, por dois motivos. O `flushSync` que
+      // dispara o aviso é justamente o que o React ignora, então a garantia
+      // de sincronia que ele existe para dar já não valia nesse caminho. E no
+      // caminho em que ele funciona — o ResizeObserver, quando uma imagem
+      // carrega e a linha cresce — medi os dois modos com a lista fixada no
+      // fim: um crescimento de 240px desloca 228px por exatamente um frame e
+      // volta a zero, idêntico com e sem `flushSync`.
+      useFlushSync: false,
     });
 
     const scrollToEnd = useCallback(() => {

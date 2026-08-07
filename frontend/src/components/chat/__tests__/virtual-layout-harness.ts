@@ -66,7 +66,19 @@ export function installVirtualLayout(): VirtualLayoutHarness {
       "scrollHeight",
     ),
     scrollTop: Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop"),
+    setTimeout: globalThis.setTimeout,
   };
+
+  /**
+   * Timers armados enquanto o harness está instalado.
+   *
+   * O virtualizador debounça o fim do scroll (`isScrollingResetDelay`) com um
+   * `setTimeout`. Ele não é cancelado no unmount, então um teste que rola a
+   * lista e termina antes do delay deixa o timer para trás: ele dispara depois
+   * do teardown, chama `notify()` num virtualizador morto e a suíte ganha um
+   * erro solto — que não derruba teste nenhum e por isso passava batido (#274).
+   */
+  const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
 
   let reads = 0;
   const scrollTops = new WeakMap<Element, number>();
@@ -178,6 +190,15 @@ export function installVirtualLayout(): VirtualLayoutHarness {
     }
   } as typeof Element.prototype.scrollTo;
 
+  globalThis.setTimeout = function trackedSetTimeout(
+    this: unknown,
+    ...args: Parameters<typeof setTimeout>
+  ) {
+    const id = originals.setTimeout.apply(this, args);
+    pendingTimers.add(id);
+    return id;
+  } as unknown as typeof globalThis.setTimeout;
+
   function findScrollContainer(): Element | null {
     return document.querySelector('[data-testid="chat-scroll"]');
   }
@@ -210,6 +231,11 @@ export function installVirtualLayout(): VirtualLayoutHarness {
       }
     },
     restore() {
+      globalThis.setTimeout = originals.setTimeout;
+      // O que sobrou armado só pode disparar depois deste teste, sobre um
+      // virtualizador já desmontado.
+      for (const id of pendingTimers) clearTimeout(id);
+      pendingTimers.clear();
       (globalThis as Record<string, unknown>).ResizeObserver =
         originals.ResizeObserver;
       (globalThis as Record<string, unknown>).IntersectionObserver =
