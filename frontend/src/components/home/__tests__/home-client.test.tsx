@@ -1,10 +1,16 @@
 import { render, screen, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { HomeClient } from "../home-client";
 import type { UserMe } from "@/lib/types/user";
 import type { GroupListItem } from "@/lib/types/group";
 import type { UpcomingMeetingItem } from "@/lib/types/meeting";
 import type { BadgeResponse } from "@/lib/types/badge";
+
+const push = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push, replace: vi.fn(), prefetch: vi.fn(), back: vi.fn() }),
+}));
 
 // Mock child components
 vi.mock("../home-skeleton", () => ({
@@ -157,6 +163,18 @@ describe("HomeClient", () => {
     setMocks({ groups: [] });
     render(<HomeClient />);
     expect(screen.getByTestId("empty-state")).toBeInTheDocument();
+  });
+
+  it("navega para criar clube pelo router, sem recarregar o documento", async () => {
+    const user = userEvent.setup();
+    setMocks({ groups: [] });
+    render(<HomeClient />);
+
+    await user.click(screen.getByRole("button", { name: "Criar clube" }));
+
+    // Era `window.location.href`, que descarta o cache do React Query e o
+    // estado do cliente para ir a uma rota que o próprio Next serve.
+    expect(push).toHaveBeenCalledWith("/groups/create");
   });
 
   it("renders group cards when groups exist", () => {
