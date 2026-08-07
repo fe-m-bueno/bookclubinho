@@ -1,39 +1,47 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/groups/g1/chat",
 }));
 
+const reducedMotion = vi.fn(() => false);
+
+function makeMotionComponent(Tag: string) {
+  return ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => {
+    const htmlProps = Object.fromEntries(
+      Object.entries(props).filter(
+        ([key]) =>
+          ![
+            "variants",
+            "initial",
+            "animate",
+            "exit",
+            "transition",
+            "layoutId",
+            "whileHover",
+            "whileTap",
+          ].includes(key),
+      ),
+    );
+    return React.createElement(Tag, htmlProps, children);
+  };
+}
+
 vi.mock("framer-motion", async () => {
   const actual = await vi.importActual("framer-motion");
   return {
     ...actual,
     motion: {
-      div: ({
-        children,
-        ...props
-      }: React.PropsWithChildren<Record<string, unknown>>) => {
-        const htmlProps = Object.fromEntries(
-          Object.entries(props).filter(
-            ([key]) =>
-              ![
-                "variants",
-                "initial",
-                "animate",
-                "exit",
-                "transition",
-                "layoutId",
-                "whileHover",
-                "whileTap",
-              ].includes(key),
-          ),
-        );
-        return React.createElement("div", htmlProps, children);
-      },
+      div: makeMotionComponent("div"),
+      span: makeMotionComponent("span"),
     },
-    useReducedMotion: () => false,
+    useReducedMotion: () => reducedMotion(),
   };
 });
 
@@ -103,14 +111,58 @@ describe("GroupTabBar", () => {
     expect(nav?.className).toContain("md:flex");
   });
 
-  it("mobile variant has fixed bottom classes", () => {
-    const { container } = render(
-      <GroupTabBar groupId="g1" variant="mobile" />,
-    );
+  describe("variante mobile — controle segmentado no fluxo", () => {
+    it("não é barra fixa no rodapé", () => {
+      // A barra `fixed bottom-0` era a única do app, pertencia ao grupo e não
+      // ao app, e cobrava 56px permanentes do chat para dar atalho a três
+      // telas mensais.
+      const { container } = render(
+        <GroupTabBar groupId="g1" variant="mobile" />,
+      );
 
-    const nav = container.querySelector("nav");
-    expect(nav?.className).toContain("fixed");
-    expect(nav?.className).toContain("bottom-0");
-    expect(nav?.className).toContain("md:hidden");
+      const nav = container.querySelector("nav");
+      expect(nav?.className).not.toMatch(/(^|\s)fixed(\s|$)/);
+      expect(nav?.className).not.toMatch(/(^|\s)bottom-0(\s|$)/);
+      expect(nav?.className).toContain("md:hidden");
+    });
+
+    it("percorre as cinco seções pelo teclado, na ordem", async () => {
+      const user = userEvent.setup();
+      render(<GroupTabBar groupId="g1" variant="mobile" />);
+
+      const esperado = ["Chat", "Rodada", "Shelf", "Stats", "Encontros"];
+      for (const label of esperado) {
+        await user.tab();
+        expect(screen.getByText(label).closest("a")).toHaveFocus();
+      }
+    });
+
+    it("marca a seção ativa com aria-current", () => {
+      render(<GroupTabBar groupId="g1" variant="mobile" />);
+
+      expect(screen.getByText("Chat").closest("a")).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      expect(screen.getByText("Stats").closest("a")).not.toHaveAttribute(
+        "aria-current",
+      );
+    });
+
+    it("com prefers-reduced-motion o indicador não anima", () => {
+      reducedMotion.mockReturnValueOnce(true);
+      const { container } = render(
+        <GroupTabBar groupId="g1" variant="mobile" />,
+      );
+
+      // O indicador é `layoutId` + spring; com movimento reduzido a duração
+      // vai a zero em vez de o elemento sumir — quem usa a redução ainda
+      // precisa enxergar qual seção está ativa.
+      expect(container.querySelector("nav")).toBeInTheDocument();
+      expect(screen.getByText("Chat").closest("a")).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+    });
   });
 });

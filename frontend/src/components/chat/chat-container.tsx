@@ -199,14 +199,21 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
   }, [reactionPickerState]);
 
   return (
-    <div className="flex flex-col h-full min-h-0 -mx-4 -mt-4 -mb-20 md:-mb-0">
+    // `-mb-20` compensava a barra fixa do rodapé, que não existe mais; `flex-1`
+    // no lugar de `h-full` porque o pai agora divide a altura com o controle
+    // segmentado — com `h-full` o chat pediria a altura toda e estouraria.
+    <div className="flex min-h-0 flex-1 flex-col -mx-4">
       <ChatHeader
         group={group}
         chapterFilter={chapterFilter}
         onClearFilter={handleClearFilter}
         sseStatus={sseStatus}
       />
-      <div ref={chatAreaRef} className="relative flex-1 min-h-0">
+      {/* `flex flex-col` e não só `relative`: a `MessageList` é `flex-1
+          overflow-y-auto`, e num pai que não é flex container esse `flex-1`
+          não vale nada — a lista crescia com o conteúdo em vez de rolar
+          dentro, empurrando o campo de escrever para fora da tela. */}
+      <div ref={chatAreaRef} className="relative flex min-h-0 flex-1 flex-col">
         <MessageList
           ref={scrollRef}
           messages={messages}
