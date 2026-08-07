@@ -205,6 +205,11 @@ export default function LoginPage() {
             variant="outline"
             className="w-full h-11"
             onClick={() => {
+              // `/api/v1/*` é rewrite para o FastAPI, não rota do Next: o
+              // destino real é o consentimento do Google, fora da origem. O
+              // router do Next tentaria resolver como página e não sairia do
+              // lugar — aqui a navegação de documento é a correta.
+              // eslint-disable-next-line @next/next/no-location-assign-relative-destination
               window.location.assign("/api/v1/auth/google/login");
             }}
             type="button"

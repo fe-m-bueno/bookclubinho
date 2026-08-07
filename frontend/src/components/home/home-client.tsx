@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useHomeGroups } from "@/hooks/use-home-groups";
@@ -24,6 +25,7 @@ import { JoinGroupDialog } from "./join-group-dialog";
 
 export function HomeClient() {
   const [joinOpen, setJoinOpen] = useState(false);
+  const router = useRouter();
   const shouldReduce = useReducedMotion();
   const variants = shouldReduce
     ? STAGGER_VARIANTS_REDUCED
@@ -68,7 +70,7 @@ export function HomeClient() {
           </header>
           <main className="mx-auto w-full max-w-2xl flex-1 px-6">
             <HomeEmptyState
-              onCreateGroup={() => (window.location.href = "/groups/create")}
+              onCreateGroup={() => router.push("/groups/create")}
               onJoinGroup={() => setJoinOpen(true)}
             />
           </main>
