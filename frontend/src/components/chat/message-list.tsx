@@ -81,6 +81,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const sentinelRef = useRef<HTMLDivElement>(null);
     const didInitialScroll = useRef(false);
+    /** Onde a fase de abertura deixou o scroll — ver `handleScroll`. */
+    const openingScrollTop = useRef(0);
     const prevMessageCount = useRef(0);
     const prevLastMessageId = useRef<string | null>(null);
     const scrollRafRef = useRef<number | null>(null);
@@ -139,6 +141,18 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
     // acontecem no máximo uma vez por frame — `isAtBottom` alimenta a pílula
     // de novas mensagens, não precisa de precisão de evento.
     const handleScroll = useCallback(() => {
+      // Um scroll que não veio do nosso `scrollToEnd` é de quem está lendo, e
+      // encerra a fase de abertura — vale para roda, toque, teclado e para a
+      // barra de rolagem arrastada, que não emite gesto nenhum.
+      const el0 = scrollContainerRef.current;
+      if (
+        el0 &&
+        !didInitialScroll.current &&
+        Math.abs(el0.scrollTop - openingScrollTop.current) > 1
+      ) {
+        didInitialScroll.current = true;
+      }
+
       if (scrollRafRef.current !== null) return;
       scrollRafRef.current = requestAnimationFrame(() => {
         scrollRafRef.current = null;
@@ -164,13 +178,37 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       [],
     );
 
-    // Initial scroll to bottom
+    // O total só é definitivo depois que as linhas são medidas: até lá ele é a
+    // soma das estimativas. Como dependência do efeito abaixo, é o que faz o
+    // scroll inicial acompanhar cada remedição.
+    const totalSize = virtualizer.getTotalSize();
+
+    /**
+     * Abertura no fim da conversa.
+     *
+     * Rolar uma vez não bastava (#298). Medido no browser: o efeito rolava
+     * para 537 com o total ainda estimado em 904, e a medição das linhas
+     * trazia o total real (1364) logo depois, devolvendo o scroll a zero — o
+     * chat abria no começo do histórico.
+     *
+     * Também não dá para encerrar ao "chegar no fim": logo após o primeiro
+     * `scrollToEnd` o container *está* no fim do total estimado, e é
+     * justamente esse fim que deixa de valer. Então a abertura é uma fase, não
+     * um evento: o chat fica colado no fim enquanto o total se ajusta, e a
+     * fase termina no primeiro gesto de quem lê (efeito seguinte).
+     */
     useLayoutEffect(() => {
-      if (!isLoading && rows.length > 0 && !didInitialScroll.current) {
-        didInitialScroll.current = true;
-        scrollToEnd();
-      }
-    }, [isLoading, rows.length, scrollToEnd]);
+      if (isLoading || rows.length === 0 || didInitialScroll.current) return;
+
+      const el = scrollContainerRef.current;
+      if (!el) return;
+
+      scrollToEnd();
+      // Guardar onde a abertura deixou o scroll é o que permite ao
+      // `handleScroll` distinguir o próximo movimento: igual a este, foi
+      // nosso; diferente, foi de quem lê.
+      openingScrollTop.current = el.scrollTop;
+    }, [isLoading, rows.length, totalSize, scrollToEnd]);
 
     // Auto-scroll on new message from self
     useEffect(() => {
