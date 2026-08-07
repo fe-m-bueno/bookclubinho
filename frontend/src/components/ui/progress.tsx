@@ -21,7 +21,10 @@ function Progress({
     >
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
-        className="h-full w-full flex-1 bg-primary transition-all"
+        // O indicador nunca animou `width`: a barra é `w-full` e o que muda é o
+        // `translateX` logo abaixo. `transition-transform` nomeia o que já
+        // acontecia — e é composição pura, sem passar por layout.
+        className="h-full w-full flex-1 bg-primary transition-transform"
         style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
       />
     </ProgressPrimitive.Root>

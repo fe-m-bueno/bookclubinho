@@ -187,7 +187,9 @@ export function ChatInput({
           className={cn(
             "flex size-11 shrink-0 items-center justify-center rounded-full",
             "bg-primary text-primary-foreground shadow-sm",
-            "transition-all duration-150",
+            // hover muda o fundo, `active:scale-95` muda o transform, e
+            // `disabled` muda a opacidade — nada além disso.
+            "transition-[background-color,transform,opacity] duration-150",
             "hover:bg-primary/90 active:scale-95",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             "disabled:pointer-events-none disabled:opacity-50",

@@ -30,7 +30,7 @@ export function VotingCard({
   onVote,
 }: VotingCardProps) {
   const className = cn(
-    "relative w-full rounded-xl border bg-card p-4 text-left transition-all shadow-warm-sm",
+    "relative w-full rounded-xl border bg-card p-4 text-left transition-[border-color,box-shadow] shadow-warm-sm",
     isSelected && !isRevealed
       ? "border-sage-400 dark:border-sage-300 ring-2 ring-sage-400/40"
       : "border-border",

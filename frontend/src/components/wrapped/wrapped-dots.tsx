@@ -11,12 +11,14 @@ export function WrappedDots({ total, current, onDotClick }: WrappedDotsProps) {
         <button
           key={i}
           onClick={() => onDotClick?.(i)}
-          className="rounded-full transition-all duration-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          // A área de toque tem tamanho fixo e nenhum estado visual próprio —
+          // não havia o que transicionar aqui. Quem muda é o ponto lá dentro.
+          className="rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
           aria-label={`Slide ${i + 1}`}
           aria-current={i === current ? "true" : undefined}
         >
           <span
-            className={`block rounded-full transition-all duration-200 ${
+            className={`block rounded-full transition-[width,height,background-color] duration-200 ${
               i === current
                 ? "w-4 h-2 bg-foreground"
                 : "w-1.5 h-1.5 bg-foreground/40"
