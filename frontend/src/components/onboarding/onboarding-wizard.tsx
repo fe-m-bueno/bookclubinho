@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { SPRING_TRANSITION } from "@/lib/motion-variants";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ProgressHeader } from "./progress-header";
 import { StepProfileForm } from "./step-profile-form";
 import { StepGenresForm } from "./step-genres-form";
@@ -63,11 +64,19 @@ export function OnboardingWizard() {
     >
       <Card>
         <CardHeader>
-          <ProgressHeader
-            currentStep={currentStep}
-            stepLabels={STEP_LABELS}
-            reduceMotion={noMotion}
-          />
+          {/* O toggle divide a linha com o indicador em vez de flutuar por cima
+              dele — em 375px o card ocupa a largura toda e os dois disputavam
+              o mesmo canto. */}
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <ProgressHeader
+                currentStep={currentStep}
+                stepLabels={STEP_LABELS}
+                reduceMotion={noMotion}
+              />
+            </div>
+            <ThemeToggle />
+          </div>
         </CardHeader>
         <CardContent>
           <AnimatePresence mode="wait" custom={direction}>

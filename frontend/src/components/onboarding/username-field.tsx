@@ -50,9 +50,11 @@ export function UsernameField({
 
   return (
     <FormField
-      label="Username"
+      label="Nome de usuário"
       htmlFor={id}
-      error={error?.message ?? (showTaken ? "Username já está em uso" : undefined)}
+      error={
+        error?.message ?? (showTaken ? "Nome de usuário já está em uso" : undefined)
+      }
     >
       <div className="relative">
         <Input

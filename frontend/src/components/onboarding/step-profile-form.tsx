@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,6 +15,7 @@ import { AvatarUpload } from "./avatar-upload";
 import { UsernameField } from "./username-field";
 import { USERNAME_REGEX, type UsernameStatus } from "@/hooks/use-username-check";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 const profileSchema = z.object({
   username: z
@@ -53,6 +54,22 @@ export function StepProfileForm({ onNext }: StepProfileFormProps) {
   const username = form.watch("username");
   const statusText = form.watch("statusText") ?? "";
 
+  // O nome digitado em /auth/register já está persistido no usuário. `defaultValues`
+  // só é lido na montagem e o dado chega depois, então preenchemos quando ele chega —
+  // uma vez só, e nunca por cima do que a pessoa já digitou.
+  const { data: currentUser } = useCurrentUser();
+  const prefilledDisplayName = useRef(false);
+
+  useEffect(() => {
+    if (prefilledDisplayName.current) return;
+    const name = currentUser?.display_name?.trim();
+    if (!name) return;
+    if (form.getFieldState("displayName").isDirty) return;
+
+    prefilledDisplayName.current = true;
+    form.setValue("displayName", name, { shouldValidate: true });
+  }, [currentUser, form]);
+
   const { submit, loading: submitting } = useAuthSubmit({
     path: "/onboarding/profile",
     onSuccess: () => onNext(),
@@ -63,7 +80,10 @@ export function StepProfileForm({ onNext }: StepProfileFormProps) {
           toast.error(error.detail || "Erro de validação");
         },
       },
-      { status: 409, handler: () => toast.error("Username já está em uso") },
+      {
+        status: 409,
+        handler: () => toast.error("Nome de usuário já está em uso"),
+      },
     ],
   });
 

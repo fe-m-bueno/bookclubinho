@@ -18,6 +18,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { FormField } from "@/components/auth/form-field";
+import { PasswordInput } from "@/components/auth/password-input";
 import { GoogleIcon } from "@/components/icons/google-icon";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
 
@@ -77,10 +78,14 @@ export default function LoginPage() {
     antiEnumeration: true,
   });
 
+  function goToMagicLink() {
+    magicForm.setValue("email", loginForm.getValues("email"));
+    setMode("magic");
+  }
+
   function toggleMode() {
     if (mode === "password") {
-      magicForm.setValue("email", loginForm.getValues("email"));
-      setMode("magic");
+      goToMagicLink();
     } else {
       loginForm.setValue("email", magicForm.getValues("email"));
       setMode("password");
@@ -142,14 +147,23 @@ export default function LoginPage() {
                 htmlFor="login-password"
                 error={loginForm.formState.errors.password?.message}
               >
-                <Input
+                <PasswordInput
                   id="login-password"
-                  type="password"
                   placeholder="Sua senha"
                   autoComplete="current-password"
                   {...loginForm.register("password")}
                 />
               </FormField>
+
+              {/* Não há reset de senha no backend — a recuperação é o próprio
+                  magic link, que "Entrar com link mágico" não comunica. */}
+              <button
+                type="button"
+                onClick={goToMagicLink}
+                className="-mt-2 block text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Esqueci minha senha
+              </button>
 
               <Button
                 type="submit"
@@ -169,6 +183,11 @@ export default function LoginPage() {
               className="space-y-4"
               noValidate
             >
+              <p className="text-sm text-muted-foreground">
+                Enviamos um link de acesso para o seu e-mail — você entra sem
+                precisar da senha.
+              </p>
+
               <FormField
                 label="E-mail"
                 htmlFor="magic-email"

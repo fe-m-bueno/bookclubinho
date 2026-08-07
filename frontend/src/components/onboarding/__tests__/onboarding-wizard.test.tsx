@@ -45,7 +45,7 @@ describe("OnboardingWizard", () => {
     render(<OnboardingWizard />, { wrapper: QueryWrapper });
 
     expect(screen.getByText("Perfil")).toBeInTheDocument();
-    expect(screen.getByLabelText("Username")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome de usuário")).toBeInTheDocument();
     expect(screen.getByLabelText("Nome de exibição")).toBeInTheDocument();
     expect(screen.getByLabelText("Status")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Próximo" })).toBeInTheDocument();
@@ -58,6 +58,21 @@ describe("OnboardingWizard", () => {
     expect(screen.getByText("Preferências")).toBeInTheDocument();
     expect(screen.getByText("Clube")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
+  });
+
+  it("põe o toggle de tema em linha com o indicador, não por cima dele", () => {
+    render(<OnboardingWizard />, { wrapper: QueryWrapper });
+
+    const toggle = screen.getByRole("button", { name: "Alternar tema" });
+    const lastStep = screen.getByText("Clube");
+
+    // Em 375px o card ocupa a largura toda; um toggle `absolute` no canto
+    // cobria o último passo. Dividir a mesma linha é o que impede a colisão.
+    const row = toggle.parentElement;
+    expect(row).not.toBeNull();
+    expect(row).toHaveClass("flex");
+    expect(row?.contains(lastStep)).toBe(true);
+    expect(toggle.className).not.toMatch(/absolute/);
   });
 
   it("renders avatar upload area", () => {
@@ -78,7 +93,7 @@ describe("OnboardingWizard", () => {
     const user = userEvent.setup();
     render(<OnboardingWizard />, { wrapper: QueryWrapper });
 
-    const usernameInput = screen.getByLabelText("Username");
+    const usernameInput = screen.getByLabelText("Nome de usuário");
     await user.type(usernameInput, "1invalid");
 
     const displayNameInput = screen.getByLabelText("Nome de exibição");

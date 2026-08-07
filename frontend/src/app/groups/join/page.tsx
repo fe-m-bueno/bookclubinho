@@ -41,10 +41,10 @@ function JoinGroupContent() {
         <div className="flex flex-col items-center gap-4 text-center">
           <AlertCircle className="h-10 w-10 text-muted-foreground" />
           <p className="text-muted-foreground">
-            Codigo de convite nao informado.
+            Código de convite não informado.
           </p>
           <Button variant="outline" onClick={() => router.push("/")}>
-            Voltar ao inicio
+            Voltar ao início
           </Button>
         </div>
       </div>
@@ -112,10 +112,10 @@ function JoinGroupContent() {
           <div className="flex flex-col items-center gap-4 text-center">
             <AlertCircle className="h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">
-              Convite invalido ou clube nao encontrado.
+              Convite inválido ou clube não encontrado.
             </p>
             <Button variant="outline" onClick={() => router.push("/")}>
-              Voltar ao inicio
+              Voltar ao início
             </Button>
           </div>
         )}
