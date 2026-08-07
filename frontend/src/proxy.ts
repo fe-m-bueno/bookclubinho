@@ -46,25 +46,32 @@ function redirectTo(request: NextRequest, pathname: string): NextResponse {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (isSkippedRoute(pathname) || isPublicRoute(pathname) || pathname === "/") {
+  if (isSkippedRoute(pathname) || isPublicRoute(pathname)) {
     return NextResponse.next();
   }
+
+  // "/" serve a landing page para quem não tem sessão, mas para quem tem ela é
+  // a home — e precisa passar pelo gate de onboarding como qualquer outra rota
+  // privada. Sem sessão válida, cai na landing em vez de ir para o login.
+  const isRoot = pathname === "/";
+  const noSession = () =>
+    isRoot ? NextResponse.next() : redirectTo(request, "/auth/login");
 
   const token = request.cookies.get("access_token")?.value;
 
   if (!token) {
-    return redirectTo(request, "/auth/login");
+    return noSession();
   }
 
   const payload = decodeJwtPayload(token);
 
   if (!payload) {
-    return redirectTo(request, "/auth/login");
+    return noSession();
   }
 
   const exp = payload.exp;
   if (typeof exp === "number" && exp * 1000 < Date.now()) {
-    return redirectTo(request, "/auth/login");
+    return noSession();
   }
 
   const onboardingCompleted = payload.onb === true;
