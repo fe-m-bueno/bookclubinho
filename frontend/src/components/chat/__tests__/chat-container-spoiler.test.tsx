@@ -14,7 +14,7 @@ vi.mock("../chat-input", () => ({
   ChatInput: () => <div data-testid="chat-input" />,
 }));
 vi.mock("@/hooks/use-chat-sse", () => ({
-  useChatSSE: () => ({ connected: true }),
+  useChatSSE: () => ({ status: "connected", connected: true }),
 }));
 vi.mock("@/hooks/use-typing-indicator", () => ({
   useTypingIndicator: () => ({ sendTyping: vi.fn(), typingUsers: [] }),

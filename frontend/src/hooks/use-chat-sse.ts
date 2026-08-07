@@ -15,18 +15,37 @@ interface UseChatSSEOptions {
   currentUserId: string;
 }
 
+/**
+ * `connecting`: ainda não recebeu o `connected` inicial — normal logo que o
+ * chat abre, não é erro.
+ * `connected`: stream de pé.
+ * `disconnected`: já esteve `connected` e caiu — o único estado que merece
+ * aviso. Sem essa distinção, o primeiro render (sempre `connecting`) e uma
+ * queda de verdade pareciam a mesma coisa (#273).
+ */
+export type ChatSSEStatus = "connecting" | "connected" | "disconnected";
+
 export function useChatSSE({ groupId, currentUserId }: UseChatSSEOptions) {
   const queryClient = useQueryClient();
-  const [connected, setConnected] = useState(false);
+  const [status, setStatus] = useState<ChatSSEStatus>("connecting");
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    const url = `/api/v1/groups/${groupId}/chat/stream`;
+    setStatus("connecting");
+    let hasConnected = false;
+    // Rota própria, fora de `/api/v1`: o rewrite genérico do `next.config.ts`
+    // buferiza o stream. Ver `app/api/chat-stream/[groupId]/route.ts`.
+    const url = `/api/chat-stream/${groupId}`;
     const es = new EventSource(url, { withCredentials: true });
     esRef.current = es;
 
-    es.addEventListener("connected", () => setConnected(true));
-    es.onerror = () => setConnected(false);
+    es.addEventListener("connected", () => {
+      hasConnected = true;
+      setStatus("connected");
+    });
+    // O EventSource dispara `error` durante as tentativas normais de conexão
+    // inicial também — só quem já viu `connected` uma vez está de fato caindo.
+    es.onerror = () => setStatus(hasConnected ? "disconnected" : "connecting");
 
     // Rede fora no meio do stream não deve virar unhandled rejection: o
     // próximo evento, ou o refetch natural da janela, traz o que faltou.
@@ -105,9 +124,8 @@ export function useChatSSE({ groupId, currentUserId }: UseChatSSEOptions) {
     return () => {
       es.close();
       esRef.current = null;
-      setConnected(false);
     };
   }, [groupId, currentUserId, queryClient]);
 
-  return { connected };
+  return { status, connected: status === "connected" };
 }

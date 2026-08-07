@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageCircle } from "lucide-react";
+import type { ChatSSEStatus } from "@/hooks/use-chat-sse";
 import type { GroupDetailResponse } from "@/lib/types/group";
 import { ChapterFilterChip } from "./chapter-filter-chip";
 
@@ -8,14 +9,14 @@ interface ChatHeaderProps {
   group: GroupDetailResponse;
   chapterFilter: number | null;
   onClearFilter: () => void;
-  connected: boolean;
+  sseStatus: ChatSSEStatus;
 }
 
 export function ChatHeader({
   group,
   chapterFilter,
   onClearFilter,
-  connected,
+  sseStatus,
 }: ChatHeaderProps) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b bg-background/95 backdrop-blur-sm">
@@ -25,7 +26,9 @@ export function ChatHeader({
         <span className="text-xs text-muted-foreground">
           {group.member_count} membro{group.member_count !== 1 ? "s" : ""}
         </span>
-        {!connected && (
+        {/* "connecting" é o estado normal logo que o chat abre — só uma
+            queda de verdade (já esteve conectado e caiu) merece aviso. */}
+        {sseStatus === "disconnected" && (
           <span className="text-xs text-destructive">Reconectando...</span>
         )}
       </div>
