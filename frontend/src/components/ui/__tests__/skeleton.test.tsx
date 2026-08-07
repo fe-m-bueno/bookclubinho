@@ -3,6 +3,7 @@ import path from "node:path";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Skeleton } from "../skeleton";
+import { composite, contrast, readToken } from "@/test-utils/color";
 
 /**
  * O skeleton some contra o fundo, e o diagnóstico original (#275) creditava
@@ -16,8 +17,7 @@ import { Skeleton } from "../skeleton";
  * 3. `--accent` é o token de hover; skeletons emprestando-o mudam junto.
  *
  * O teste lê o CSS em vez de duplicar os valores porque o alvo é justamente
- * impedir que um ajuste de paleta derrube o contraste sem ninguém notar — e o
- * croma dos dois temas ainda vai subir (#275, item 2).
+ * impedir que um ajuste de paleta derrube o contraste sem ninguém notar.
  */
 
 const CSS = readFileSync(
@@ -32,88 +32,6 @@ const MAX_CONTRAST = 1.3;
 /** O piso de opacidade do pulse — o vale do ciclo. */
 const PULSE_FLOOR = 0.7;
 
-type Rgb = [number, number, number];
-
-function oklchToSrgb(L: number, C: number, H: number): Rgb {
-  const h = (H * Math.PI) / 180;
-  const a = C * Math.cos(h);
-  const b = C * Math.sin(h);
-
-  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
-
-  const linear: Rgb = [
-    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
-  ];
-
-  return linear.map((x) => {
-    const c = Math.min(1, Math.max(0, x));
-    return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
-  }) as Rgb;
-}
-
-function relativeLuminance([r, g, b]: Rgb): number {
-  const lin = (c: number) =>
-    c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-}
-
-function contrast(fg: Rgb, bg: Rgb): number {
-  const a = relativeLuminance(fg);
-  const b = relativeLuminance(bg);
-  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-}
-
-/** Compõe `fg` sobre `bg` com alfa — o que o browser faz com cor translúcida. */
-function composite(fg: Rgb, bg: Rgb, alpha: number): Rgb {
-  return fg.map((c, i) => c * alpha + bg[i] * (1 - alpha)) as Rgb;
-}
-
-interface Color {
-  rgb: Rgb;
-  /** Alfa do token, 1 quando opaco. */
-  alpha: number;
-}
-
-/** `oklch(0.98 0.01 76)` e `oklch(1 0 0 / 8%)`. */
-function parseOklch(value: string): Color {
-  const match = value.match(
-    /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*(?:\/\s*([\d.]+)%\s*)?\)/,
-  );
-  if (!match) throw new Error(`oklch não reconhecido: ${value}`);
-  const [, l, c, h, a] = match;
-  return {
-    rgb: oklchToSrgb(Number(l), Number(c), Number(h)),
-    alpha: a === undefined ? 1 : Number(a) / 100,
-  };
-}
-
-/**
- * Lê um custom property de dentro de um bloco do globals.css.
- *
- * Parse por índice, e não por RegExp montada com template string: o SAST
- * bloqueia regex dinâmica (ReDoS), e aqui ela nem seria necessária.
- */
-function token(selector: string, name: string): Color {
-  const open = CSS.indexOf(`${selector} {`);
-  if (open === -1) throw new Error(`bloco ${selector} não encontrado`);
-
-  const close = CSS.indexOf("\n}", open);
-  const block = CSS.slice(open, close === -1 ? undefined : close);
-
-  const prefix = `--${name}:`;
-  const line = block
-    .split("\n")
-    .map((l) => l.trim())
-    .find((l) => l.startsWith(prefix));
-  if (!line) throw new Error(`--${name} não existe em ${selector}`);
-
-  return parseOklch(line.slice(prefix.length).replace(";", "").trim());
-}
-
 const THEMES = [
   { name: "light", selector: ":root" },
   { name: "dark", selector: ".dark" },
@@ -123,7 +41,7 @@ const SURFACES = ["card", "background"] as const;
 
 describe("token --skeleton", () => {
   it.each(THEMES)("existe no tema $name", ({ selector }) => {
-    expect(() => token(selector, "skeleton")).not.toThrow();
+    expect(() => readToken(CSS, selector, "skeleton")).not.toThrow();
   });
 
   it.each(THEMES)(
@@ -132,14 +50,14 @@ describe("token --skeleton", () => {
       // Cor opaca não consegue contraste equivalente sobre --card e sobre
       // --background ao mesmo tempo: as duas têm lightness diferentes, e em
       // light e dark o token precisaria ficar de lados opostos delas.
-      expect(token(selector, "skeleton").alpha).toBeLessThan(1);
+      expect(readToken(CSS, selector, "skeleton").alpha).toBeLessThan(1);
     },
   );
 
   describe.each(THEMES)("contraste no tema $name", ({ selector }) => {
     it.each(SURFACES)("fica na faixa alvo sobre --%s", (surface) => {
-      const skeleton = token(selector, "skeleton");
-      const bg = token(selector, surface).rgb;
+      const skeleton = readToken(CSS, selector, "skeleton");
+      const bg = readToken(CSS, selector, surface).rgb;
 
       const peak = contrast(composite(skeleton.rgb, bg, skeleton.alpha), bg);
       const trough = contrast(
