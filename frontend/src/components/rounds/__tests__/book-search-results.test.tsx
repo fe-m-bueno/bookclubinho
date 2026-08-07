@@ -57,8 +57,8 @@ describe("BookSearchResults", () => {
       <BookSearchResults results={[]} onSelect={vi.fn()} loading={true} />,
     );
     act(() => vi.advanceTimersByTime(250));
-    // Skeletons render with animate-pulse
-    expect(container.querySelector(".animate-pulse")).toBeTruthy();
+    // O marcador estável é o data-slot do primitivo, não a classe de animação.
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeTruthy();
     vi.useRealTimers();
   });
 

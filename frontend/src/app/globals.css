@@ -40,6 +40,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-skeleton: var(--skeleton);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -51,6 +52,11 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Pulse do skeleton — piso de 0.7, e não os 0.5 do `animate-pulse`.
+     Com 0.5 o skeleton passa metade do ciclo abaixo de 1.08:1 contra a
+     superfície e some; com 0.7 o ciclo inteiro fica na faixa visível. */
+  --animate-skeleton-pulse: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
   /* Brand color scale — cream to warm charcoal via oklch */
   --color-brand-50: oklch(0.98 0.01 80);
@@ -106,6 +112,11 @@
   --input: oklch(0.93 0.015 78);
   --ring: oklch(0.52 0.08 152);
 
+  /* Skeleton translúcido de propósito: `--card` e `--background` têm lightness
+     diferentes, então nenhuma cor opaca dá contraste equivalente nas duas.
+     Overlay é relativo à superfície por construção. */
+  --skeleton: oklch(0 0 0 / 9%);
+
   /* Charts — botanical palette */
   --chart-1: oklch(0.55 0.08 150);
   --chart-2: oklch(0.62 0.10 55);
@@ -148,6 +159,8 @@
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 10%);
   --ring: oklch(0.68 0.07 152);
+
+  --skeleton: oklch(1 0 0 / 8%);
 
   --chart-1: oklch(0.68 0.07 150);
   --chart-2: oklch(0.72 0.08 55);
@@ -241,6 +254,20 @@ em-emoji-picker {
     flex: 1;
     height: 1px;
     background: linear-gradient(to right, transparent, currentColor 20%, currentColor 80%, transparent);
+  }
+}
+
+/* Fora do `@theme` para ser emitido sempre, independente do tree-shaking do
+   `@theme inline`. */
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="skeleton"] {
+    animation: none;
   }
 }
 

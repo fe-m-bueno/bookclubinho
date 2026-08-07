@@ -13,6 +13,7 @@ import {
 } from "@/lib/motion-variants";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { HomeSkeleton } from "./home-skeleton";
+import { HomeHeader, HomeMain, HomeShell } from "./home-shell";
 import { HomeEmptyState } from "./home-empty-state";
 import { UserMenu } from "./user-menu";
 import { GroupHomeCard } from "./group-home-card";
@@ -78,21 +79,19 @@ export function HomeClient() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-24">
+    <HomeShell>
       {/* Greeting — warm, personal, large */}
-      <header className="px-6 pt-10 pb-8">
-        <div className="mx-auto flex max-w-2xl items-end justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">{greeting}</p>
-            <h1 className="mt-1 text-3xl font-display font-bold tracking-tight md:text-4xl">
-              {firstName}
-            </h1>
-          </div>
-          <UserMenu user={user} />
+      <HomeHeader>
+        <div>
+          <p className="text-sm text-muted-foreground">{greeting}</p>
+          <h1 className="mt-1 text-3xl font-display font-bold tracking-tight md:text-4xl">
+            {firstName}
+          </h1>
         </div>
-      </header>
+        <UserMenu user={user} />
+      </HomeHeader>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-6">
+      <HomeMain>
         {/* Groups */}
         <section>
           <h2 className="divider-ornament mb-6">meus clubes</h2>
@@ -147,9 +146,9 @@ export function HomeClient() {
             </motion.ul>
           </section>
         )}
-      </main>
+      </HomeMain>
 
       <SpeedDialFAB />
-    </div>
+    </HomeShell>
   );
 }

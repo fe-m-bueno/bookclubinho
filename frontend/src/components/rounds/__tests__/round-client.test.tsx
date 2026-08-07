@@ -113,7 +113,7 @@ describe("RoundClient", () => {
 
     const { container } = renderWithProviders(<RoundClient />);
     act(() => vi.advanceTimersByTime(250));
-    expect(container.querySelector(".animate-pulse")).toBeTruthy();
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeTruthy();
     vi.useRealTimers();
   });
 
