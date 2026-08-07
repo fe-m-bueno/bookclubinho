@@ -94,7 +94,11 @@ export function GroupTabBar({
    */
   return (
     <nav
-      className="flex items-center gap-0.5 rounded-xl bg-muted/60 p-1 md:hidden"
+      // `max-w-md` centralizado: a forma foi desenhada para 375px, onde os
+      // cinco rótulos ficam justos de propósito. Esticada até os 767px que
+      // antecedem o `md:`, ela vira uma faixa de 700px e deixa de ler como
+      // controle segmentado.
+      className="mx-auto flex w-full max-w-md items-center gap-0.5 rounded-xl bg-muted/60 p-1 md:hidden"
       aria-label="Navegação do grupo"
     >
       {tabs.map(({ label, segment }) => {
