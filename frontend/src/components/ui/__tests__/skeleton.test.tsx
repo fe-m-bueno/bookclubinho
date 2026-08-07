@@ -91,22 +91,32 @@ function parseOklch(value: string): Color {
   };
 }
 
-/** Lê um custom property de dentro de um bloco do globals.css. */
+/**
+ * Lê um custom property de dentro de um bloco do globals.css.
+ *
+ * Parse por índice, e não por RegExp montada com template string: o SAST
+ * bloqueia regex dinâmica (ReDoS), e aqui ela nem seria necessária.
+ */
 function token(selector: string, name: string): Color {
-  const block = CSS.match(
-    new RegExp(`${selector}\\s*\\{([\\s\\S]*?)\\n\\}`),
-  )?.[1];
-  if (!block) throw new Error(`bloco ${selector} não encontrado`);
+  const open = CSS.indexOf(`${selector} {`);
+  if (open === -1) throw new Error(`bloco ${selector} não encontrado`);
 
-  const declaration = block.match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1];
-  if (!declaration) throw new Error(`--${name} não existe em ${selector}`);
+  const close = CSS.indexOf("\n}", open);
+  const block = CSS.slice(open, close === -1 ? undefined : close);
 
-  return parseOklch(declaration.trim());
+  const prefix = `--${name}:`;
+  const line = block
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.startsWith(prefix));
+  if (!line) throw new Error(`--${name} não existe em ${selector}`);
+
+  return parseOklch(line.slice(prefix.length).replace(";", "").trim());
 }
 
 const THEMES = [
   { name: "light", selector: ":root" },
-  { name: "dark", selector: "\\.dark" },
+  { name: "dark", selector: ".dark" },
 ] as const;
 
 const SURFACES = ["card", "background"] as const;
