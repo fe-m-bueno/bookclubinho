@@ -69,18 +69,18 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
   const chatAreaRef = useRef<HTMLDivElement>(null);
 
   const handleSend = useCallback(
-    (text: string, richJson: Record<string, unknown>) => {
+    async (text: string, richJson: Record<string, unknown>) => {
       if (editingMessage) {
-        editMutation.mutate(
-          {
+        try {
+          await editMutation.mutateAsync({
             messageId: editingMessage.id,
             payload: { content_text: text, content_rich_json: richJson },
-          },
-          {
-            onSuccess: () => useChatStore.getState().setEditingMessage(null),
-          },
-        );
-        return;
+          });
+          useChatStore.getState().setEditingMessage(null);
+          return true;
+        } catch {
+          return false;
+        }
       }
 
       const payload: MessageCreatePayload = {
@@ -90,12 +90,16 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
         parent_message_id: replyTo?.id ?? null,
       };
 
-      sendMutation.mutate(payload, {
-        onSuccess: () => {
-          useChatStore.getState().setReplyTo(null);
-          scrollRef.current?.scrollToBottom();
-        },
-      });
+      try {
+        await sendMutation.mutateAsync(payload);
+        useChatStore.getState().setReplyTo(null);
+        scrollRef.current?.scrollToBottom();
+        return true;
+      } catch {
+        // Erro visível já é responsabilidade do toast em `useSendMessage`; o
+        // editor decide, a partir do retorno, se preserva o texto do usuário.
+        return false;
+      }
     },
     [editingMessage, replyTo, sendMutation, editMutation],
   );

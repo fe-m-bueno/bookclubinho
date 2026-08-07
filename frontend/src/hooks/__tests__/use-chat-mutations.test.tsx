@@ -4,8 +4,10 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type { ChatMessage, MessageListResponse } from "@/lib/types/chat";
+import { useViewerChapter } from "../use-viewer-chapter";
 import { useChatMessages } from "../use-chat-messages";
 import {
   useDeleteMessage,
@@ -14,13 +16,21 @@ import {
   useToggleReaction,
 } from "../use-chat-mutations";
 
-vi.mock("@/lib/api", () => ({
-  api: {
-    get: vi.fn(),
-    post: vi.fn(),
-    patch: vi.fn(),
-    del: vi.fn(),
-  },
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+  return {
+    ...actual,
+    api: {
+      get: vi.fn(),
+      post: vi.fn(),
+      patch: vi.fn(),
+      del: vi.fn(),
+    },
+  };
+});
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }));
 
 const GROUP = "g-1";
@@ -171,7 +181,7 @@ describe("mutações do chat", () => {
     );
   });
 
-  it("desfaz a mensagem otimista quando o envio falha", async () => {
+  it("desfaz a mensagem otimista e mostra erro visível quando o envio falha", async () => {
     vi.mocked(api.post).mockRejectedValue(new Error("offline"));
 
     setup();
@@ -183,6 +193,47 @@ describe("mutações do chat", () => {
       expect(screen.queryByText(/recém-enviada/)).not.toBeInTheDocument(),
     );
     expect(screen.getByText(/mensagem antiga/)).toBeInTheDocument();
+    // #272: falha de envio não pode mais ser silenciosa.
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+  });
+
+  /**
+   * #272: reproduz o bug real — `useViewerChapter` guarda seu
+   * `MessageListResponse` sob o mesmo prefixo de cache do chat (de propósito,
+   * para ganhar invalidação de graça). Antes do fix, essa entrada sem `.pages`
+   * fazia `onMutate` explodir silenciosamente antes de qualquer POST sair.
+   */
+  it("envia mesmo com a query de viewerChapter carregada sob o mesmo prefixo", async () => {
+    vi.mocked(api.get).mockImplementation((url: string) =>
+      url.includes("reference_type=chapter")
+        ? Promise.resolve({ messages: [], next_cursor: null })
+        : Promise.resolve(primeiraPagina),
+    );
+    const servidor = deferred<ChatMessage>();
+    vi.mocked(api.post).mockReturnValue(servidor.promise);
+
+    function HarnessComViewerChapter() {
+      useViewerChapter(GROUP, ME);
+      return <Harness />;
+    }
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(<HarnessComViewerChapter />, {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    });
+
+    await screen.findByText(/mensagem antiga/);
+    // dá tempo da query de viewerChapter também resolver e entrar no cache
+    await waitFor(() => expect(vi.mocked(api.get).mock.calls.length).toBeGreaterThanOrEqual(2));
+
+    await userEvent.click(screen.getByRole("button", { name: "enviar" }));
+
+    expect(await screen.findByText(/recém-enviada/)).toBeInTheDocument();
+    expect(vi.mocked(api.post)).toHaveBeenCalled();
   });
 
   it("reagir atualiza o cache sem invalidar nem refetchar página nenhuma", async () => {

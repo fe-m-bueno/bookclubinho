@@ -42,7 +42,10 @@ const TiptapEditor = dynamic(
 );
 
 interface ChatInputProps {
-  onSend: (text: string, richJson: Record<string, unknown>) => void;
+  onSend: (
+    text: string,
+    richJson: Record<string, unknown>,
+  ) => boolean | Promise<boolean>;
   onTyping: () => void;
   onImageSelect: (file: File) => void;
   onSendSpecial: (payload: Partial<MessageCreatePayload>) => void;
@@ -68,10 +71,11 @@ export function ChatInput({
   const editorHandleRef = useRef<TiptapEditorHandle | null>(null);
 
   const handleSend = useCallback(
-    (text: string, richJson: Record<string, unknown>) => {
-      onSend(text, richJson);
+    async (text: string, richJson: Record<string, unknown>) => {
+      const ok = await onSend(text, richJson);
       if (editingMessage) setEditingMessage(null);
       if (replyTo) setReplyTo(null);
+      return ok;
     },
     [editingMessage, onSend, replyTo, setEditingMessage, setReplyTo],
   );
