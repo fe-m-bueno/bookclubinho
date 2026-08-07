@@ -204,4 +204,31 @@ describe("MessageList virtualizada", () => {
     expect(await screen.findByText("Nenhuma mensagem ainda.")).toBeInTheDocument();
     expect(mountedIds()).toHaveLength(0);
   });
+
+  /**
+   * #274: `virtualizer.measureElement` entra como `ref`, e o React chama ref
+   * na fase de commit. Ao medir, o virtualizador reajusta o scroll e pede um
+   * rerender síncrono — `flushSync` no meio do commit, que o React recusa com
+   * um erro no console a cada abertura do chat.
+   *
+   * Note que o erro sai por `console.error` sem derrubar nada: sem esta
+   * asserção, a regressão volta silenciosa.
+   */
+  it("não emite aviso de flushSync ao abrir a lista", async () => {
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      renderList({ messages: makeConversation(60) });
+      layout.flushRaf();
+      await waitFor(() => expect(mountedIds().length).toBeGreaterThan(0));
+
+      const avisos = erro.mock.calls
+        .map((args) => args.map((a) => String(a)).join(" "))
+        .filter((msg) => msg.includes("flushSync"));
+
+      expect(avisos).toEqual([]);
+    } finally {
+      erro.mockRestore();
+    }
+  });
 });
