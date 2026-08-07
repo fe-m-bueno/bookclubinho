@@ -80,44 +80,51 @@ export function GroupTabBar({
     );
   }
 
+  /**
+   * Controle segmentado, no fluxo — não é mais barra fixa no rodapé.
+   *
+   * A barra inferior era a única do app e pertencia ao grupo, não ao app:
+   * cobrava 56px permanentes do chat, que é a tela diária, para dar atalho a
+   * três telas mensais, e não oferecia caminho de volta para a home. Home é
+   * raiz, grupo é pilha — a saída fica no header.
+   *
+   * No fluxo, e não `sticky`, de propósito: o chat tem altura fixa e não rola,
+   * então o controle segue à vista onde é usado; em Estante, Números e
+   * Encontros ele sai de cena ao rolar e devolve a tela ao conteúdo.
+   */
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="flex items-center gap-0.5 rounded-xl bg-muted/60 p-1 md:hidden"
       aria-label="Navegação do grupo"
     >
-      <div className="flex items-center justify-around px-2 py-1">
-        {tabs.map(({ label, icon: Icon, segment }) => {
-          const href = `/groups/${groupId}/${segment}`;
-          const isActive = pathname.startsWith(href);
+      {tabs.map(({ label, segment }) => {
+        const href = `/groups/${groupId}/${segment}`;
+        const isActive = pathname.startsWith(href);
 
-          return (
-            <Link
-              key={segment}
-              href={href}
-              className={cn(
-                "relative flex min-h-[44px] min-w-[44px] flex-col items-center justify-center px-2 py-1.5 text-[10px] font-medium transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground",
-              )}
-              aria-current={isActive ? "page" : undefined}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId={`tab-accent-${groupId}-mobile`}
-                  className="absolute top-0 left-3 right-3 h-0.5 rounded-full bg-primary"
-                  transition={springTransition}
-                />
-              )}
-              <span className="relative">
-                <Icon className="mb-0.5 h-5 w-5" />
-                {segment === "meetings" && hasMeetingSoon && (
-                  <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-sage-500" />
-                )}
-              </span>
-              <span>{label}</span>
-            </Link>
-          );
-        })}
-      </div>
+        return (
+          <Link
+            key={segment}
+            href={href}
+            className={cn(
+              "relative flex min-h-9 flex-1 items-center justify-center rounded-lg px-1 text-[11px] font-medium transition-colors",
+              isActive ? "text-foreground" : "text-muted-foreground",
+            )}
+            aria-current={isActive ? "page" : undefined}
+          >
+            {isActive && (
+              <motion.span
+                layoutId={`tab-segment-${groupId}`}
+                className="absolute inset-0 rounded-lg bg-card shadow-warm-sm"
+                transition={springTransition}
+              />
+            )}
+            <span className="relative truncate">{label}</span>
+            {segment === "meetings" && hasMeetingSoon && (
+              <span className="relative ml-1 size-1.5 shrink-0 rounded-full bg-sage-500" />
+            )}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

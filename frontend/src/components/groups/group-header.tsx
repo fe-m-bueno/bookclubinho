@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Home, Settings } from "lucide-react";
+import { ArrowLeft, Settings } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { MemberAvatarStack } from "./member-avatar-stack";
 import { UserMenu } from "@/components/home/user-menu";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -23,7 +22,18 @@ export function GroupHeader({ group }: GroupHeaderProps) {
   const { data: user } = useCurrentUser();
 
   return (
-    <header className="flex items-center gap-4 py-4">
+    <header className="flex items-center gap-2 py-4 sm:gap-4">
+      {/* Seta e não casinha: home é raiz, grupo é pilha. Era o único caminho de
+          volta do app inteiro, e vinha em 36px — abaixo do alvo de 44px que o
+          #271 fixou e só conseguiu aplicar em quem usa o componente `Button`. */}
+      <Link
+        href="/"
+        className="inline-flex size-11 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-muted"
+        aria-label="Voltar para o início"
+      >
+        <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+      </Link>
+
       <Avatar size="lg">
         {group.photo_url && (
           <AvatarImage src={group.photo_url} alt={group.name} />
@@ -42,22 +52,17 @@ export function GroupHeader({ group }: GroupHeaderProps) {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <Link
-          href="/"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted"
-          aria-label="Voltar para o início"
-        >
-          <Home className="h-4 w-4 text-muted-foreground" />
-        </Link>
-        <ThemeToggle />
+      {/* Sem `ThemeToggle` aqui: o `UserMenu` ao lado já tem "Modo escuro", e
+          eram dois controles do mesmo estado na mesma tela. Os 40px que ele
+          ocupava vão para o nome do clube, que em 375px vinha truncado. */}
+      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
         {isAdmin && (
           <Link
             href={`/groups/${group.id}/settings`}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-muted"
+            className="inline-flex size-11 items-center justify-center rounded-md transition-colors hover:bg-muted"
             aria-label="Configurações do grupo"
           >
-            <Settings className="h-4 w-4 text-muted-foreground" />
+            <Settings className="h-5 w-5 text-muted-foreground" />
           </Link>
         )}
         {user && <UserMenu user={user} />}

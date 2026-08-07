@@ -44,15 +44,33 @@ export function GroupLayoutShell({ groupId, children }: GroupLayoutShellProps) {
 
   return (
     <GroupProvider group={group} refetch={refetch}>
-      <div className="flex flex-col min-h-screen">
+      {/* `h-dvh` e não `min-h-screen`: o grupo é uma pilha de altura fixa e quem
+          rola é o `main`. Com altura indefinida no topo não há espaço a
+          dividir, e um filho `flex-1` cresce com o conteúdo — o chat empurrava
+          o campo de escrever para baixo da dobra. `dvh` porque a barra de URL
+          do mobile muda a altura visível. */}
+      <div className="flex h-dvh flex-col">
         <div className="mx-auto w-full max-w-7xl px-4 pt-4">
           <GroupHeader group={group} />
           <GroupTabBar groupId={groupId} variant="desktop" hasMeetingSoon={hasMeetingSoon} />
         </div>
-        <main className="mx-auto w-full max-w-7xl flex-1 overflow-y-auto px-4 pt-4 pb-20 md:pb-0">
-          {children}
+        {/* O controle segmentado mora dentro da área rolável, não acima dela:
+            é o que o faz sair de cena em Estante, Números e Encontros e seguir
+            à vista no chat, que não rola. Sem `pb-20` — não existe mais barra
+            fixa no rodapé para compensar. */}
+        {/* `min-h-0` importa: sem ele um filho `flex-1` cresce com o conteúdo e
+            empurra a página em vez de rolar dentro do main — o chat perdia o
+            campo de escrever para baixo da dobra. */}
+        <main className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-y-auto px-4 pt-4 pb-[env(safe-area-inset-bottom)]">
+          <GroupTabBar
+            groupId={groupId}
+            variant="mobile"
+            hasMeetingSoon={hasMeetingSoon}
+          />
+          <div className="flex min-h-0 flex-1 flex-col pt-3 md:pt-0">
+            {children}
+          </div>
         </main>
-        <GroupTabBar groupId={groupId} variant="mobile" hasMeetingSoon={hasMeetingSoon} />
         {showTimer && <FloatingTimerButton />}
       </div>
     </GroupProvider>

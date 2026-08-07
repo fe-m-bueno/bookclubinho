@@ -71,6 +71,35 @@ describe("GroupHeader", () => {
     expect(screen.getByText("B")).toBeInTheDocument();
   });
 
+  it("a volta para a home tem área de toque de 44px", () => {
+    render(<GroupHeader group={baseGroup} />);
+
+    // Era o único caminho de volta do app e vinha em 36px — abaixo do alvo de
+    // 44px que o #271 fixou e só conseguiu aplicar em quem usa o `Button`.
+    const voltar = screen.getByRole("link", { name: "Voltar para o início" });
+    expect(voltar).toHaveAttribute("href", "/");
+    expect(voltar.className).toContain("size-11");
+  });
+
+  it("a engrenagem de configurações também tem 44px", () => {
+    render(<GroupHeader group={baseGroup} />);
+
+    const settings = screen.getByRole("link", {
+      name: "Configurações do grupo",
+    });
+    expect(settings.className).toContain("size-11");
+  });
+
+  it("não repete o controle de tema que já existe no menu do usuário", () => {
+    render(<GroupHeader group={baseGroup} />);
+
+    // Eram dois controles do mesmo estado na mesma tela; os 40px do toggle
+    // foram para o nome do clube, que vinha truncado em 375px.
+    expect(
+      screen.queryByRole("button", { name: "Alternar tema" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows settings gear for admin (invite_code not null)", () => {
     render(<GroupHeader group={baseGroup} />);
 
