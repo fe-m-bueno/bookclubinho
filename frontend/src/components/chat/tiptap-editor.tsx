@@ -12,7 +12,11 @@ export interface TiptapEditorHandle {
 }
 
 interface TiptapEditorProps {
-  onSend: (text: string, richJson: Record<string, unknown>) => void;
+  /** Retorna `false` (ou uma promise resolvendo `false`) para preservar o texto — envio falhou. */
+  onSend: (
+    text: string,
+    richJson: Record<string, unknown>,
+  ) => boolean | Promise<boolean> | void;
   initialContent?: string;
   disabled?: boolean;
   placeholder?: string;
@@ -92,12 +96,17 @@ export function TiptapEditor({
           if (text.length > MAX_CHARS) return true; // block send over limit
 
           const json = ed.getJSON() as Record<string, unknown>;
-          onSendRef.current(text, json);
+          const result = onSendRef.current(text, json);
 
-          // Clear on next tick — let Tiptap finish its own key handling first
-          setTimeout(() => {
-            ed.commands.clearContent(true);
-          }, 0);
+          // Só limpa se o envio foi aceito — se falhar, o texto fica para o
+          // usuário tentar de novo em vez de sumir junto com o erro.
+          void Promise.resolve(result).then((ok) => {
+            if (ok === false) return;
+            // Clear on next tick — let Tiptap finish its own key handling first
+            setTimeout(() => {
+              ed.commands.clearContent(true);
+            }, 0);
+          });
 
           return true;
         }
@@ -148,8 +157,11 @@ export function TiptapEditor({
         const text = ed.state.doc.textContent.trim();
         if (!text || text.length > MAX_CHARS) return;
         const json = ed.getJSON() as Record<string, unknown>;
-        onSendRef.current(text, json);
-        setTimeout(() => ed.commands.clearContent(true), 0);
+        const result = onSendRef.current(text, json);
+        void Promise.resolve(result).then((ok) => {
+          if (ok === false) return;
+          setTimeout(() => ed.commands.clearContent(true), 0);
+        });
       },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

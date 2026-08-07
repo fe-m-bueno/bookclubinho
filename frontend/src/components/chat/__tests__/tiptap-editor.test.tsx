@@ -1,4 +1,5 @@
 import { render, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TiptapEditor } from "../tiptap-editor";
@@ -15,6 +16,12 @@ describe("TiptapEditor", () => {
 
   beforeEach(() => {
     warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // jsdom não implementa medição de layout — o ProseMirror usa
+    // `Range.getClientRects` para posicionar o cursor ao digitar/dar Enter.
+    Range.prototype.getClientRects = () =>
+      ({ item: () => null, length: 0 }) as unknown as DOMRectList;
+    Range.prototype.getBoundingClientRect = () => new DOMRect();
+    document.elementFromPoint = () => null;
   });
 
   afterEach(() => {
@@ -56,5 +63,50 @@ describe("TiptapEditor", () => {
     expect(link).toHaveAttribute("href", "https://example.com");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link.getAttribute("rel")).toContain("noopener");
+  });
+
+  /**
+   * #272: o editor limpava via `setTimeout` logo depois de chamar `onSend`,
+   * sem olhar o resultado — texto do usuário sumia mesmo quando o envio
+   * falhava. `onSend` agora pode devolver `false` para dizer "não limpe".
+   */
+  it("preserva o texto quando onSend recusa o envio", async () => {
+    const user = userEvent.setup();
+    const onSend = vi.fn().mockReturnValue(false);
+    const { container } = render(<TiptapEditor onSend={onSend} />);
+
+    await waitFor(() => {
+      expect(document.querySelector(".ProseMirror")).toBeInTheDocument();
+    });
+
+    const editable = container.querySelector(".ProseMirror") as HTMLElement;
+    editable.focus();
+    await user.type(editable, "mensagem que vai falhar{Enter}");
+
+    expect(onSend).toHaveBeenCalledWith(
+      "mensagem que vai falhar",
+      expect.anything(),
+    );
+    await waitFor(() => {
+      expect(editable.textContent).toBe("mensagem que vai falhar");
+    });
+  });
+
+  it("limpa o editor quando onSend aceita o envio", async () => {
+    const user = userEvent.setup();
+    const onSend = vi.fn().mockReturnValue(true);
+    const { container } = render(<TiptapEditor onSend={onSend} />);
+
+    await waitFor(() => {
+      expect(document.querySelector(".ProseMirror")).toBeInTheDocument();
+    });
+
+    const editable = container.querySelector(".ProseMirror") as HTMLElement;
+    editable.focus();
+    await user.type(editable, "mensagem que vai passar{Enter}");
+
+    await waitFor(() => {
+      expect(editable.textContent).toBe("");
+    });
   });
 });

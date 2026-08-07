@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { api, errorMessage } from "@/lib/api";
 import {
   dropChatMessage,
   listChatWindows,
@@ -88,13 +89,6 @@ export function useSendMessage(
       return res;
     },
     onMutate: async (payload) => {
-      // Só cancela se há janela carregada para receber a mensagem otimista.
-      // Cancelar o primeiro fetch de um chat que ainda está abrindo deixaria a
-      // lista vazia e sem nada para prepender.
-      if (listChatWindows(queryClient, groupId).length > 0) {
-        await queryClient.cancelQueries(queryKeys.chat.ofGroup(groupId));
-      }
-
       const optimistic = makeOptimisticMessage(
         payload,
         currentUser.id,
@@ -103,13 +97,20 @@ export function useSendMessage(
       );
       prependChatMessage(queryClient, groupId, optimistic);
 
+      // Cancela em segundo plano, sem bloquear o envio: nenhum refetch de
+      // leitura deveria poder atrasar ou derrubar uma escrita.
+      if (listChatWindows(queryClient, groupId).length > 0) {
+        void queryClient.cancelQueries(queryKeys.chat.ofGroup(groupId));
+      }
+
       return { optimisticId: optimistic.id };
     },
     onSuccess: (message, _payload, context) => {
       replaceChatMessage(queryClient, groupId, context.optimisticId, message);
     },
-    onError: (_err, _payload, context) => {
+    onError: (err, _payload, context) => {
       if (context) dropChatMessage(queryClient, groupId, context.optimisticId);
+      toast.error(errorMessage(err));
     },
   });
 }

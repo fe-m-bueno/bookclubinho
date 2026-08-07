@@ -23,6 +23,23 @@ import type { ChatMessage, MessageListResponse } from "@/lib/types/chat";
 
 export type ChatWindow = InfiniteData<MessageListResponse, string | undefined>;
 
+/**
+ * `viewerChapter` mora de propósito sob o mesmo prefixo `chat.ofGroup` (ver
+ * `query-keys.ts`) para ganhar invalidação de graça — mas seu dado é um
+ * `MessageListResponse` solto, não uma janela paginada. `getQueriesData`/
+ * `setQueriesData` casam por prefixo e não filtram por shape, então qualquer
+ * função aqui que trate "algo sob o prefixo" como `ChatWindow` sem checar
+ * `pages` explode com esse cache misturado (#272: mensagem otimista nunca
+ * aparecia porque `listChatWindows` lançava antes do POST sair).
+ */
+function isChatWindow(data: unknown): data is ChatWindow {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    Array.isArray((data as ChatWindow).pages)
+  );
+}
+
 /** Uma janela de mensagens em cache: a key exata, seus filtros e os dados. */
 export interface CachedChatWindow {
   key: QueryKey;
@@ -72,7 +89,7 @@ function updateWindows(
 ): void {
   queryClient.setQueriesData<ChatWindow>(
     queryKeys.chat.ofGroup(groupId),
-    (old) => (old ? updater(old) : old),
+    (old) => (isChatWindow(old) ? updater(old) : old),
   );
 }
 
@@ -229,7 +246,7 @@ export function listChatWindows(
   return queryClient
     .getQueriesData<ChatWindow>(queryKeys.chat.ofGroup(groupId))
     .flatMap(([key, window]) => {
-      if (!window || window.pages.length === 0) return [];
+      if (!isChatWindow(window) || window.pages.length === 0) return [];
       const filters = (key[2] ?? {}) as ChatMessagesFilters;
       return [{ key, filters, window }];
     });
