@@ -1,6 +1,9 @@
 export interface BadgeSummary {
   slug: string;
+  name: string;
   emoji: string | null;
+  /** Quantas vezes foi conquistado — badge de clube se repete a cada clube. */
+  count: number;
 }
 
 export interface PublicProfile {

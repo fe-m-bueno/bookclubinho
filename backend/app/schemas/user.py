@@ -142,7 +142,11 @@ class UserPublic(BaseModel):
 
 class BadgeSummary(BaseModel):
     slug: str
+    name: str
     emoji: str | None
+    # Quantas vezes o badge foi conquistado. `user_badges` tem `group_id`, então
+    # um mesmo badge se repete por clube — a UI mostra uma entrada só.
+    count: int = 1
 
     model_config = {"from_attributes": True}
 
