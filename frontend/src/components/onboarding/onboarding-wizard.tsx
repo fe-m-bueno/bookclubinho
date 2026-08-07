@@ -60,7 +60,12 @@ export function OnboardingWizard() {
           ? { duration: 0 }
           : SPRING_TRANSITION
       }
-      className={cn("w-full transition-all duration-300", currentStep === 2 ? "max-w-2xl" : "max-w-lg")}
+      // Só o `max-width` muda entre os passos — animar `all` fazia o browser
+      // observar tudo o que o card pinta por baixo.
+      className={cn(
+        "w-full transition-[max-width] duration-300",
+        currentStep === 2 ? "max-w-2xl" : "max-w-lg",
+      )}
     >
       <Card>
         <CardHeader>

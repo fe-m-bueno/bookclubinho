@@ -26,7 +26,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-background/80 text-lg backdrop-blur-sm transition-all hover:bg-primary/10 hover:scale-105 active:scale-95"
+      className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-background/80 text-lg backdrop-blur-sm transition-[background-color,transform] hover:bg-primary/10 hover:scale-105 active:scale-95"
       aria-label="Alternar tema"
     >
       {/* Ícone é estado, não ação: mostra onde a pessoa está. */}

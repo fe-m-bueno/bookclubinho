@@ -93,8 +93,15 @@ export function LandingPage() {
   });
 
   return (
+    // `min-h-dvh` e não `h-dvh`: com altura travada e `overflow-hidden`, o que
+    // não coubesse simplesmente sumia — em viewport baixa (≲600px) o ornamento
+    // de baixo montava em cima da atribuição do rodapé, sem scroll para
+    // alcançar nada. Os livros decorativos são `absolute` e ainda precisam de
+    // contenção, mas só na horizontal: `overflow-x-clip` segura o vazamento
+    // lateral sem travar o vertical. O `py-14` reserva a faixa da atribuição,
+    // que é `absolute` e por isso não empurra o conteúdo.
     <div
-      className="relative h-dvh w-full overflow-hidden flex flex-col items-center justify-center px-6 bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,oklch(0.94_0.03_78)_0%,oklch(0.96_0.015_78)_60%,oklch(0.93_0.02_152_/_8%)_100%)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,oklch(0.20_0.015_76)_0%,oklch(0.17_0.01_75)_60%,oklch(0.22_0.03_152_/_6%)_100%)]"
+      className="relative min-h-dvh w-full overflow-x-clip flex flex-col items-center justify-center px-6 py-14 bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,oklch(0.94_0.03_78)_0%,oklch(0.96_0.015_78)_60%,oklch(0.93_0.02_152_/_8%)_100%)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,oklch(0.20_0.015_76)_0%,oklch(0.17_0.01_75)_60%,oklch(0.22_0.03_152_/_6%)_100%)]"
     >
       {/* Theme toggle */}
       <div className="absolute top-5 right-5 z-10">

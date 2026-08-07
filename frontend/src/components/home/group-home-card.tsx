@@ -60,7 +60,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className="group cursor-pointer rounded-2xl border bg-card p-5 shadow-warm-sm transition-all hover:shadow-warm hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group cursor-pointer rounded-2xl border bg-card p-5 shadow-warm-sm transition-[box-shadow,background-color] hover:shadow-warm hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex gap-4">
         {/* Left: Book cover with spine + group avatar overlay, or just group avatar */}
