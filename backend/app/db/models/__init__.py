@@ -8,6 +8,7 @@ from app.db.models.meeting import Meeting, MeetingRsvp, MeetingType, RsvpStatus
 from app.db.models.message import ContentType, GroupMessage, MessageReaction, ReferenceType
 from app.db.models.reading_progress import ReadingProgress
 from app.db.models.reading_session import ReadingSession
+from app.db.models.report import MessageReport, ReportReason, ReportStatus
 from app.db.models.round import Round, RoundNomination, RoundStatus, RoundVote
 from app.db.models.user import User
 from app.db.models.user_session import UserSession
@@ -27,10 +28,13 @@ __all__ = [
     "MeetingRsvp",
     "MeetingType",
     "MessageReaction",
+    "MessageReport",
     "QuoteVote",
     "ReadingProgress",
     "ReadingSession",
     "ReferenceType",
+    "ReportReason",
+    "ReportStatus",
     "Round",
     "RoundNomination",
     "RoundStatus",
