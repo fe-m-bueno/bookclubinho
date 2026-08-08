@@ -7,9 +7,10 @@ import { StepClubForm } from "../step-club-form";
 import { jsonResponse } from "@/test-utils/http";
 
 const mockPush = vi.fn();
+const mockRefresh = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
 
 vi.mock("sonner", () => ({
@@ -93,6 +94,7 @@ describe("StepClubForm", () => {
     vi.clearAllMocks();
     mockGroupCodeCheck("idle");
     mockPush.mockClear();
+    mockRefresh.mockClear();
   });
 
   it("renders both cards", () => {
@@ -204,6 +206,79 @@ describe("StepClubForm", () => {
         expect.objectContaining({ method: "POST" }),
       );
     });
+  });
+
+  /**
+   * Pular não é conquista.
+   *
+   * O botão passava pelo mesmo caminho de celebração dos outros dois: confete
+   * e um `setTimeout` de 2,5s antes de navegar. Nesse intervalo a tela ficava
+   * idêntica — o confete sobe e sai pelo topo sem cruzar o card, e o link não
+   * mudava de estado —, então o Pular parecia morto e um segundo clique
+   * disparava outro `complete` e outro timer.
+   */
+  it("pular navega na hora, sem esperar a celebração", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      jsonResponse({ message: "OK" }),
+    );
+
+    const user = userEvent.setup();
+    render(<StepClubForm onBack={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /Pular por agora/ }));
+
+    // Sem avançar relógio nenhum: o push acontece assim que a resposta chega.
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/");
+    });
+  });
+
+  /**
+   * O login manda quem não terminou o onboarding de `/` para `/onboarding`, e
+   * o App Router guarda esse resultado. Sem invalidar, o `push("/")` depois do
+   * `complete` reusava a entrada antiga e voltava para `/onboarding` sem tocar
+   * no servidor — o cookie novo, já com `onb: true`, não era nem consultado.
+   */
+  it("invalida o Router Cache antes de sair do onboarding", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      jsonResponse({ message: "OK" }),
+    );
+
+    const user = userEvent.setup();
+    render(<StepClubForm onBack={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /Pular por agora/ }));
+
+    await waitFor(() => {
+      expect(mockRefresh).toHaveBeenCalled();
+    });
+    expect(mockRefresh.mock.invocationCallOrder[0]).toBeLessThan(
+      mockPush.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("pular avisa que está trabalhando enquanto a request corre", async () => {
+    let liberar: (v: Response) => void = () => {};
+    vi.spyOn(globalThis, "fetch").mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        liberar = resolve;
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<StepClubForm onBack={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /Pular por agora/ }));
+
+    // O link ficava com o mesmo rótulo e sem sinal nenhum: a tela inteira
+    // continuava parada enquanto a request corria.
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Pulando/ }),
+      ).toBeDisabled();
+    });
+
+    liberar(jsonResponse({ message: "OK" }));
   });
 
   it("create flow: POST /onboarding/complete", async () => {
