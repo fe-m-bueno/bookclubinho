@@ -196,6 +196,24 @@ jobs:
       - run: npm run lint
       - run: npx tsc --noEmit
 
+  # O backend tinha job de teste desde sempre; o frontend só tinha lint e audit,
+  # então os testes do vitest só rodavam se alguém lembrasse de rodá-los na mão.
+  frontend-tests:
+    name: Frontend tests (vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+
   frontend-audit:
     name: Frontend dependency audit (npm audit)
     runs-on: ubuntu-latest
