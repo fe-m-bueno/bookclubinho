@@ -35,13 +35,16 @@ export function HomeSkeleton() {
                 <div className="mb-6 flex h-6 items-center">
                   <Skeleton className="h-3 w-16" />
                 </div>
-                <Skeleton className="h-[145px] rounded-xl" />
+                <Skeleton className="h-[148px] rounded-xl" />
               </div>
               <div>
                 <div className="mb-6 flex h-6 items-center">
                   <Skeleton className="h-3 w-32" />
                 </div>
-                <Skeleton className="h-[46px] rounded-xl" />
+                {/* 87px: a pílula tem três linhas (título, quando, clube),
+                    não uma. Os 46px de antes reservavam menos de metade e o
+                    trilho inteiro pulava quando o encontro chegava. */}
+                <Skeleton className="h-[87px] rounded-xl" />
               </div>
             </div>
           }
@@ -68,14 +71,19 @@ export function HomeSkeleton() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-3">
                     <div className="flex-1 space-y-2">
+                      {/* As barras seguem a caixa de linha de cada papel da
+                          rampa, medida no card real: título 24px, título do
+                          livro 23px, autor 18px. Antes eram 20/16/12, os
+                          tamanhos de antes da rampa, e a diferença aparecia
+                          como um pulo de ~10px por card ao carregar. */}
                       <div className="flex items-center gap-2">
-                        <Skeleton className="h-5 w-36" />
-                        <Skeleton className="h-5 w-16 rounded-full" />
+                        <Skeleton className="h-6 w-36" />
+                        <Skeleton className="h-4 w-16 rounded-full" />
                       </div>
                       {i === 0 && (
                         <>
-                          <Skeleton className="h-4 w-44" />
-                          <Skeleton className="h-3 w-28" />
+                          <Skeleton className="h-[23px] w-44" />
+                          <Skeleton className="h-[18px] w-28" />
                         </>
                       )}
                     </div>
@@ -100,8 +108,8 @@ export function HomeSkeleton() {
                   real — é o bloco de maior contraste e o que mais salta se
                   aparecer só depois. */}
               <div className="flex items-center gap-3 border-t bg-muted/40 px-5 py-3">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-3 flex-1" />
+                <Skeleton className="h-[18px] w-24" />
+                <Skeleton className="h-[18px] flex-1" />
                 <Skeleton className="h-9 w-24 rounded-lg" />
               </div>
             </div>

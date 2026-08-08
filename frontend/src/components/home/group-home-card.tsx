@@ -188,8 +188,16 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
               `order-*` invertendo leitura e tela. */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-2.5">
-                <h3 className="min-w-0 truncate text-lg font-display font-bold tracking-tight">
+              {/* Em 375px a fase desce para a própria linha. Lado a lado, o
+                  título a 20px dividia a largura com um rótulo em caixa alta e
+                  espaçado, e "Clube da Meia-Noite" virava "Clube da Me…". No
+                  desktop sobra largura e os dois voltam para a mesma linha. */}
+              <div className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:gap-2.5">
+                {/* `max-w-full`: com a coluna empilhada, `items-start` deixa o
+                    h3 do tamanho do conteúdo, e sem largura definida o
+                    `truncate` não tem onde cortar — o nome vazava para fora do
+                    card em vez de virar reticências. */}
+                <h3 className="type-title min-w-0 max-w-full truncate tracking-tight">
                   <Link
                     href={`/groups/${group.id}`}
                     /* `draggable={false}`: segurar o mouse sobre o nome
@@ -204,7 +212,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
                 {round && (
                   <span
                     className={cn(
-                      "relative shrink-0 text-[10px] font-medium tracking-[0.12em] uppercase",
+                      "type-micro relative shrink-0 tracking-[0.12em] uppercase",
                       STATUS_TONES[round.status] ?? "text-muted-foreground",
                     )}
                   >
@@ -221,13 +229,13 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
                   levando ao clube. */}
               {round?.book_title && (
                 <div className="relative mt-1.5 w-fit max-w-full">
-                  <p className="truncate text-sm font-display italic text-foreground/80">
-                    {round.book_title}
-                  </p>
+                  {/* Rubik, e não Fraunces: a serifa aqui disputava com o nome
+                      do clube logo acima, que é quem manda no card. E a 14px o
+                      Fraunces vinha com corte de display, itálico, no tamanho
+                      em que ele menos se sustenta. */}
+                  <p className="type-body truncate italic">{round.book_title}</p>
                   {round.book_author && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      por {round.book_author}
-                    </p>
+                    <p className="type-meta truncate">por {round.book_author}</p>
                   )}
                 </div>
               )}
@@ -271,7 +279,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
           {progress !== null && round?.status === "reading" && (
             <div className="mt-3 flex items-center gap-3">
               <Progress value={progress.percentage} className="h-1.5 flex-1" />
-              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              <span className="type-micro shrink-0 tabular-nums">
                 {Math.round(progress.percentage)}%
               </span>
             </div>
@@ -293,7 +301,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
           {deadline && (
             <span
               className={cn(
-                "relative shrink-0 text-xs",
+                "type-meta relative shrink-0",
                 deadline.tone === "overdue"
                   ? "font-medium text-destructive"
                   : deadline.tone === "urgent"
@@ -313,7 +321,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
           )}
 
           {lastMsg && (
-            <p className="relative min-w-0 truncate text-xs text-muted-foreground sm:flex-1">
+            <p className="type-meta relative min-w-0 truncate sm:flex-1">
               <span className="font-medium text-foreground/70">
                 {lastMsg.sender_display_name ?? "Alguém"}:
               </span>{" "}
@@ -332,7 +340,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
               // card, repetido em cada clube, transforma a lista numa fileira
               // de CTAs. À direita ele continua com 44px de alvo de toque e
               // ocupa a mesma posição que tem no desktop.
-              className="relative inline-flex min-h-11 shrink-0 items-center justify-center self-end rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97] sm:ml-auto sm:min-h-9 sm:self-auto"
+              className="type-meta relative inline-flex min-h-11 shrink-0 items-center justify-center self-end rounded-lg bg-primary px-4 text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97] sm:ml-auto sm:min-h-9 sm:self-auto"
             >
               {action}
             </Link>

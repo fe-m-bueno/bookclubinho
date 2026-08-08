@@ -38,7 +38,7 @@ export function HomeEmptyState({
       <h2 className="text-2xl font-display font-bold tracking-tight md:text-3xl">
         Sua estante espera
       </h2>
-      <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
+      <p className="type-meta mt-3 max-w-sm">
         Crie um clube e chame quem você quer ler junto, ou entre em um que já
         existe usando o código de convite.
       </p>
