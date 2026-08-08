@@ -13,6 +13,10 @@ export interface RoundSummary {
   book_author: string | null;
   book_cover_url: string | null;
   book_page_count: number | null;
+  /** `YYYY-MM-DD` — o dia em que a rodada fecha. */
+  deadline: string | null;
+  /** A rodada está travada neste usuário: falta o voto ou a indicação dele. */
+  needs_my_action: boolean;
 }
 
 export interface MyReadingProgress {

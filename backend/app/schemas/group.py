@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003
+from datetime import date, datetime  # noqa: TC003
 from typing import Literal
 
 from pydantic import BaseModel, field_validator
@@ -18,6 +18,13 @@ class RoundSummary(BaseModel):
     book_author: str | None = None
     book_cover_url: str | None = None
     book_page_count: int | None = None
+    # O prazo existe em `Round` desde sempre e nunca chegou ao cliente, então a
+    # home não tinha como mostrar quando a rodada fecha.
+    deadline: date | None = None
+    # A rodada está esperando por *este* usuário: falta o voto dele em `voting`
+    # ou a indicação dele em `nominating`. É o que separa "o clube está
+    # votando" de "só falta você".
+    needs_my_action: bool = False
 
 
 class MyReadingProgress(BaseModel):

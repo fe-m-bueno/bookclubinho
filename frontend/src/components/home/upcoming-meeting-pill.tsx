@@ -1,22 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { format, isToday, isTomorrow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar, MapPin, Video } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import type { MeetingType, RsvpStatus, UpcomingMeetingItem } from "@/lib/types/meeting";
+import type { MeetingType, UpcomingMeetingItem } from "@/lib/types/meeting";
 
 interface UpcomingMeetingPillProps {
   meeting: UpcomingMeetingItem;
 }
-
-const RSVP_COLORS: Record<RsvpStatus, string> = {
-  going: "bg-green-500",
-  maybe: "bg-yellow-500",
-  not_going: "bg-red-500",
-  pending: "bg-muted-foreground",
-};
 
 const MEETING_ICONS: Record<MeetingType, typeof Calendar> = {
   virtual: Video,
@@ -24,43 +16,54 @@ const MEETING_ICONS: Record<MeetingType, typeof Calendar> = {
   in_person: Calendar,
 };
 
+/**
+ * Quando é o encontro, em uma linha que se lê de relance.
+ *
+ * A data estava espremida numa segunda coluna, ao lado de uma pílula com o
+ * nome do clube, e quebrava em duas linhas: "11 de ago às" / "11:45". O que
+ * mais importa num encontro futuro é *quando*, então ele ganha a linha inteira
+ * logo abaixo do título — e hoje e amanhã aparecem por nome, que é como as
+ * pessoas pensam em datas próximas.
+ */
+function describeWhen(date: Date): string {
+  const hora = format(date, "HH:mm", { locale: ptBR });
+  if (isToday(date)) return `Hoje às ${hora}`;
+  if (isTomorrow(date)) return `Amanhã às ${hora}`;
+  // `EEEEEE` e não `EEE`: em pt-BR o segundo devolve "quinta" por extenso, e a
+  // linha passava de "qui, 20 de ago às 19:30" para "quinta, 20 de ago às
+  // 19:30" — comprida demais para uma coluna de 19rem.
+  return format(date, "EEEEEE, d 'de' MMM 'às' HH:mm", { locale: ptBR });
+}
+
 export function UpcomingMeetingPill({ meeting }: UpcomingMeetingPillProps) {
   const router = useRouter();
 
   const scheduledAt = new Date(meeting.scheduled_at);
-  const dateStr = format(scheduledAt, "d 'de' MMM 'às' HH:mm", {
-    locale: ptBR,
-  });
-
   const MeetingIcon = MEETING_ICONS[meeting.meeting_type] ?? Calendar;
 
   return (
     <button
       type="button"
       onClick={() => router.push(`/meetings/${meeting.id}`)}
-      className="flex w-full cursor-pointer items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="w-full cursor-pointer rounded-xl border bg-card px-4 py-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-        <MeetingIcon className="h-4 w-4 text-primary" />
-      </div>
+      <p className="truncate text-sm font-medium">{meeting.title}</p>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium">{meeting.title}</p>
-          {meeting.my_rsvp_status && (
-            <span
-              className={`h-2 w-2 shrink-0 rounded-full ${RSVP_COLORS[meeting.my_rsvp_status] ?? "bg-muted-foreground"}`}
-              aria-label={`RSVP: ${meeting.my_rsvp_status}`}
-            />
-          )}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Badge variant="outline" className="h-4 px-1 text-xs">
-            {meeting.group_name}
-          </Badge>
-          <span className="text-xs text-muted-foreground">{dateStr}</span>
-        </div>
-      </div>
+      {/* O ícone do tipo de encontro fica inline, do tamanho do texto. Estava
+          dentro de um quadrado de 36px com fundo próprio, que pesava mais que
+          o título ao lado e não dizia nada que a palavra não dissesse. */}
+      <p className="mt-1 flex items-center gap-1.5 text-sm tabular-nums">
+        <MeetingIcon className="size-3.5 shrink-0 text-muted-foreground" />
+        {describeWhen(scheduledAt)}
+      </p>
+
+      {/* O clube é contexto, não etiqueta: numa pílula com borda ele competia
+          com o título do próprio encontro. E o ponto verde de RSVP saiu — a
+          home não é onde se confere presença, e um círculo colorido sem
+          legenda não diz o que significa. */}
+      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+        {meeting.group_name}
+      </p>
     </button>
   );
 }

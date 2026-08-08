@@ -745,7 +745,7 @@ class TestListGroupsEndpoint:
     @pytest.mark.asyncio
     async def test_returns_enriched_fields(self) -> None:
         """GroupListItem must include members_preview, current_round, etc."""
-        from datetime import UTC, datetime
+        from datetime import UTC, date, datetime
 
         from app.api.v1.endpoints.groups import list_groups_endpoint
         from app.schemas.group import GroupListResponse
@@ -764,6 +764,7 @@ class TestListGroupsEndpoint:
         round_mock.book_author = "Cervantes"
         round_mock.book_cover_url = None
         round_mock.book_page_count = 400
+        round_mock.deadline = date(2026, 2, 1)
 
         enriched = [
             {
@@ -772,6 +773,7 @@ class TestListGroupsEndpoint:
                 "my_reading_progress": None,
                 "last_message": None,
                 "last_activity_at": datetime(2026, 1, 1, tzinfo=UTC),
+                "needs_my_action": False,
             }
         ]
         mock_db = AsyncMock()
@@ -788,6 +790,10 @@ class TestListGroupsEndpoint:
         item = result.groups[0]
         assert item.current_round is not None
         assert item.current_round.book_title == "Dom Quixote"
+        # O prazo existe no modelo desde sempre e não chegava ao cliente — a
+        # home não tinha como mostrar quando a rodada fecha.
+        assert item.current_round.deadline == date(2026, 2, 1)
+        assert item.current_round.needs_my_action is False
         assert len(item.members_preview) == 1
 
 

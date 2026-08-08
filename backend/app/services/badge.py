@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -193,10 +194,21 @@ async def get_recent_badges(
     db: AsyncSession,
     user_id: uuid.UUID,
     limit: int = 3,
+    within_days: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Return user's most recently earned badges (flat list, not grouped)."""
+    """Return user's most recently earned badges (flat list, not grouped).
+
+    `within_days` recorta uma janela de tempo. Sem ele o endpoint devolve as
+    últimas N de qualquer época, que é como a home acabou exibindo "Fundador ·
+    há 5 meses" permanentemente — conquista é evento, e um evento de meio ano
+    atrás não é notícia.
+    """
     group_name_sq = select(Group.name).where(Group.id == UserBadge.group_id).scalar_subquery()
     book_title_sq = select(Round.book_title).where(Round.id == UserBadge.round_id).scalar_subquery()
+
+    filters = [UserBadge.user_id == user_id]
+    if within_days is not None:
+        filters.append(UserBadge.earned_at >= datetime.now(UTC) - timedelta(days=within_days))
 
     result = await db.execute(
         select(
@@ -210,7 +222,7 @@ async def get_recent_badges(
             book_title_sq.label("book_title"),
         )
         .join(UserBadge, UserBadge.badge_id == Badge.id)
-        .where(UserBadge.user_id == user_id)
+        .where(*filters)
         .order_by(UserBadge.earned_at.desc())
         .limit(limit)
     )

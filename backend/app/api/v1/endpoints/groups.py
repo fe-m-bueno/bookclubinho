@@ -200,6 +200,8 @@ async def list_groups_endpoint(
                     book_author=cr.book_author,
                     book_cover_url=cr.book_cover_url,
                     book_page_count=cr.book_page_count,
+                    deadline=cr.deadline,
+                    needs_my_action=e["needs_my_action"],
                 )
                 if cr
                 else None,

@@ -14,14 +14,16 @@ import {
 } from "@/lib/motion-variants";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { HomeSkeleton } from "./home-skeleton";
-import { HomeHeader, HomeMain, HomeShell } from "./home-shell";
+import { HomeColumns, HomeHeader, HomeMain, HomeShell } from "./home-shell";
 import { HomeEmptyState } from "./home-empty-state";
 import { UserMenu } from "./user-menu";
 import { GroupHomeCard } from "./group-home-card";
-import { UpcomingMeetingPill } from "./upcoming-meeting-pill";
-import { RecentBadgeCard } from "./recent-badge-card";
+import { HomeStateRail } from "./home-state-rail";
 import { SpeedDialFAB } from "./speed-dial-fab";
 import { JoinGroupDialog } from "./join-group-dialog";
+
+/** Enquanto a conquista é notícia. Passado isso, ela vive no perfil. */
+const RECENT_BADGE_WINDOW_DAYS = 7;
 
 export function HomeClient() {
   const [joinOpen, setJoinOpen] = useState(false);
@@ -34,7 +36,9 @@ export function HomeClient() {
   const userQuery = useCurrentUser();
   const groupsQuery = useHomeGroups();
   const meetingsQuery = useUpcomingMeetings(3);
-  const badgesQuery = useRecentBadges(3);
+  // Sete dias: conquista é evento, e um evento de meio ano atrás não é
+  // notícia. Fora da janela ela segue no perfil e em /badges.
+  const badgesQuery = useRecentBadges(3, RECENT_BADGE_WINDOW_DAYS);
 
   const isLoading = userQuery.isLoading || groupsQuery.isLoading;
   const { showSkeleton } = useSkeletonState(isLoading);
@@ -57,8 +61,14 @@ export function HomeClient() {
     return (
       <>
         <div className="flex min-h-screen flex-col bg-background">
-          <header className="px-6 pt-10 pb-2">
-            <div className="mx-auto flex max-w-2xl items-end justify-between">
+          {/* `px-6` no mesmo elemento do `max-w-2xl`, como no main logo
+              abaixo. Separados, o header recuava de uma borda e o main de
+              outra — 24px de diferença que aqui não aparece só porque o estado
+              vazio centraliza tudo, e apareceria no dia em que alguém
+              alinhasse algo à esquerda. É o mesmo erro que o `HomeShell`
+              corrigiu para a home com clubes. */}
+          <header className="mx-auto w-full max-w-2xl px-6 pt-10 pb-2">
+            <div className="flex items-end justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{greeting}</p>
                 <h1 className="mt-1 text-3xl font-display font-bold tracking-tight md:text-4xl">
@@ -94,60 +104,32 @@ export function HomeClient() {
       </HomeHeader>
 
       <HomeMain>
-        {/* Groups */}
-        <section>
-          <h2 className="divider-ornament mb-6">meus clubes</h2>
-          <motion.ul
-            variants={variants.container}
-            initial="hidden"
-            animate="visible"
-            className="space-y-4"
-          >
-            {groups.map((group) => (
-              <motion.li key={group.id} variants={variants.item}>
-                <GroupHomeCard group={group} />
-              </motion.li>
-            ))}
-          </motion.ul>
-        </section>
-
-        {/* Upcoming meetings */}
-        {meetings.length > 0 && (
-          <section className="mt-10">
-            <h2 className="divider-ornament mb-6">encontros</h2>
+        <HomeColumns
+          rail={
+            <HomeStateRail user={user} meetings={meetings} badges={badges} />
+          }
+        >
+          <section>
+            {/* `h-6`: a mesma altura dos cabeçalhos do trilho, para que o
+                primeiro card de cada coluna comece na mesma linha. */}
+            <h2 className="divider-ornament mb-6 h-6">meus clubes</h2>
             <motion.ul
               variants={variants.container}
               initial="hidden"
               animate="visible"
-              className="space-y-2"
+              // Mais respiro que antes: o card ganhou um rodapé com fundo
+              // próprio, e com `space-y-4` a faixa de um card quase encostava
+              // na borda do seguinte.
+              className="space-y-5"
             >
-              {meetings.map((meeting) => (
-                <motion.li key={meeting.id} variants={variants.item}>
-                  <UpcomingMeetingPill meeting={meeting} />
+              {groups.map((group) => (
+                <motion.li key={group.id} variants={variants.item}>
+                  <GroupHomeCard group={group} />
                 </motion.li>
               ))}
             </motion.ul>
           </section>
-        )}
-
-        {/* Recent badges */}
-        {badges.length > 0 && (
-          <section className="mt-10">
-            <h2 className="divider-ornament mb-6">conquistas</h2>
-            <motion.ul
-              variants={variants.container}
-              initial="hidden"
-              animate="visible"
-              className="space-y-2"
-            >
-              {badges.map((badge, i) => (
-                <motion.li key={`${badge.slug}-${i}`} variants={variants.item}>
-                  <RecentBadgeCard badge={badge} />
-                </motion.li>
-              ))}
-            </motion.ul>
-          </section>
-        )}
+        </HomeColumns>
       </HomeMain>
 
       <SpeedDialFAB />
