@@ -45,25 +45,64 @@ export function daysUntilDeadline(
 /** Até aqui o prazo é notícia; além disso é só informação. */
 const URGENT_DAYS = 3;
 
+/**
+ * O sujeito da frase: o que termina.
+ *
+ * "termina amanhã" e "3 dias atrasado" diziam quando sem dizer o quê, e o
+ * botão ao lado não resolvia — ele fica na outra ponta da faixa, some quando a
+ * rodada não espera por você, e "Avaliar" não conta que o atraso é da
+ * avaliação. Sempre no singular: assim o verbo é o mesmo nos quatro casos e
+ * não há concordância para errar.
+ */
+const PHASE_SUBJECTS: Record<string, string> = {
+  nominating: "indicação",
+  voting: "votação",
+  reading: "leitura",
+  reviewing: "avaliação",
+};
+
+export function deadlineSubject(status: string | null | undefined): string | null {
+  if (!status) return null;
+  return PHASE_SUBJECTS[status] ?? null;
+}
+
+function withSubject(subject: string | null, phrase: string): string {
+  if (!subject) return phrase;
+  return `${subject} ${phrase}`;
+}
+
 export function describeDeadline(
   deadline: string | null,
   today: Date = new Date(),
+  /** A fase da rodada. Sem ela a frase sai sem sujeito, como antes. */
+  status?: string | null,
 ): DeadlineInfo | null {
   if (!deadline) return null;
   const days = daysUntilDeadline(deadline, today);
   if (days === null) return null;
 
+  const subject = deadlineSubject(status);
+
   if (days < 0) {
     const atraso = Math.abs(days);
     return {
       days,
-      label: atraso === 1 ? "1 dia atrasado" : `${atraso} dias atrasado`,
+      // "terminou há 3 dias", e não "3 dias atrasado": o atraso é do prazo, e
+      // a frase que nomeia o sujeito precisa de um verbo para sustentá-lo.
+      label: withSubject(
+        subject,
+        atraso === 1 ? "terminou ontem" : `terminou há ${atraso} dias`,
+      ),
       tone: "overdue",
     };
   }
-  if (days === 0) return { days, label: "termina hoje", tone: "urgent" };
-  if (days === 1) return { days, label: "termina amanhã", tone: "urgent" };
-  if (days <= URGENT_DAYS)
-    return { days, label: `faltam ${days} dias`, tone: "urgent" };
-  return { days, label: `faltam ${days} dias`, tone: "normal" };
+  if (days === 0)
+    return { days, label: withSubject(subject, "termina hoje"), tone: "urgent" };
+  if (days === 1)
+    return { days, label: withSubject(subject, "termina amanhã"), tone: "urgent" };
+  return {
+    days,
+    label: withSubject(subject, `termina em ${days} dias`),
+    tone: days <= URGENT_DAYS ? "urgent" : "normal",
+  };
 }

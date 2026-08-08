@@ -110,7 +110,9 @@ export function HomeClient() {
           }
         >
           <section>
-            <h2 className="divider-ornament mb-6">meus clubes</h2>
+            {/* `h-6`: a mesma altura dos cabeçalhos do trilho, para que o
+                primeiro card de cada coluna comece na mesma linha. */}
+            <h2 className="divider-ornament mb-6 h-6">meus clubes</h2>
             <motion.ul
               variants={variants.container}
               initial="hidden"

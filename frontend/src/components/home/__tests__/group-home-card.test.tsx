@@ -162,26 +162,63 @@ describe("GroupHomeCard", () => {
           }}
         />,
       );
-      expect(screen.getByText("termina amanhã")).toBeInTheDocument();
+      // `makeRound` monta uma rodada em leitura, e a frase nomeia a fase.
+      // Antes o card dizia só "termina amanhã" e deixava para o botão contar o
+      // que era — só que o botão fica na outra ponta da faixa e some quando a
+      // rodada não espera por você.
+      expect(screen.getByText("leitura termina amanhã")).toBeInTheDocument();
+    });
+
+    it("cada fase nomeia o próprio prazo", () => {
+      const { rerender } = render(
+        <GroupHomeCard
+          group={{
+            ...baseGroup,
+            current_round: makeRound({
+              status: "voting",
+              deadline: "2026-08-14",
+            }),
+          }}
+        />,
+      );
+      expect(screen.getByText("votação termina amanhã")).toBeInTheDocument();
+
+      rerender(
+        <GroupHomeCard
+          group={{
+            ...baseGroup,
+            current_round: makeRound({
+              status: "reviewing",
+              deadline: "2026-08-14",
+            }),
+          }}
+        />,
+      );
+      expect(screen.getByText("avaliação termina amanhã")).toBeInTheDocument();
     });
 
     it("não inventa prazo quando não há", () => {
       render(
         <GroupHomeCard group={{ ...baseGroup, current_round: makeRound() }} />,
       );
-      expect(screen.queryByText(/termina|faltam|atrasad/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/termin|atrasad/)).not.toBeInTheDocument();
     });
 
-    it("diz que está atrasado quando o prazo passou", () => {
+    it("o atraso também diz o que atrasou", () => {
       render(
         <GroupHomeCard
           group={{
             ...baseGroup,
-            current_round: makeRound({ deadline: "2026-08-10" }),
+            current_round: makeRound({
+              status: "reviewing",
+              deadline: "2026-08-10",
+            }),
           }}
         />,
       );
-      expect(screen.getByText("3 dias atrasado")).toBeInTheDocument();
+      expect(
+        screen.getByText("avaliação terminou há 3 dias"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -354,6 +391,50 @@ describe("GroupHomeCard", () => {
    * vez de duas fileiras soltas separadas por um filete no meio do card. A
    * faixa é o que separa "quem é este clube" de "o que ele quer de mim".
    */
+  /**
+   * O link do nome se estende sobre o card inteiro por um `::after`, e essa
+   * camada engolia a seleção: não dava para copiar o título do livro, o autor
+   * nem a última mensagem de lugar nenhum do card. Posicionados, esses textos
+   * ficam por cima da camada — e o clique em área vazia continua navegando.
+   */
+  describe("o texto do card dá para copiar", () => {
+    it("os textos de conteúdo ficam acima da camada do link", () => {
+      render(
+        <GroupHomeCard
+          group={{
+            ...baseGroup,
+            current_round: makeRound(),
+            last_message_preview: {
+              sender_display_name: "Alice",
+              sender_avatar_url: null,
+              content_text: "adorei o capítulo 3",
+              content_type: "text",
+              created_at: new Date().toISOString(),
+            },
+          }}
+        />,
+      );
+
+      // `relative` é o que põe o texto acima do `::after`; sem ele o texto
+      // está na tela mas não se seleciona.
+      const livro = screen.getByText("O Senhor dos Anéis").parentElement!;
+      expect(livro.className).toContain("relative");
+
+      const mensagem = screen.getByText(/adorei o capítulo 3/);
+      expect(mensagem.className).toContain("relative");
+    });
+
+    it("o nome não é arrastável", () => {
+      render(<GroupHomeCard group={baseGroup} />);
+
+      // Segurar o mouse sobre o nome arrastava o fantasma do link — a
+      // miniatura translúcida com o título — em vez de selecionar o texto.
+      expect(
+        screen.getByRole("link", { name: "Clube Literário" }),
+      ).toHaveAttribute("draggable", "false");
+    });
+  });
+
   describe("a faixa do rodapé", () => {
     function rodape(container: HTMLElement) {
       return container.querySelector("article > div:last-child");
@@ -383,7 +464,7 @@ describe("GroupHomeCard", () => {
       const faixa = rodape(container)!;
       expect(faixa.className).toContain("border-t");
       expect(faixa.className).toContain("bg-muted/40");
-      expect(faixa).toHaveTextContent("termina amanhã");
+      expect(faixa).toHaveTextContent("votação termina amanhã");
       expect(faixa).toHaveTextContent("adorei o capítulo 3");
       expect(faixa.querySelector("a")).toHaveTextContent("Votar");
     });

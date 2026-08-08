@@ -12,7 +12,6 @@ import {
   AvatarGroup,
   AvatarGroupCount,
 } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { describeDeadline } from "@/lib/deadline";
 import { cn } from "@/lib/utils";
@@ -29,13 +28,20 @@ const STATUS_LABELS: Partial<Record<RoundStatus, string>> = {
   reviewing: "Avaliando",
 };
 
-const STATUS_VARIANTS: Partial<
-  Record<RoundStatus, "default" | "secondary" | "destructive" | "outline">
-> = {
-  nominating: "outline",
-  voting: "secondary",
-  reading: "default",
-  reviewing: "secondary",
+/**
+ * A fase é um rótulo tipográfico, não uma cápsula.
+ *
+ * Era um `Badge` — pílula de cantos totalmente arredondados, fundo próprio e
+ * borda — ao lado de um avatar de cantos arredondados e de um card de cantos
+ * arredondados. Três raios diferentes em 200px de largura é o que faz uma tela
+ * parecer montada com peças de catálogo. Em caixa alta, com espaçamento entre
+ * letras e a cor fazendo o trabalho, a fase informa sem virar objeto.
+ */
+const STATUS_TONES: Partial<Record<RoundStatus, string>> = {
+  nominating: "text-muted-foreground",
+  voting: "text-sage-700 dark:text-sage-300",
+  reading: "text-sage-700 dark:text-sage-300",
+  reviewing: "text-muted-foreground",
 };
 
 /**
@@ -98,7 +104,11 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
   const hasCover = Boolean(
     round?.book_title && round?.book_cover_url && !coverFailed,
   );
-  const deadline = describeDeadline(round?.deadline ?? null);
+  const deadline = describeDeadline(
+    round?.deadline ?? null,
+    undefined,
+    round?.status,
+  );
   const action = phaseAction(round);
 
   return (
@@ -154,13 +164,17 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
             </Avatar>
           </div>
         ) : (
-          <Avatar className="h-14 w-14 shrink-0 rounded-xl">
+          /* Redondo, e não um quadrado de cantos arredondados: o clube é um
+             grupo de pessoas, e é assim que o resto do app desenha gente. O
+             quadrado com raio próprio só somava um terceiro arredondamento ao
+             lado do card e da antiga pílula de fase. */
+          <Avatar className="h-14 w-14 shrink-0">
             <AvatarImage
               src={group.photo_url ?? undefined}
               alt={group.name}
               className="object-cover"
             />
-            <AvatarFallback className="rounded-xl bg-sage-100 text-sage-700 text-lg font-display font-bold dark:bg-sage-800 dark:text-sage-200">
+            <AvatarFallback className="bg-sage-100 text-sage-700 text-base font-display font-bold dark:bg-sage-800 dark:text-sage-200">
               {group.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -174,27 +188,39 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
               `order-*` invertendo leitura e tela. */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-baseline gap-2.5">
                 <h3 className="min-w-0 truncate text-lg font-display font-bold tracking-tight">
                   <Link
                     href={`/groups/${group.id}`}
+                    /* `draggable={false}`: segurar o mouse sobre o nome
+                       arrastava o fantasma do link — a miniatura translúcida
+                       com o título — em vez de selecionar o texto. */
+                    draggable={false}
                     className="after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none"
                   >
                     {group.name}
                   </Link>
                 </h3>
                 {round && (
-                  <Badge
-                    variant={STATUS_VARIANTS[round.status] ?? "outline"}
-                    className="shrink-0 text-[10px]"
+                  <span
+                    className={cn(
+                      "relative shrink-0 text-[10px] font-medium tracking-[0.12em] uppercase",
+                      STATUS_TONES[round.status] ?? "text-muted-foreground",
+                    )}
                   >
                     {STATUS_LABELS[round.status] ?? round.status}
-                  </Badge>
+                  </span>
                 )}
               </div>
 
+              {/* `relative` nos textos: o link do nome se estende sobre o card
+                  inteiro por um `::after`, e essa camada engolia a seleção —
+                  não dava para copiar título, autor nem mensagem de lugar
+                  nenhum. Posicionados, eles vêm por cima da camada e voltam a
+                  ser texto; o clique em qualquer área vazia do card continua
+                  levando ao clube. */}
               {round?.book_title && (
-                <div className="mt-1.5">
+                <div className="relative mt-1.5 w-fit max-w-full">
                   <p className="truncate text-sm font-display italic text-foreground/80">
                     {round.book_title}
                   </p>
@@ -267,7 +293,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
           {deadline && (
             <span
               className={cn(
-                "shrink-0 text-xs",
+                "relative shrink-0 text-xs",
                 deadline.tone === "overdue"
                   ? "font-medium text-destructive"
                   : deadline.tone === "urgent"
@@ -287,7 +313,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
           )}
 
           {lastMsg && (
-            <p className="min-w-0 truncate text-xs text-muted-foreground sm:flex-1">
+            <p className="relative min-w-0 truncate text-xs text-muted-foreground sm:flex-1">
               <span className="font-medium text-foreground/70">
                 {lastMsg.sender_display_name ?? "Alguém"}:
               </span>{" "}

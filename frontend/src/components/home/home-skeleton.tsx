@@ -28,19 +28,26 @@ export function HomeSkeleton() {
               {/* O card de três linhas do "Você" e o bloco de encontro, que
                   existe cheio ou vazio — os dois aparecem em toda sessão, e o
                   skeleton reserva a altura dos dois. */}
-              <div className="space-y-3">
-                <Skeleton className="h-4 w-16" />
+              {/* Os cabeçalhos ocupam os mesmos `h-6` + `mb-6` do conteúdo,
+                  nas duas colunas: é isso que faz o primeiro card de cada uma
+                  nascer na mesma linha, aqui e depois que o dado chega. */}
+              <div>
+                <div className="mb-6 flex h-6 items-center">
+                  <Skeleton className="h-3 w-16" />
+                </div>
                 <Skeleton className="h-[145px] rounded-xl" />
               </div>
-              <div className="space-y-3">
-                <Skeleton className="h-4 w-32" />
+              <div>
+                <div className="mb-6 flex h-6 items-center">
+                  <Skeleton className="h-3 w-32" />
+                </div>
                 <Skeleton className="h-[46px] rounded-xl" />
               </div>
             </div>
           }
         >
         {/* Divisor ornamentado */}
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 flex h-6 items-center gap-3">
           <Skeleton className="h-px flex-1" />
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-px flex-1" />

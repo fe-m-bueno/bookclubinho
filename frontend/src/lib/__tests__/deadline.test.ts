@@ -49,11 +49,56 @@ describe("describeDeadline", () => {
     expect(describeDeadline("2026-08-17", HOJE)?.tone).toBe("normal");
   });
 
-  it("atraso é contado em dias, no singular quando é um", () => {
+  it("o atraso vira uma frase no passado", () => {
     expect(describeDeadline("2026-08-12", HOJE)).toMatchObject({
-      label: "1 dia atrasado",
+      label: "terminou ontem",
       tone: "overdue",
     });
-    expect(describeDeadline("2026-08-10", HOJE)?.label).toBe("3 dias atrasado");
+    expect(describeDeadline("2026-08-10", HOJE)?.label).toBe(
+      "terminou há 3 dias",
+    );
+  });
+
+  /**
+   * "termina amanhã" dizia quando sem dizer o quê. O botão ao lado não
+   * resolvia: ele fica na outra ponta da faixa, some quando a rodada não
+   * espera por você, e "Avaliar" não conta que o atraso é da avaliação.
+   */
+  describe("com a fase, a frase ganha sujeito", () => {
+    it("nomeia o que termina", () => {
+      expect(describeDeadline("2026-08-14", HOJE, "voting")?.label).toBe(
+        "votação termina amanhã",
+      );
+      expect(describeDeadline("2026-08-13", HOJE, "nominating")?.label).toBe(
+        "indicação termina hoje",
+      );
+      expect(describeDeadline("2026-08-20", HOJE, "reading")?.label).toBe(
+        "leitura termina em 7 dias",
+      );
+    });
+
+    it("nomeia o que atrasou", () => {
+      expect(describeDeadline("2026-08-10", HOJE, "reviewing")?.label).toBe(
+        "avaliação terminou há 3 dias",
+      );
+    });
+
+    /** Sempre singular: assim o verbo é o mesmo nos quatro casos. */
+    it("usa o mesmo verbo em todas as fases", () => {
+      for (const fase of ["nominating", "voting", "reading", "reviewing"]) {
+        expect(describeDeadline("2026-08-14", HOJE, fase)?.label).toContain(
+          "termina amanhã",
+        );
+      }
+    });
+
+    it("fase desconhecida ou ausente cai na frase sem sujeito", () => {
+      expect(describeDeadline("2026-08-14", HOJE, "finished")?.label).toBe(
+        "termina amanhã",
+      );
+      expect(describeDeadline("2026-08-14", HOJE, null)?.label).toBe(
+        "termina amanhã",
+      );
+    });
   });
 });

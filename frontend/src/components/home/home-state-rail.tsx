@@ -99,9 +99,18 @@ export function HomeStateRail({ user, meetings, badges }: HomeStateRailProps) {
   );
 }
 
+/**
+ * `h-6` e `mb-6`, as mesmas medidas do `divider-ornament` que encima a coluna
+ * dos clubes.
+ *
+ * Sem isso o primeiro card do trilho nascia acima do primeiro card de clube:
+ * os dois cabeçalhos têm corpos e margens diferentes, e as colunas de um grid
+ * não sabem uma da altura da outra. Altura fixa nos dois faz o par começar na
+ * mesma linha — que é a primeira coisa que se enxerga ao abrir a página.
+ */
 function RailHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+    <h2 className="mb-6 flex h-6 items-center text-xs font-medium tracking-wide text-muted-foreground uppercase">
       {children}
     </h2>
   );
