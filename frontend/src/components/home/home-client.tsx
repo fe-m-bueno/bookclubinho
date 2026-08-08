@@ -61,8 +61,14 @@ export function HomeClient() {
     return (
       <>
         <div className="flex min-h-screen flex-col bg-background">
-          <header className="px-6 pt-10 pb-2">
-            <div className="mx-auto flex max-w-2xl items-end justify-between">
+          {/* `px-6` no mesmo elemento do `max-w-2xl`, como no main logo
+              abaixo. Separados, o header recuava de uma borda e o main de
+              outra — 24px de diferença que aqui não aparece só porque o estado
+              vazio centraliza tudo, e apareceria no dia em que alguém
+              alinhasse algo à esquerda. É o mesmo erro que o `HomeShell`
+              corrigiu para a home com clubes. */}
+          <header className="mx-auto w-full max-w-2xl px-6 pt-10 pb-2">
+            <div className="flex items-end justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{greeting}</p>
                 <h1 className="mt-1 text-3xl font-display font-bold tracking-tight md:text-4xl">
