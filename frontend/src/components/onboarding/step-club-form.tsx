@@ -48,16 +48,49 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
     };
   }, []);
 
-  function celebrateAndRedirect(target: string) {
+  /**
+   * Entrar num clube e criar um clube são conquistas — vale o confete e os
+   * 2,5s que ele leva para valer a pena. Pular não é: quem pula quer chegar na
+   * home, e a espera não tem nada para mostrar. Pior, o confete sobe e sai
+   * pelo topo sem cruzar o card, então a tela ficava idêntica durante os 2,5s
+   * e o botão parecia morto — dois cliques disparavam dois `complete` e dois
+   * timers.
+   */
+  const celebrateRef = useRef(true);
+
+  /**
+   * `refresh()` antes do `push()`, sempre.
+   *
+   * O login manda quem ainda não terminou o onboarding de `/` para
+   * `/onboarding`, e o App Router guarda esse resultado no Router Cache. O
+   * `complete` reemite o cookie com `onb: true`, mas o cache não sabe disso: um
+   * `push("/")` depois dele reusava a entrada antiga e voltava para
+   * `/onboarding` sem tocar no servidor — a URL nem mudava. É o que fazia o
+   * "Pular por agora" parecer um botão morto.
+   */
+  function navegar(target: string) {
+    router.refresh();
+    router.push(target);
+  }
+
+  function redirectAfterComplete(target: string) {
+    if (!celebrateRef.current) {
+      navegar(target);
+      return;
+    }
     setShowConfetti(true);
     redirectTimerRef.current = setTimeout(() => {
-      router.push(target);
+      navegar(target);
     }, 2500);
   }
 
   const { submit: submitComplete, loading: completing } = useAuthSubmit({
     path: "/onboarding/complete",
-    onSuccess: () => celebrateAndRedirect(redirectTargetRef.current),
+    onSuccess: () => redirectAfterComplete(redirectTargetRef.current),
+    // Sem isto o rótulo "Pulando…" ficaria para sempre numa falha: o sucesso
+    // navega e desmonta, mas o erro só levanta um toast e deixa a tela onde
+    // está.
+    onError: () => setSkipping(false),
   });
 
   const { submit: submitJoin, loading: joining } = useAuthSubmit({
@@ -74,16 +107,22 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
   });
 
   async function handleJoin() {
+    celebrateRef.current = true;
     submitJoin({ invite_code: rawCode });
   }
 
   function handleCreate() {
+    celebrateRef.current = true;
     redirectTargetRef.current = "/groups/create";
     submitComplete({});
   }
 
+  const [skipping, setSkipping] = useState(false);
+
   function handleSkip() {
+    celebrateRef.current = false;
     redirectTargetRef.current = "/";
+    setSkipping(true);
     submitComplete({});
   }
 
@@ -217,11 +256,12 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
       <div className="text-center">
         <button
           type="button"
-          className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors disabled:opacity-70 disabled:hover:no-underline"
           onClick={handleSkip}
           disabled={isLoading}
         >
-          Pular por agora
+          {skipping && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {skipping ? "Pulando…" : "Pular por agora"}
         </button>
       </div>
 

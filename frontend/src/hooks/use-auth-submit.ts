@@ -15,6 +15,15 @@ interface UseAuthSubmitOptions<T> {
   path: string;
   method?: "POST" | "PATCH" | "DELETE";
   onSuccess: (body: T) => unknown;
+  /**
+   * Roda depois de qualquer falha — inclusive as que só viram toast.
+   *
+   * Existe para desfazer estado otimista que o `loading` do hook não cobre:
+   * quem troca o rótulo de um botão no clique precisa de onde devolvê-lo se a
+   * request não passar. Não roda no caminho `antiEnumeration`, onde a falha é
+   * deliberadamente indistinguível do sucesso.
+   */
+  onError?: () => unknown;
   statusHandlers?: StatusHandler[];
   antiEnumeration?: boolean;
 }
@@ -38,9 +47,15 @@ export function useAuthSubmit<T = unknown>(options: UseAuthSubmitOptions<T>) {
       path,
       method = "POST",
       onSuccess,
+      onError,
       statusHandlers = [],
       antiEnumeration = false,
     } = optionsRef.current;
+
+    // O catch tem quatro saídas antecipadas, e todas passam pelo `finally` —
+    // que é onde o aviso de falha sai, uma vez só, sem repetir a chamada em
+    // cada `return`.
+    let falhou = false;
 
     setLoading(true);
     try {
@@ -52,6 +67,8 @@ export function useAuthSubmit<T = unknown>(options: UseAuthSubmitOptions<T>) {
             : await api.del<T>(path, body as never);
       await onSuccess(result);
     } catch (error) {
+      falhou = true;
+
       if (!(error instanceof ApiError)) {
         toast.error("Erro de conexão. Verifique sua internet.");
         return;
@@ -71,6 +88,7 @@ export function useAuthSubmit<T = unknown>(options: UseAuthSubmitOptions<T>) {
       // Respostas de auth são idênticas independente do erro, para não permitir
       // enumeração de e-mail — então o caminho de sucesso roda mesmo em falha.
       if (antiEnumeration) {
+        falhou = false;
         await onSuccess(undefined as T);
         return;
       }
@@ -78,6 +96,7 @@ export function useAuthSubmit<T = unknown>(options: UseAuthSubmitOptions<T>) {
       toast.error(error.detail);
     } finally {
       setLoading(false);
+      if (falhou) await onError?.();
     }
   }, []);
 
