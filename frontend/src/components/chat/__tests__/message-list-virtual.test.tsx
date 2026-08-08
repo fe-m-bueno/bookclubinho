@@ -42,17 +42,18 @@ interface Props {
   isFetchingNextPage?: boolean;
 }
 
-function renderList({
+function listProps({
   messages,
   hasNextPage = false,
   fetchNextPage = vi.fn(),
   isFetchingNextPage = false,
-}: Props) {
-  return render(
+  isLoading = false,
+}: Props & { isLoading?: boolean }) {
+  return (
     <MessageList
       messages={messages}
       currentUserId={ME}
-      isLoading={false}
+      isLoading={isLoading}
       isFetchingNextPage={isFetchingNextPage}
       hasNextPage={hasNextPage}
       fetchNextPage={fetchNextPage}
@@ -62,8 +63,12 @@ function renderList({
       onToggleReaction={vi.fn()}
       onReply={vi.fn()}
       onEdit={vi.fn()}
-    />,
+    />
   );
+}
+
+function renderList(props: Props) {
+  return render(listProps(props));
 }
 
 function mountedIds(): string[] {
@@ -97,6 +102,45 @@ describe("MessageList virtualizada", () => {
     expect(montadas).toBeLessThan(40);
     // E o que está montado é o fim da conversa, que é onde o chat abre.
     expect(mountedIds()).toContain("m-299");
+  });
+
+  it("abre no fim mesmo quando as mensagens chegam depois do carregamento", async () => {
+    // A lista monta carregando e as mensagens chegam depois — enquanto isso o
+    // container de scroll nem existe.
+    const { rerender } = render(listProps({ messages: [], isLoading: true }));
+    layout.flushRaf();
+
+    rerender(listProps({ messages: makeConversation(300), isLoading: false }));
+    layout.flushRaf();
+
+    await waitFor(() => expect(mountedIds().length).toBeGreaterThan(0));
+    expect(mountedIds()).toContain("m-299");
+  });
+
+  it("depois que quem lê rola, o fim não sequestra mais o scroll", async () => {
+    // A abertura no fim é uma fase, não um evento: o total muda enquanto as
+    // linhas são medidas, e o chat se mantém colado no fim até lá (#298). O
+    // risco do outro lado é uma remedição tardia trazer de volta quem já subiu
+    // no histórico — o primeiro scroll que não veio da abertura encerra a fase.
+    // Vale para a barra de rolagem arrastada, que não emite gesto nenhum.
+    const { rerender } = renderList({
+      messages: makeConversation(300),
+      hasNextPage: false,
+    });
+    layout.flushRaf();
+    await waitFor(() => expect(mountedIds().length).toBeGreaterThan(0));
+
+    layout.scrollTo(0);
+    layout.flushRaf();
+    await waitFor(() => expect(mountedIds()).toContain("m-0"));
+
+    // `hasNextPage` muda o `paddingStart`, e com ele o total — a mesma classe
+    // de mudança que a medição das linhas provoca.
+    rerender(listProps({ messages: makeConversation(300), hasNextPage: true }));
+    layout.flushRaf();
+
+    expect(screen.getByTestId("chat-scroll").scrollTop).toBeLessThan(200);
+    expect(mountedIds()).not.toContain("m-299");
   });
 
   it("não salta de posição quando uma página anterior entra no começo", async () => {
