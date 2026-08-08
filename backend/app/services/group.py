@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -26,7 +26,7 @@ from app.core.security import generate_group_code
 from app.db.models.group import Group, GroupMember, GroupRole
 from app.db.models.message import GroupMessage
 from app.db.models.reading_progress import ReadingProgress
-from app.db.models.round import Round, RoundStatus
+from app.db.models.round import Round, RoundNomination, RoundStatus, RoundVote
 from app.security.sanitizer import sanitize
 from app.services.badge_checker import check_and_award_badges
 from app.storage.s3_storage import get_public_url, upload_file
@@ -359,7 +359,31 @@ async def list_user_groups_enriched(
     )
     last_msg_by_group: dict[uuid.UUID, GroupMessage] = {m.group_id: m for m in msg_result.scalars().all()}
 
-    # Step 5: assemble and sort by last_activity_at DESC
+    # Step 5: batch-load whether *this* user already acted on each open round.
+    # É o que separa "o clube está votando" de "só falta você" — e o que a
+    # ordenação por urgência precisa para pôr a rodada travada em mim no topo.
+    voting_round_ids = [r.id for r in round_by_group.values() if r.status == RoundStatus.VOTING]
+    nominating_round_ids = [r.id for r in round_by_group.values() if r.status == RoundStatus.NOMINATING]
+
+    acted_round_ids: set[uuid.UUID] = set()
+    if voting_round_ids:
+        voted = await db.execute(
+            select(RoundVote.round_id).where(
+                RoundVote.user_id == user.id,
+                RoundVote.round_id.in_(voting_round_ids),
+            )
+        )
+        acted_round_ids.update(voted.scalars().all())
+    if nominating_round_ids:
+        nominated = await db.execute(
+            select(RoundNomination.round_id).where(
+                RoundNomination.user_id == user.id,
+                RoundNomination.round_id.in_(nominating_round_ids),
+            )
+        )
+        acted_round_ids.update(nominated.scalars().all())
+
+    # Step 6: assemble and sort by urgency
     enriched: list[dict[str, Any]] = []
     for group in groups:
         current_round = round_by_group.get(group.id)
@@ -373,6 +397,12 @@ async def list_user_groups_enriched(
             candidates.append(current_round.started_at)
         last_activity_at = max(candidates)
 
+        needs_my_action = (
+            current_round is not None
+            and current_round.status in (RoundStatus.VOTING, RoundStatus.NOMINATING)
+            and current_round.id not in acted_round_ids
+        )
+
         enriched.append(
             {
                 "group": group,
@@ -380,11 +410,49 @@ async def list_user_groups_enriched(
                 "my_reading_progress": my_progress,
                 "last_message": last_msg,
                 "last_activity_at": last_activity_at,
+                "needs_my_action": needs_my_action,
             }
         )
 
-    enriched.sort(key=lambda x: x["last_activity_at"], reverse=True)
+    enriched.sort(key=_urgency_key)
     return enriched
+
+
+# Distante o bastante para que qualquer prazo real venha antes, e finito para
+# não contaminar a aritmética de ordenação com `inf`.
+_NO_DEADLINE = 10_000
+
+
+def _urgency_key(item: dict[str, Any]) -> tuple[int, int, float]:
+    """Ordem da home: o que cobra ação, depois o que tem prazo, depois o resto.
+
+    Ordenar por atividade — o critério anterior — põe no topo o clube que mais
+    conversa, que não é o mesmo que o clube que precisa de você. Uma votação
+    que fecha amanhã e espera só o seu voto ficava abaixo de um clube sem
+    rodada nenhuma onde alguém mandou um "kkkk" há dez minutos.
+
+    A chave é lexicográfica e cada degrau é um fato binário ou uma contagem de
+    dias, nada de peso arbitrário somado:
+
+    1. `bucket` — 0 espera por mim, 1 tem rodada aberta, 2 não tem rodada;
+    2. dias até o prazo (atrasado fica negativo, e portanto na frente);
+    3. atividade recente, como desempate — o único critério que havia antes.
+    """
+    round_ = item["current_round"]
+    if item["needs_my_action"]:
+        bucket = 0
+    elif round_ is not None:
+        bucket = 1
+    else:
+        bucket = 2
+
+    deadline = getattr(round_, "deadline", None) if round_ is not None else None
+    if deadline is None:
+        days_left = _NO_DEADLINE
+    else:
+        days_left = (deadline - datetime.now(UTC).date()).days
+
+    return (bucket, days_left, -item["last_activity_at"].timestamp())
 
 
 async def get_group_detail(db: AsyncSession, group_id: uuid.UUID) -> Group:

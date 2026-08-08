@@ -13,14 +13,9 @@ import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { UserProfileSkeleton } from "./user-profile-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatReadingTime } from "@/lib/reading-time";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatReadingTime(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h`;
-}
 
 function getInitial(displayName: string | null, username: string | null): string {
   const name = displayName || username || "?";

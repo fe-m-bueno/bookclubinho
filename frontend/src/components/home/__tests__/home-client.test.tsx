@@ -218,4 +218,24 @@ describe("HomeClient", () => {
     render(<HomeClient />);
     expect(screen.getByText("Maria")).toBeInTheDocument();
   });
+
+  it("só pede as conquistas que ainda são notícia", () => {
+    // Sem janela a seção era um móvel fixo: a home exibia "Fundador · há 5
+    // meses" para sempre, ocupando espaço permanente com um evento antigo.
+    setMocks({ groups: [mockGroup] });
+    render(<HomeClient />);
+
+    expect(useRecentBadges).toHaveBeenCalledWith(3, 7);
+  });
+
+  it("mostra a sequência e o tempo de leitura, que já chegavam e não apareciam", () => {
+    // `UserMe` traz `streak_current` e `total_reading_time_minutes` desde
+    // sempre. O app calcula streak com tratamento de fuso e testes dedicados,
+    // e a home nunca mostrou o número.
+    setMocks({ groups: [mockGroup] });
+    render(<HomeClient />);
+
+    expect(screen.getByText("3 dias")).toBeInTheDocument();
+    expect(screen.getByText("Leitura")).toBeInTheDocument();
+  });
 });

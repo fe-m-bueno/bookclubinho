@@ -55,9 +55,15 @@ async def recent_badges_endpoint(
     current_user: CurrentUser,
     db: DBSession,
     limit: int = Query(default=3, ge=1, le=10),
+    within_days: int | None = Query(default=None, ge=1, le=365),
 ) -> RecentBadgesResponse:
     """Retorna os badges mais recentes do usuário (para a home page)."""
-    badge_list = await get_recent_badges(db, user_id=current_user.id, limit=limit)
+    badge_list = await get_recent_badges(
+        db,
+        user_id=current_user.id,
+        limit=limit,
+        within_days=within_days,
+    )
     return RecentBadgesResponse(badges=[BadgeResponse(**b) for b in badge_list])
 
 

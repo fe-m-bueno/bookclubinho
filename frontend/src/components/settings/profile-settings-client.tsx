@@ -32,6 +32,7 @@ import {
 import { ApiError, api, errorMessage } from "@/lib/api";
 import type { UserMe } from "@/lib/types/user";
 import { AUTH_PROVIDER_LABELS } from "@/lib/auth-provider-labels";
+import { formatReadingTime } from "@/lib/reading-time";
 
 const schema = z.object({
   display_name: z.string().trim().min(2, "Mínimo 2 caracteres").max(50, "Máximo 50 caracteres"),
@@ -320,10 +321,4 @@ function StatCard({ label, value }: { label: string; value: string }) {
       <span className="font-semibold text-sm">{value}</span>
     </div>
   );
-}
-
-function formatReadingTime(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h`;
 }

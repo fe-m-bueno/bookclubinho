@@ -48,7 +48,10 @@ export const queryKeys = {
   badges: {
     mine: () => ["myBadges"] as const,
     catalog: () => ["badgeCatalog"] as const,
-    recent: (limit: number) => ["recentBadges", limit] as const,
+    // A janela entra na chave: duas telas podem pedir recortes diferentes do
+    // mesmo endpoint, e sem ela uma serviria o cache da outra.
+    recent: (limit: number, withinDays?: number) =>
+      ["recentBadges", limit, withinDays ?? null] as const,
   },
 
   books: {

@@ -14,14 +14,16 @@ import {
 } from "@/lib/motion-variants";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { HomeSkeleton } from "./home-skeleton";
-import { HomeHeader, HomeMain, HomeShell } from "./home-shell";
+import { HomeColumns, HomeHeader, HomeMain, HomeShell } from "./home-shell";
 import { HomeEmptyState } from "./home-empty-state";
 import { UserMenu } from "./user-menu";
 import { GroupHomeCard } from "./group-home-card";
-import { UpcomingMeetingPill } from "./upcoming-meeting-pill";
-import { RecentBadgeCard } from "./recent-badge-card";
+import { HomeStateRail } from "./home-state-rail";
 import { SpeedDialFAB } from "./speed-dial-fab";
 import { JoinGroupDialog } from "./join-group-dialog";
+
+/** Enquanto a conquista é notícia. Passado isso, ela vive no perfil. */
+const RECENT_BADGE_WINDOW_DAYS = 7;
 
 export function HomeClient() {
   const [joinOpen, setJoinOpen] = useState(false);
@@ -34,7 +36,9 @@ export function HomeClient() {
   const userQuery = useCurrentUser();
   const groupsQuery = useHomeGroups();
   const meetingsQuery = useUpcomingMeetings(3);
-  const badgesQuery = useRecentBadges(3);
+  // Sete dias: conquista é evento, e um evento de meio ano atrás não é
+  // notícia. Fora da janela ela segue no perfil e em /badges.
+  const badgesQuery = useRecentBadges(3, RECENT_BADGE_WINDOW_DAYS);
 
   const isLoading = userQuery.isLoading || groupsQuery.isLoading;
   const { showSkeleton } = useSkeletonState(isLoading);
@@ -94,60 +98,27 @@ export function HomeClient() {
       </HomeHeader>
 
       <HomeMain>
-        {/* Groups */}
-        <section>
-          <h2 className="divider-ornament mb-6">meus clubes</h2>
-          <motion.ul
-            variants={variants.container}
-            initial="hidden"
-            animate="visible"
-            className="space-y-4"
-          >
-            {groups.map((group) => (
-              <motion.li key={group.id} variants={variants.item}>
-                <GroupHomeCard group={group} />
-              </motion.li>
-            ))}
-          </motion.ul>
-        </section>
-
-        {/* Upcoming meetings */}
-        {meetings.length > 0 && (
-          <section className="mt-10">
-            <h2 className="divider-ornament mb-6">encontros</h2>
+        <HomeColumns
+          rail={
+            <HomeStateRail user={user} meetings={meetings} badges={badges} />
+          }
+        >
+          <section>
+            <h2 className="divider-ornament mb-6">meus clubes</h2>
             <motion.ul
               variants={variants.container}
               initial="hidden"
               animate="visible"
-              className="space-y-2"
+              className="space-y-4"
             >
-              {meetings.map((meeting) => (
-                <motion.li key={meeting.id} variants={variants.item}>
-                  <UpcomingMeetingPill meeting={meeting} />
+              {groups.map((group) => (
+                <motion.li key={group.id} variants={variants.item}>
+                  <GroupHomeCard group={group} />
                 </motion.li>
               ))}
             </motion.ul>
           </section>
-        )}
-
-        {/* Recent badges */}
-        {badges.length > 0 && (
-          <section className="mt-10">
-            <h2 className="divider-ornament mb-6">conquistas</h2>
-            <motion.ul
-              variants={variants.container}
-              initial="hidden"
-              animate="visible"
-              className="space-y-2"
-            >
-              {badges.map((badge, i) => (
-                <motion.li key={`${badge.slug}-${i}`} variants={variants.item}>
-                  <RecentBadgeCard badge={badge} />
-                </motion.li>
-              ))}
-            </motion.ul>
-          </section>
-        )}
+        </HomeColumns>
       </HomeMain>
 
       <SpeedDialFAB />

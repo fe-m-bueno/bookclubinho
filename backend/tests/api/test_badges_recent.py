@@ -90,6 +90,30 @@ class TestRecentBadges:
         _, kwargs = mock_fn.call_args
         assert kwargs.get("limit") == 5
 
+    @patch("app.api.v1.endpoints.badges.get_recent_badges")
+    def test_within_days_param(self, mock_fn: MagicMock) -> None:
+        """A home pede uma janela para que conquista volte a ser evento.
+
+        Sem janela o endpoint devolve as últimas N de qualquer época, que é
+        como a seção "conquistas" virou móvel fixo mostrando "Fundador · há 5
+        meses" para sempre.
+        """
+        mock_fn.return_value = []
+
+        self.client.get("/api/v1/users/me/badges/recent?within_days=7")
+        mock_fn.assert_awaited_once()
+        _, kwargs = mock_fn.call_args
+        assert kwargs.get("within_days") == 7
+
+    @patch("app.api.v1.endpoints.badges.get_recent_badges")
+    def test_within_days_is_optional(self, mock_fn: MagicMock) -> None:
+        # O perfil e /badges continuam querendo as últimas de qualquer época.
+        mock_fn.return_value = []
+
+        self.client.get("/api/v1/users/me/badges/recent")
+        _, kwargs = mock_fn.call_args
+        assert kwargs.get("within_days") is None
+
     def test_unauthenticated(self) -> None:
         _clear_deps()
         response = self.client.get("/api/v1/users/me/badges/recent")

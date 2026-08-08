@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { HomeHeader, HomeMain, HomeShell } from "./home-shell";
+import { HomeColumns, HomeHeader, HomeMain, HomeShell } from "./home-shell";
 
 /**
  * Fidelidade aproximada de propósito: blocos de volume parecido, sem replicar o
@@ -18,6 +18,20 @@ export function HomeSkeleton() {
       </HomeHeader>
 
       <HomeMain>
+        {/* As mesmas duas colunas do conteúdo. Sem elas o skeleton usaria a
+            largura toda do `max-w-6xl` no desktop e os cards encolheriam de
+            ~1150px para 672px quando o dado chegasse — o salto que o container
+            compartilhado existe para impedir. */}
+        <HomeColumns
+          rail={
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-3">
+                <Skeleton className="h-[76px] rounded-xl" />
+                <Skeleton className="h-[76px] rounded-xl" />
+              </div>
+            </div>
+          }
+        >
         {/* Divisor ornamentado */}
         <div className="mb-6 flex items-center gap-3">
           <Skeleton className="h-px flex-1" />
@@ -68,6 +82,7 @@ export function HomeSkeleton() {
             </div>
           ))}
         </div>
+        </HomeColumns>
       </HomeMain>
     </HomeShell>
   );
