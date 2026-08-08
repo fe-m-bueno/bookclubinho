@@ -10,7 +10,8 @@ import { GroupHeader } from "./group-header";
 import { GroupTabBar } from "./group-tab-bar";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { GroupLayoutSkeleton } from "./group-layout-skeleton";
-import { errorMessage } from "@/lib/api";
+import { ApiError, errorMessage } from "@/lib/api";
+import Link from "next/link";
 
 interface GroupLayoutShellProps {
   groupId: string;
@@ -30,14 +31,30 @@ export function GroupLayoutShell({ groupId, children }: GroupLayoutShellProps) {
   if (isLoading) return null;
 
   if (error || !group) {
+    // 404 e 403 são permanentes: é onde cai quem abre o link de um clube de
+    // que não faz parte (o backend responde 404 e não 403 de propósito, para
+    // não confirmar que o clube existe). Repetir a mesma requisição vai falhar
+    // para sempre — oferecer "Tentar novamente" ali é prometer o impossível.
+    const permanente =
+      error instanceof ApiError && (error.status === 404 || error.status === 403);
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4">
-        <p className="text-muted-foreground text-center">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4">
+        <p className="text-center text-muted-foreground">
           {error ? errorMessage(error) : "Erro ao carregar grupo."}
         </p>
-        <Button type="button" onClick={refetch}>
-          Tentar novamente
-        </Button>
+        {/* Home é raiz, grupo é pilha — e esta tela não tinha saída nenhuma,
+            o mesmo beco sem saída que o #285 apontou no caminho normal. */}
+        <div className="flex flex-col items-center gap-2">
+          {!permanente && (
+            <Button type="button" onClick={refetch}>
+              Tentar novamente
+            </Button>
+          )}
+          <Button asChild variant={permanente ? "default" : "ghost"}>
+            <Link href="/">Voltar para o início</Link>
+          </Button>
+        </div>
       </div>
     );
   }

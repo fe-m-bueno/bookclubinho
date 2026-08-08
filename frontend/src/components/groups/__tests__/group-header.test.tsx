@@ -108,14 +108,17 @@ describe("GroupHeader", () => {
     ).toBeInTheDocument();
   });
 
-  it("hides settings gear for non-admin (invite_code null)", () => {
+  it("membro comum também chega às informações do clube", () => {
+    // A engrenagem era só do admin, e a tela que ela abre é a única que mostra
+    // a descrição do clube e o botão de sair. Sem ela, o membro comum não
+    // tinha caminho nenhum para nenhum dos dois — só digitando a URL.
     const nonAdminGroup = { ...baseGroup, invite_code: null };
 
     render(<GroupHeader group={nonAdminGroup} />);
 
     expect(
-      screen.queryByRole("link", { name: "Configurações do grupo" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("link", { name: "Configurações do grupo" }),
+    ).toHaveAttribute("href", "/groups/g1/settings");
   });
 
   it("settings link points to group settings page", () => {

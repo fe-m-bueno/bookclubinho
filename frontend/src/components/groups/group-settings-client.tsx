@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useGroup } from "@/lib/contexts/group-context";
 import { GroupInfoForm } from "./group-info-form";
+import { GroupInfoCard } from "./group-info-card";
 import { GroupMembersSection } from "./group-members-section";
 import { GroupInviteSection } from "./group-invite-section";
 import { GroupDangerSection } from "./group-danger-section";
@@ -25,7 +26,12 @@ export function GroupSettingsClient() {
         <h2 className="text-xl font-semibold">Configurações</h2>
       </div>
 
-      {isAdmin && <GroupInfoForm group={group} refetch={refetch} />}
+      {/* Mesma informação para os dois papéis; o que muda é poder editá-la. */}
+      {isAdmin ? (
+        <GroupInfoForm group={group} refetch={refetch} />
+      ) : (
+        <GroupInfoCard group={group} />
+      )}
 
       <GroupMembersSection group={group} isAdmin={isAdmin} refetch={refetch} />
 
