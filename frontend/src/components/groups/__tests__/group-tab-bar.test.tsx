@@ -126,6 +126,19 @@ describe("GroupTabBar", () => {
       expect(nav?.className).toContain("md:hidden");
     });
 
+    it("não estica até a largura toda antes do breakpoint de desktop", () => {
+      // A forma foi desenhada para 375px. Solta, ela ia até os 767px que
+      // antecedem o `md:` e virava uma faixa de 700px, que não lê como
+      // controle segmentado.
+      const { container } = render(
+        <GroupTabBar groupId="g1" variant="mobile" />,
+      );
+
+      const nav = container.querySelector("nav");
+      expect(nav?.className).toContain("max-w-md");
+      expect(nav?.className).toContain("mx-auto");
+    });
+
     it("percorre as cinco seções pelo teclado, na ordem", async () => {
       const user = userEvent.setup();
       render(<GroupTabBar groupId="g1" variant="mobile" />);
