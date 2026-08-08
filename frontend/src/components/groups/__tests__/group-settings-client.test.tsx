@@ -88,9 +88,46 @@ describe("GroupSettingsClient", () => {
       screen.getByRole("button", { name: /sair do grupo/i }),
     ).toBeInTheDocument();
 
-    // Admin-only sections should not be present
-    expect(screen.queryByText("Informações do clube")).not.toBeInTheDocument();
+    // Código de convite continua só do admin — decisão explícita.
     expect(screen.queryByText("Código de convite")).not.toBeInTheDocument();
+  });
+
+  /**
+   * Nome, foto e descrição do clube só existiam dentro do formulário de
+   * edição, que é do admin — então o membro comum não via a descrição em lugar
+   * nenhum do app. Ver não é alterar: a informação vem, os campos não.
+   */
+  it("membro comum vê as informações do clube, em leitura", () => {
+    mockedUseGroup.mockReturnValue({ group: memberGroup, refetch: mockRefetch });
+
+    render(<GroupSettingsClient />);
+
+    expect(screen.getByText("Informações do clube")).toBeInTheDocument();
+    expect(screen.getByText("Um clube de leitura")).toBeInTheDocument();
+    expect(screen.getByText("Clube Literário")).toBeInTheDocument();
+  });
+
+  it("membro comum não recebe campo nenhum para editar o clube", () => {
+    mockedUseGroup.mockReturnValue({ group: memberGroup, refetch: mockRefetch });
+
+    render(<GroupSettingsClient />);
+
+    expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Descrição")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /salvar alterações/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clube sem descrição não deixa a seção com um vazio mudo", () => {
+    mockedUseGroup.mockReturnValue({
+      group: { ...memberGroup, description: null },
+      refetch: mockRefetch,
+    });
+
+    render(<GroupSettingsClient />);
+
+    expect(screen.getByText("Sem descrição.")).toBeInTheDocument();
   });
 
   it("admin sees member action buttons for other members", () => {

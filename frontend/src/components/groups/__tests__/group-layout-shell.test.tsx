@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ApiError } from "@/lib/api-error";
 import type { GroupDetailResponse } from "@/lib/types/group";
 
 const group: GroupDetailResponse = {
@@ -31,13 +32,18 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
+const refetch = vi.fn();
+
+/** Estado que o hook devolve — mutável para exercitar o ramo de erro. */
+let detail: {
+  group: GroupDetailResponse | null;
+  isLoading: boolean;
+  error: unknown;
+  refetch: () => void;
+} = { group, isLoading: false, error: null, refetch };
+
 vi.mock("@/hooks/use-group-detail", () => ({
-  useGroupDetail: () => ({
-    group,
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
+  useGroupDetail: () => detail,
 }));
 
 vi.mock("@/hooks/use-meetings-badge", () => ({
@@ -72,6 +78,11 @@ import { GroupLayoutShell } from "../group-layout-shell";
  * dar atalho a três telas mensais, e não oferecia caminho de volta.
  */
 describe("GroupLayoutShell — modelo de pilha", () => {
+  beforeEach(() => {
+    detail = { group, isLoading: false, error: null, refetch };
+    vi.clearAllMocks();
+  });
+
   function renderShell() {
     return render(
       <GroupLayoutShell groupId="g1">
@@ -129,5 +140,53 @@ describe("GroupLayoutShell — modelo de pilha", () => {
       screen.getByTestId("conteudo"),
     );
     expect(posicao & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  /**
+   * O ramo de erro é onde cai quem abre o link de um clube de que não faz
+   * parte: o backend responde 404 (e não 403, para não confirmar que o clube
+   * existe). A tela era uma mensagem centralizada sem saída nenhuma — o mesmo
+   * beco sem saída que o #285 apontou no caminho normal — e o único botão,
+   * "Tentar novamente", nunca ia funcionar para quem não é membro.
+   */
+  describe("ramo de erro", () => {
+    function renderComErro(error: unknown) {
+      detail = { group: null, isLoading: false, error, refetch };
+      return render(
+        <GroupLayoutShell groupId="g1">
+          <div data-testid="conteudo">conteúdo</div>
+        </GroupLayoutShell>,
+      );
+    }
+
+    it("oferece a volta para a home também quando o clube não carrega", () => {
+      renderComErro(new ApiError(404, "Clube não encontrado."));
+
+      expect(screen.getByText("Clube não encontrado.")).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Voltar para o início" }),
+      ).toHaveAttribute("href", "/");
+    });
+
+    it("não oferece repetir o que nunca vai dar certo", () => {
+      // 404 e 403 são permanentes: quem não é membro pode tentar de novo para
+      // sempre que a resposta será a mesma.
+      renderComErro(new ApiError(404, "Clube não encontrado."));
+
+      expect(
+        screen.queryByRole("button", { name: "Tentar novamente" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("mantém o repetir quando o erro é de rede", () => {
+      renderComErro(new TypeError("Failed to fetch"));
+
+      expect(
+        screen.getByRole("button", { name: "Tentar novamente" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Voltar para o início" }),
+      ).toBeInTheDocument();
+    });
   });
 });

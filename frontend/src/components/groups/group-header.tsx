@@ -17,7 +17,6 @@ interface GroupHeaderProps {
 }
 
 export function GroupHeader({ group }: GroupHeaderProps) {
-  const isAdmin = group.invite_code !== null;
   const initial = group.name.charAt(0).toUpperCase();
   const { data: user } = useCurrentUser();
 
@@ -56,15 +55,18 @@ export function GroupHeader({ group }: GroupHeaderProps) {
           eram dois controles do mesmo estado na mesma tela. Os 40px que ele
           ocupava vão para o nome do clube, que em 375px vinha truncado. */}
       <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-        {isAdmin && (
-          <Link
-            href={`/groups/${group.id}/settings`}
-            className="inline-flex size-11 items-center justify-center rounded-md transition-colors hover:bg-muted"
-            aria-label="Configurações do grupo"
-          >
-            <Settings className="h-5 w-5 text-muted-foreground" />
-          </Link>
-        )}
+        {/* Para todo mundo, e não só para o admin: a tela que a engrenagem
+            abre é a única que mostra a descrição do clube e o botão de sair
+            dele. Escondê-la deixava o membro comum sem caminho para nenhum
+            dos dois. O que ele encontra lá é leitura — os campos de edição, o
+            código de convite e as ações sobre membros seguem só do admin. */}
+        <Link
+          href={`/groups/${group.id}/settings`}
+          className="inline-flex size-11 items-center justify-center rounded-md transition-colors hover:bg-muted"
+          aria-label="Configurações do grupo"
+        >
+          <Settings className="h-5 w-5 text-muted-foreground" />
+        </Link>
         {user && <UserMenu user={user} />}
       </div>
     </header>
