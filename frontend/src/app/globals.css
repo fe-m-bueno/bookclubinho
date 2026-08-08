@@ -320,6 +320,40 @@ em-emoji-picker {
     opacity: 0.025;
   }
 
+  /**
+   * A mãozinha do mouse em tudo que se clica.
+   *
+   * O preflight do Tailwind v4 aplica `cursor: default` a todo `<button>`, e o
+   * navegador só dá `pointer` de graça para `<a href>`. Sem esta regra, quem
+   * usa mouse não tem como distinguir um botão de um bloco de texto: no app
+   * ficavam sem mãozinha o menu do usuário, o FAB, o enviar do chat, as abas
+   * de conquistas, os gatilhos de select e os rótulos de formulário.
+   *
+   * Aqui e não no componente: a alternativa é lembrar de escrever
+   * `cursor-pointer` em cada `<button>` cru e em cada primitivo do Radix, para
+   * sempre. Uma regra de base cobre também o que ainda não foi escrito.
+   *
+   * `[role]` e não só as tags porque Radix monta menu, aba e opção com `div`
+   * — o papel ARIA é o que diz que aquilo se clica. `combobox` fica de fora de
+   * propósito: um `<input role="combobox">` continua sendo campo de digitação,
+   * e o gatilho de select já entra por ser `<button>`.
+   */
+  button:not(:disabled),
+  select:not(:disabled),
+  summary,
+  label[for],
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="menuitemcheckbox"]:not([aria-disabled="true"]),
+  [role="menuitemradio"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]),
+  [role="checkbox"]:not([aria-disabled="true"]),
+  [role="radio"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
   /* Soft focus glow on inputs */
   input:focus-visible,
   textarea:focus-visible,

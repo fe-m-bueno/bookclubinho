@@ -184,8 +184,8 @@ export default function LoginPage() {
               noValidate
             >
               <p className="text-sm text-muted-foreground">
-                Enviamos um link de acesso para o seu e-mail — você entra sem
-                precisar da senha.
+                Informe seu e-mail e mandamos um link de acesso. Você entra sem
+                precisar de senha.
               </p>
 
               <FormField

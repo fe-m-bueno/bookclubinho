@@ -142,8 +142,11 @@ export function UserMenu({ user }: UserMenuProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
 
+  /* O anel no hover é a única pista de que o avatar abre alguma coisa. Ele é o
+     único controle permanente do cabeçalho e não tem rótulo nem borda: parado,
+     lê como foto de perfil decorativa. */
   const avatarButton = (
-    <Avatar className="h-10 w-10">
+    <Avatar className="h-10 w-10 ring-2 ring-transparent transition-[box-shadow] group-hover/avatar:ring-ring/40">
       <AvatarImage src={user.avatar_url ?? undefined} alt={user.display_name ?? "Usuário"} />
       <AvatarFallback className="bg-primary/20 text-sm font-semibold">
         {getInitials(user)}
@@ -159,7 +162,7 @@ export function UserMenu({ user }: UserMenuProps) {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group/avatar rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Menu do usuário"
             >
               {avatarButton}
@@ -176,7 +179,7 @@ export function UserMenu({ user }: UserMenuProps) {
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group/avatar rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Menu do usuário"
         >
           {avatarButton}

@@ -77,7 +77,7 @@ export function VotingReveal({
             </p>
             {wasTiebreak && (
               <p className="text-sm text-muted-foreground">
-                Houve empate — o vencedor foi sorteado.
+                Houve empate, e o vencedor saiu no sorteio.
               </p>
             )}
           </motion.div>

@@ -70,11 +70,11 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
           </Link>
         </div>
         <p className="text-5xl">404</p>
-        <h1 className="text-xl font-semibold">Usuario nao encontrado</h1>
+        <h1 className="text-xl font-semibold">Usuário não encontrado</h1>
         <p className="text-muted-foreground text-sm">
-          O usuario{" "}
-          <span className="font-mono font-medium">@{username}</span> nao existe
-          ou nao esta disponivel.
+          O usuário{" "}
+          <span className="font-mono font-medium">@{username}</span> não existe
+          ou não está disponível.
         </p>
       </div>
     );

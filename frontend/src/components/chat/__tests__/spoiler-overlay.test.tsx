@@ -112,7 +112,7 @@ describe("SpoilerOverlay", () => {
         <span>Hidden</span>
       </SpoilerOverlay>,
     );
-    expect(screen.getByText(/Capítulo 7\+/)).toBeInTheDocument();
+    expect(screen.getByText("Spoiler do capítulo 7+")).toBeInTheDocument();
   });
 
   it("renders children after spoiler has been manually revealed in the store", () => {
