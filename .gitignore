@@ -47,6 +47,15 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Gerados pelo `next dev` (node_modules/next/dist/server/lib/generate-agent-files.js).
+# Reaparecem toda vez que alguém sobe o dev server e sujam o `git status`.
+# Caminho ancorado no `frontend/` de propósito: o `CLAUDE.md` da raiz é a fonte
+# de verdade do projeto e precisa continuar versionado. Um `CLAUDE.md` dentro do
+# `frontend/` teria precedência para quem trabalha ali e trocaria a orientação
+# do projeto pela orientação genérica do Next.
+/frontend/AGENTS.md
+/frontend/CLAUDE.md
+
 # Misc
 *.log
 tmp/
