@@ -277,8 +277,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       >
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <p className="text-sm">Nenhuma mensagem ainda.</p>
-            <p className="text-xs mt-1">Seja o primeiro a enviar!</p>
+            <p className="type-body text-inherit">Nenhuma mensagem ainda.</p>
+            <p className="type-meta mt-1 text-inherit">
+              Seja o primeiro a enviar!
+            </p>
           </div>
         )}
 

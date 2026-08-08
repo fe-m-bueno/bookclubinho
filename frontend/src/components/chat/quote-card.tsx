@@ -36,7 +36,7 @@ export function QuoteCard({ message }: QuoteCardProps) {
 
       {/* Page reference */}
       {page && (
-        <p className="mt-2 text-xs text-muted-foreground">Página {page}</p>
+        <p className="type-micro mt-2">Página {page}</p>
       )}
 
       {/* Book attribution */}
@@ -44,13 +44,9 @@ export function QuoteCard({ message }: QuoteCardProps) {
         <div className="mt-2 flex items-start gap-1.5">
           <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
           <div className="min-w-0">
-            <p className="text-xs font-medium truncate text-foreground">
-              {bookTitle}
-            </p>
+            <p className="type-meta truncate text-foreground">{bookTitle}</p>
             {bookAuthor && (
-              <p className="text-xs text-muted-foreground truncate">
-                {bookAuthor}
-              </p>
+              <p className="type-micro truncate">{bookAuthor}</p>
             )}
           </div>
         </div>
@@ -67,9 +63,7 @@ export function QuoteCard({ message }: QuoteCardProps) {
             {getAuthorInitials(message.author)}
           </AvatarFallback>
         </Avatar>
-        <span className="text-xs font-medium text-muted-foreground">
-          {getAuthorName(message.author)}
-        </span>
+        <span className="type-micro">{getAuthorName(message.author)}</span>
       </footer>
     </div>
   );

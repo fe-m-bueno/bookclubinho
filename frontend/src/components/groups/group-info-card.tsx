@@ -35,11 +35,11 @@ export function GroupInfoCard({ group }: GroupInfoCardProps) {
           some — o membro fica sem saber se não há descrição ou se ela não
           carregou. */}
       {group.description ? (
-        <p className="text-sm whitespace-pre-wrap text-muted-foreground">
+        <p className="type-body whitespace-pre-wrap text-muted-foreground">
           {group.description}
         </p>
       ) : (
-        <p className="text-sm text-muted-foreground italic">Sem descrição.</p>
+        <p className="type-body italic text-muted-foreground">Sem descrição.</p>
       )}
     </section>
   );

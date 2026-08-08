@@ -46,7 +46,7 @@ export function ChapterMarkerCard({ message }: ChapterMarkerCardProps) {
           </AvatarFallback>
         </Avatar>
 
-        <span className="text-sm text-muted-foreground">
+        <span className="type-meta">
           <span className="font-medium text-foreground">
             {getAuthorName(message.author)}
           </span>{" "}

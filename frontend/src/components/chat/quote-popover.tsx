@@ -54,7 +54,7 @@ export function QuotePopover({
         <Quote className="size-5" aria-hidden="true" />
       </ToolbarButton>
       <ToolbarPopoverContent className="w-72">
-        <p className="mb-2 text-sm font-medium">Compartilhar citação</p>
+        <p className="type-body mb-2 font-medium">Compartilhar citação</p>
         <Textarea
           placeholder="Citação do livro…"
           value={text}

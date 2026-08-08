@@ -87,7 +87,7 @@ export function NumericMarkerPopover({
         <Icon className="size-5" aria-hidden="true" />
       </ToolbarButton>
       <ToolbarPopoverContent>
-        <p className="mb-2 text-sm font-medium">{spec.prompt}</p>
+        <p className="type-body mb-2 font-medium">{spec.prompt}</p>
         <Input
           type="number"
           min={1}

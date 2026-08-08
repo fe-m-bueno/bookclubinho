@@ -126,6 +126,8 @@ const AREAS_MIGRADAS = [
   "components/auth",
   "components/onboarding",
   "components/home",
+  "components/groups",
+  "components/chat",
   "app/auth",
   "app/onboarding",
 ];
@@ -140,6 +142,14 @@ const EXCECOES = new Map([
   [
     "components/home/user-menu.tsx",
     'a linha "Modo escuro" acompanha os botões ghost em volta, que vêm do primitivo Button, e as iniciais do avatar são medida de desenho, não papel de texto',
+  ],
+  [
+    "components/chat/message-bubble.tsx",
+    "as iniciais do avatar são medida de desenho: acompanham o círculo, não a escala de texto",
+  ],
+  [
+    "components/groups/group-members-section.tsx",
+    "idem, as iniciais do avatar da lista de membros",
   ],
 ]);
 

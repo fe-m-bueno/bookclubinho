@@ -105,9 +105,7 @@ export function MessageContent({ message }: MessageContentProps) {
 
     case "system":
       return (
-        <p className="text-sm italic text-muted-foreground">
-          {message.content_text}
-        </p>
+        <p className="type-meta italic">{message.content_text}</p>
       );
 
     default:

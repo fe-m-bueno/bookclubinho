@@ -187,7 +187,7 @@ export function TiptapEditor({
       {showCount && (
         <p
           className={cn(
-            "self-end text-xs tabular-nums",
+            "type-micro self-end tabular-nums",
             isOverLimit ? "text-destructive" : "text-muted-foreground",
           )}
           aria-live="polite"

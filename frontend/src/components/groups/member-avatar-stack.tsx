@@ -41,7 +41,7 @@ export function MemberAvatarStack({
       ))}
       {overflow > 0 && (
         <AvatarGroupCount>
-          <span className="text-xs">+{overflow}</span>
+          <span className="type-micro text-inherit">+{overflow}</span>
         </AvatarGroupCount>
       )}
     </AvatarGroup>

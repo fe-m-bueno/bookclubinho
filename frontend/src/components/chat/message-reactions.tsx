@@ -41,7 +41,7 @@ export function MessageReactions({
             aria-label={`${reaction.emoji}, ${reaction.count}. ${reaction.did_i_react ? "Remover minha reação" : "Reagir"}`}
             aria-pressed={reaction.did_i_react}
             className={cn(
-              "flex min-h-[28px] items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors",
+              "type-micro flex min-h-[28px] items-center gap-1 rounded-full border px-2 py-0.5 text-foreground transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
               reaction.did_i_react
                 ? "border-sage-400 bg-sage-100 ring-1 ring-sage-400 dark:border-sage-600 dark:bg-sage-800"
