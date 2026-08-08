@@ -62,7 +62,7 @@ export function GroupInfoForm({ group, refetch }: GroupInfoFormProps) {
           minLength={2}
           required
         />
-        <p className="text-xs text-muted-foreground text-right">
+        <p className="type-micro text-right">
           {nameLen}/60
         </p>
       </div>
@@ -77,7 +77,7 @@ export function GroupInfoForm({ group, refetch }: GroupInfoFormProps) {
           rows={3}
           placeholder="Sobre o que é o clube..."
         />
-        <p className="text-xs text-muted-foreground text-right">
+        <p className="type-micro text-right">
           {descLen}/500
         </p>
       </div>

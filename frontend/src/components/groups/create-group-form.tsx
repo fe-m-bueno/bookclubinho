@@ -97,7 +97,7 @@ export function CreateGroupForm({ onSuccess }: CreateGroupFormProps) {
             autoFocus
             {...form.register("name")}
           />
-          <span className="absolute bottom-2 right-3 text-xs text-muted-foreground">
+          <span className="type-micro absolute bottom-2 right-3">
             {name.length}/50
           </span>
         </div>
@@ -117,7 +117,7 @@ export function CreateGroupForm({ onSuccess }: CreateGroupFormProps) {
             rows={3}
             {...form.register("description")}
           />
-          <span className="absolute bottom-2 right-3 text-xs text-muted-foreground">
+          <span className="type-micro absolute bottom-2 right-3">
             {description.length}/200
           </span>
         </div>

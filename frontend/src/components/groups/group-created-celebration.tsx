@@ -102,7 +102,7 @@ export function GroupCreatedCelebration({
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Código de convite</p>
+          <p className="type-meta">Código de convite</p>
           <div className="inline-flex items-center gap-3 rounded-lg border bg-muted px-5 py-3">
             <span className="font-mono text-2xl font-bold tracking-widest">
               {formattedCode}

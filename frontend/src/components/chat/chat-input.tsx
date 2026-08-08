@@ -106,12 +106,10 @@ export function ChatInput({
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-foreground">
+                <p className="type-micro truncate text-foreground">
                   {replyTo.authorName}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {replyTo.preview}
-                </p>
+                <p className="type-micro truncate">{replyTo.preview}</p>
               </div>
               <button
                 type="button"
@@ -141,7 +139,7 @@ export function ChatInput({
                 className="size-3.5 shrink-0 text-sage-600 dark:text-sage-400"
                 aria-hidden="true"
               />
-              <p className="min-w-0 flex-1 truncate text-xs font-medium text-sage-700 dark:text-sage-300">
+              <p className="type-micro min-w-0 flex-1 truncate text-sage-700 dark:text-sage-300">
                 Editando mensagem
               </p>
               <button
