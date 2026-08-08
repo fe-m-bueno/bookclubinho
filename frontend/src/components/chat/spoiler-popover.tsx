@@ -47,7 +47,7 @@ export function SpoilerPopover({
         <EyeOff className="size-5" aria-hidden="true" />
       </ToolbarButton>
       <ToolbarPopoverContent>
-        <p className="mb-3 text-sm font-medium">Configurar spoiler</p>
+        <p className="type-body mb-3 font-medium">Configurar spoiler</p>
         <label className="mb-3 flex cursor-pointer select-none items-center gap-2">
           <input
             type="checkbox"
@@ -55,7 +55,7 @@ export function SpoilerPopover({
             onChange={(e) => onIsSpoilerChange(e.target.checked)}
             className="size-4 rounded accent-sage-500"
           />
-          <span className="text-sm">Marcar como spoiler</span>
+          <span className="type-body">Marcar como spoiler</span>
         </label>
         {isSpoiler ? (
           <Input

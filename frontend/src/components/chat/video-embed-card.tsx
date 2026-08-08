@@ -33,12 +33,12 @@ export function VideoEmbedCard({ url }: VideoEmbedCardProps) {
       />
 
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm text-foreground">
+        <span className="type-meta block truncate text-foreground">
           {displayUrl}
         </span>
       </span>
 
-      <span className="shrink-0 text-xs text-muted-foreground">Abrir ↗</span>
+      <span className="type-micro shrink-0">Abrir ↗</span>
     </a>
   );
 }

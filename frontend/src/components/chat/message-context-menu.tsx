@@ -42,7 +42,7 @@ function MenuItem({
     <ContextMenu.Item
       onSelect={onClick}
       className={cn(
-        "flex min-h-[44px] cursor-pointer select-none items-center gap-3 rounded-md px-3 py-2 text-sm outline-none transition-colors",
+        "type-body flex min-h-[44px] cursor-pointer select-none items-center gap-3 rounded-md px-3 py-2 outline-none transition-colors",
         "data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground",
         destructive
           ? "text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"

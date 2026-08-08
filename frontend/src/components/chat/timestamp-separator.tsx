@@ -31,7 +31,7 @@ export function TimestampSeparator({ timestamp }: TimestampSeparatorProps) {
       className="flex items-center gap-3 px-4 py-1"
     >
       <div className="h-px flex-1 bg-border" />
-      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
+      <span className="type-micro shrink-0">{label}</span>
       <div className="h-px flex-1 bg-border" />
     </div>
   );

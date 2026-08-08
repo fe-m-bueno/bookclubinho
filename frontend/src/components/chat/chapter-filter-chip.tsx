@@ -18,7 +18,7 @@ export function ChapterFilterChip({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85 }}
       transition={{ duration: 0.15, ease: "easeOut" }}
-      className="inline-flex items-center gap-1 rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-900 dark:bg-sage-800 dark:text-sage-100"
+      className="type-micro inline-flex items-center gap-1 rounded-full bg-sage-100 px-3 py-1 text-sage-900 dark:bg-sage-800 dark:text-sage-100"
     >
       <span>Capítulo {chapter}</span>
 

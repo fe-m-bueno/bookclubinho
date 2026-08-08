@@ -20,7 +20,7 @@ export function UploadProgressBar({ progress }: UploadProgressBarProps) {
       aria-valuemax={100}
       aria-label="Progresso do upload"
     >
-      <p className="self-end text-xs text-muted-foreground tabular-nums">
+      <p className="type-micro self-end tabular-nums">
         {pct}%
       </p>
       <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
