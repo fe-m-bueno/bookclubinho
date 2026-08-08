@@ -109,7 +109,10 @@ export function HomeClient() {
               variants={variants.container}
               initial="hidden"
               animate="visible"
-              className="space-y-4"
+              // Mais respiro que antes: o card ganhou um rodapé com fundo
+              // próprio, e com `space-y-4` a faixa de um card quase encostava
+              // na borda do seguinte.
+              className="space-y-5"
             >
               {groups.map((group) => (
                 <motion.li key={group.id} variants={variants.item}>

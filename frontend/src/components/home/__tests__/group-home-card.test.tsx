@@ -51,9 +51,50 @@ describe("GroupHomeCard", () => {
     expect(screen.getByText("Clube Literário")).toBeInTheDocument();
   });
 
-  it("shows member count", () => {
+  /**
+   * A contagem virou o rótulo acessível dos avatares. Escrita ao lado deles
+   * era o mesmo dado duas vezes — mas quem não vê os rostos continua ouvindo
+   * quantas pessoas são.
+   */
+  it("anuncia quantos membros o clube tem", () => {
     render(<GroupHomeCard group={baseGroup} />);
-    expect(screen.getByText("4 membros")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "4 membros" })).toBeInTheDocument();
+    expect(screen.queryByText("4 membros")).not.toBeInTheDocument();
+  });
+
+  it("diz 'membro' no singular quando o clube tem um só", () => {
+    render(
+      <GroupHomeCard
+        group={{
+          ...baseGroup,
+          member_count: 1,
+          members_preview: [baseGroup.members_preview[0]],
+        }}
+      />,
+    );
+    expect(screen.getByRole("group", { name: "1 membro" })).toBeInTheDocument();
+  });
+
+  /**
+   * O `+N` contava pelo tamanho de `members_preview`, e o backend manda no
+   * máximo 4 avatares: um clube de 8 pessoas mostrava "+1".
+   */
+  it("conta o excedente de avatares pelo total de membros", () => {
+    render(
+      <GroupHomeCard
+        group={{
+          ...baseGroup,
+          member_count: 8,
+          members_preview: [
+            { user_id: "u1", display_name: "Alice", avatar_url: null },
+            { user_id: "u2", display_name: "Bob", avatar_url: null },
+            { user_id: "u3", display_name: "Cida", avatar_url: null },
+            { user_id: "u4", display_name: "Dan", avatar_url: null },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText("+5")).toBeInTheDocument();
   });
 
   it("leva ao clube", () => {
@@ -160,11 +201,15 @@ describe("GroupHomeCard", () => {
           }}
         />,
       );
-      expect(screen.getByText("falta seu voto")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Votar" })).toHaveAttribute(
         "href",
         "/groups/g1/round",
       );
+      // O botão é o único aviso: havia também um "falta seu voto" ao lado
+      // dele, debaixo de um chip "Votando" — três elementos dizendo a mesma
+      // coisa. Como o botão só existe quando a rodada trava em você, a
+      // presença dele já é o "falta".
+      expect(screen.queryByText("falta seu voto")).not.toBeInTheDocument();
     });
 
     it("quem já votou não é cobrado de novo", () => {
@@ -179,7 +224,6 @@ describe("GroupHomeCard", () => {
           }}
         />,
       );
-      expect(screen.queryByText("falta seu voto")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("link", { name: "Votar" }),
       ).not.toBeInTheDocument();
@@ -302,6 +346,61 @@ describe("GroupHomeCard", () => {
       ).not.toBeInTheDocument();
       // O título segue no card, uma vez só, no lugar dele.
       expect(screen.getAllByText("O Senhor dos Anéis")).toHaveLength(1);
+    });
+  });
+
+  /**
+   * Prazo, conversa e ação viraram uma faixa com fundo e borda próprios, em
+   * vez de duas fileiras soltas separadas por um filete no meio do card. A
+   * faixa é o que separa "quem é este clube" de "o que ele quer de mim".
+   */
+  describe("a faixa do rodapé", () => {
+    function rodape(container: HTMLElement) {
+      return container.querySelector("article > div:last-child");
+    }
+
+    it("agrupa prazo, conversa e ação em um bloco só", () => {
+      const { container } = render(
+        <GroupHomeCard
+          group={{
+            ...baseGroup,
+            current_round: makeRound({
+              status: "voting",
+              needs_my_action: true,
+              deadline: "2026-08-14",
+            }),
+            last_message_preview: {
+              sender_display_name: "Alice",
+              sender_avatar_url: null,
+              content_text: "adorei o capítulo 3",
+              content_type: "text",
+              created_at: new Date().toISOString(),
+            },
+          }}
+        />,
+      );
+
+      const faixa = rodape(container)!;
+      expect(faixa.className).toContain("border-t");
+      expect(faixa.className).toContain("bg-muted/40");
+      expect(faixa).toHaveTextContent("termina amanhã");
+      expect(faixa).toHaveTextContent("adorei o capítulo 3");
+      expect(faixa.querySelector("a")).toHaveTextContent("Votar");
+    });
+
+    it("some inteira quando não há prazo, ação nem conversa", () => {
+      // Um clube em leitura tranquila continua sendo um card curto — a faixa
+      // não vira uma tarja vazia no rodapé de todo mundo.
+      const { container } = render(
+        <GroupHomeCard
+          group={{
+            ...baseGroup,
+            current_round: makeRound({ status: "finished" }),
+          }}
+        />,
+      );
+
+      expect(container.querySelector(".bg-muted\\/40")).toBeNull();
     });
   });
 });

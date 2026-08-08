@@ -1,7 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { HomeSkeleton } from "../home-skeleton";
-import { HomeColumns, HomeMain, HomeShell } from "../home-shell";
+import {
+  HomeColumns,
+  HomeHeader,
+  HomeMain,
+  HomeShell,
+} from "../home-shell";
 
 /**
  * O skeleton da home saltava ao carregar: sem `min-h-screen` ele era mais curto
@@ -35,10 +40,27 @@ describe("container compartilhado da home", () => {
     // Mobile e tablet seguem em 672px; só a tela larga abre, e só porque agora
     // existe um trilho para ocupar o espaço em vez de esticar o card.
     expect(main.className).toContain("max-w-2xl");
-    expect(main.className).toContain("lg:max-w-6xl");
+    expect(main.className).toContain("lg:max-w-[67rem]");
     expect(main.className).toContain("px-6");
     // `flex-1` é o que faz o main empurrar o rodapé numa página curta.
     expect(main.className).toContain("flex-1");
+  });
+
+  /**
+   * O header aplicava `px-6` um nível acima do `max-w-*`, e o main no mesmo
+   * elemento: o header centralizava a página dentro de uma caixa já encolhida
+   * pelo padding, o main centralizava na tela inteira e só então recuava. Dava
+   * 24px de diferença — o cumprimento nascia à esquerda da borda dos cards e o
+   * menu terminava à direita do trilho.
+   */
+  it("header e main recuam a partir da mesma borda", () => {
+    const header = rootOf(<HomeHeader>conteúdo</HomeHeader>);
+    const main = rootOf(<HomeMain>conteúdo</HomeMain>);
+
+    for (const classe of ["mx-auto", "max-w-2xl", "lg:max-w-[67rem]", "px-6"]) {
+      expect(header.className).toContain(classe);
+      expect(main.className).toContain(classe);
+    }
   });
 
   it("o skeleton renderiza dentro do mesmo shell do conteúdo", () => {
@@ -70,9 +92,48 @@ describe("HomeColumns", () => {
     // coluna única, sem `order-*` invertendo DOM e tela.
     expect(root.className).not.toMatch(/(^|\s)grid(\s|$)/);
     expect(root.className).toContain("lg:grid");
-    // A coluna de ação não estica — 42rem é a largura em que os cards foram
-    // desenhados. Com `1fr` o card ia a ~900px e o rodapé dele boiava.
-    expect(root.className).toContain("lg:grid-cols-[minmax(0,42rem)_320px]");
+    // A coluna de ação não estica até a tela toda — com `1fr` o card ia a
+    // ~900px e o rodapé dele boiava —, mas 46rem é o que faz o rodapé do card
+    // caber em uma linha só.
+    expect(root.className).toContain("lg:grid-cols-[minmax(0,46rem)_19rem]");
+  });
+
+  /**
+   * O desalinhamento que fazia a home parecer frouxa sem ter um espaço vazio
+   * nomeável: o header media `max-w-6xl` (72rem) enquanto o grid media 64rem e
+   * ainda se centralizava, então o cumprimento ficava 64px à esquerda da borda
+   * dos cards e o menu 64px à direita do trilho.
+   *
+   * Ninguém percebe isso relendo duas classes em arquivos diferentes — por isso
+   * o teste faz a conta.
+   */
+  it("a largura da página é exatamente a soma das colunas", () => {
+    const main = rootOf(<HomeMain>conteúdo</HomeMain>);
+    const colunas = rootOf(<HomeColumns rail={<span />}>ação</HomeColumns>);
+
+    const pagina = main.className.match(/lg:max-w-\[([\d.]+)rem\]/);
+    const grid = colunas.className.match(
+      /lg:grid-cols-\[minmax\(0,([\d.]+)rem\)_([\d.]+)rem\]/,
+    );
+    const gap = colunas.className.match(/lg:gap-(\d+)/);
+
+    expect(pagina).not.toBeNull();
+    expect(grid).not.toBeNull();
+    expect(gap).not.toBeNull();
+
+    // A escala do Tailwind é 0.25rem por passo: `gap-8` são 2rem.
+    const gapEmRem = Number(gap![1]) * 0.25;
+    expect(Number(grid![1]) + Number(grid![2]) + gapEmRem).toBe(
+      Number(pagina![1]),
+    );
+  });
+
+  it("o grid não se centraliza dentro do container", () => {
+    const colunas = rootOf(<HomeColumns rail={<span />}>ação</HomeColumns>);
+
+    // Centralizar reintroduziria a folga que o alinhamento acima elimina: as
+    // colunas passariam a flutuar dentro de um container mais largo que elas.
+    expect(colunas.className).not.toContain("justify-center");
   });
 
   it("o trilho vem depois da ação na ordem de leitura", () => {

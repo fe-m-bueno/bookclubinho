@@ -25,9 +25,16 @@ export function HomeSkeleton() {
         <HomeColumns
           rail={
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-3">
-                <Skeleton className="h-[76px] rounded-xl" />
-                <Skeleton className="h-[76px] rounded-xl" />
+              {/* O card de três linhas do "Você" e o bloco de encontro, que
+                  existe cheio ou vazio — os dois aparecem em toda sessão, e o
+                  skeleton reserva a altura dos dois. */}
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-[145px] rounded-xl" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-[46px] rounded-xl" />
               </div>
             </div>
           }
@@ -39,34 +46,33 @@ export function HomeSkeleton() {
           <Skeleton className="h-px flex-1" />
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
           {[0, 1].map((i) => (
             <div
               key={i}
-              className="rounded-2xl border bg-card p-5 shadow-warm-sm"
+              className="overflow-hidden rounded-2xl border bg-card shadow-warm-sm"
             >
-              <div className="flex gap-4">
+              <div className="flex gap-4 p-5">
                 {i === 0 ? (
                   <Skeleton className="h-[88px] w-[60px] shrink-0 rounded-lg" />
                 ) : (
                   <Skeleton className="h-14 w-14 shrink-0 rounded-xl" />
                 )}
-                <div className="flex flex-1 flex-col justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-5 w-36" />
-                      <Skeleton className="h-5 w-16 rounded-full" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-5 w-36" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </div>
+                      {i === 0 && (
+                        <>
+                          <Skeleton className="h-4 w-44" />
+                          <Skeleton className="h-3 w-28" />
+                        </>
+                      )}
                     </div>
-                    {i === 0 && (
-                      <>
-                        <Skeleton className="h-4 w-44" />
-                        <Skeleton className="h-3 w-28" />
-                      </>
-                    )}
-                  </div>
-                  <div className="mt-2 flex items-center justify-end gap-2">
-                    <Skeleton className="h-3 w-6" />
-                    <div className="flex -space-x-1.5">
+                    <div className="flex shrink-0 -space-x-2">
                       {[0, 1, 2].map((j) => (
                         <Skeleton
                           key={j}
@@ -75,10 +81,22 @@ export function HomeSkeleton() {
                       ))}
                     </div>
                   </div>
+                  {i === 0 && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <Skeleton className="h-1.5 flex-1 rounded-full" />
+                      <Skeleton className="h-3 w-8" />
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="my-3 border-t border-border/40" />
-              <Skeleton className="h-3 w-3/4" />
+              {/* A faixa do rodapé, com a mesma borda e o mesmo fundo do card
+                  real — é o bloco de maior contraste e o que mais salta se
+                  aparecer só depois. */}
+              <div className="flex items-center gap-3 border-t bg-muted/40 px-5 py-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 flex-1" />
+                <Skeleton className="h-9 w-24 rounded-lg" />
+              </div>
             </div>
           ))}
         </div>

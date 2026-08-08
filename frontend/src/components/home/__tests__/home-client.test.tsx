@@ -235,7 +235,31 @@ describe("HomeClient", () => {
     setMocks({ groups: [mockGroup] });
     render(<HomeClient />);
 
+    expect(screen.getByText("Sequência")).toBeInTheDocument();
     expect(screen.getByText("3 dias")).toBeInTheDocument();
-    expect(screen.getByText("Leitura")).toBeInTheDocument();
+    expect(screen.getByText("Tempo lendo")).toBeInTheDocument();
+    expect(screen.getByText("2h")).toBeInTheDocument();
+  });
+
+  it("o recorde de sequência é linha, não legenda", () => {
+    // Era uma dica em letra miúda que só aparecia quando maior que a sequência
+    // atual — e sem ela o bloco "Você" eram dois quadrados de 76px ao lado de
+    // uma lista de clubes seis vezes mais alta.
+    setMocks({ groups: [mockGroup] });
+    render(<HomeClient />);
+
+    expect(screen.getByText("Recorde")).toBeInTheDocument();
+    expect(screen.getByText("10 dias")).toBeInTheDocument();
+  });
+
+  it("a agenda vazia diz que está vazia, em vez de sumir", () => {
+    // Ao contrário das conquistas, que são evento, a seção de encontros fica:
+    // sem ela o trilho terminava num buraco, e uma agenda vazia é justamente
+    // o que faz alguém marcar um encontro.
+    setMocks({ groups: [mockGroup], meetings: [] });
+    render(<HomeClient />);
+
+    expect(screen.getByText("Próximo encontro")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum encontro marcado")).toBeInTheDocument();
   });
 });
