@@ -69,16 +69,14 @@ function MenuContent({ user, onClose }: MenuContentProps) {
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col min-w-0">
-          <span className="text-sm font-semibold truncate">
+          <span className="type-body truncate font-semibold">
             {user.display_name || user.username}
           </span>
           {user.username && (
-            <span className="text-xs text-muted-foreground truncate">
-              @{user.username}
-            </span>
+            <span className="type-meta truncate">@{user.username}</span>
           )}
           {user.status_text && (
-            <span className="text-xs text-muted-foreground truncate italic">
+            <span className="type-micro truncate italic">
               {user.status_text}
             </span>
           )}

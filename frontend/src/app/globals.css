@@ -283,9 +283,20 @@ em-emoji-picker {
  * peso. Meta para micro separa por escala.
  */
 
+/**
+ * A rampa aponta para `--font-fraunces` e `--font-rubik`, e não para os
+ * apelidos `--font-display` e `--font-sans` do `@theme inline`.
+ *
+ * `inline` quer dizer que o Tailwind substitui a chave pelo valor dentro dos
+ * utilitários que ele mesmo gera, em vez de emitir a variável no `:root`. Em
+ * CSS escrito à mão, como o desta rampa, `var(--font-display)` não encontra
+ * definição nenhuma e a família cai no sans do sistema. As duas variáveis
+ * abaixo são as do `next/font`, que existem de verdade no documento.
+ */
+
 /** Nome de clube, título de página, cabeçalho de seção. */
 @utility type-title {
-  font-family: var(--font-display);
+  font-family: var(--font-fraunces);
   font-variation-settings: "SOFT" 50, "WONK" 1;
   font-optical-sizing: auto;
   font-size: 1.25rem;
@@ -296,7 +307,7 @@ em-emoji-picker {
 
 /** O que a pessoa veio ler: título de livro, corpo de mensagem, parágrafo. */
 @utility type-body {
-  font-family: var(--font-sans);
+  font-family: var(--font-rubik);
   font-size: 0.9375rem;
   line-height: 1.5;
   font-weight: 400;
@@ -305,7 +316,7 @@ em-emoji-picker {
 
 /** Em volta do conteúdo: autor, contagem, prévia de conversa, apoio de campo. */
 @utility type-meta {
-  font-family: var(--font-sans);
+  font-family: var(--font-rubik);
   font-size: 0.8125rem;
   line-height: 1.4;
   font-weight: 500;
@@ -314,7 +325,7 @@ em-emoji-picker {
 
 /** O que se lê só quando se procura: timestamp, contador, rótulo de chip. */
 @utility type-micro {
-  font-family: var(--font-sans);
+  font-family: var(--font-rubik);
   font-size: 0.6875rem;
   line-height: 1.3;
   font-weight: 500;

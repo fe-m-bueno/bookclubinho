@@ -77,10 +77,26 @@ describe("rampa tipográfica", () => {
 
   it("só o título usa Fraunces", () => {
     expect(decl(utility("type-title"), "font-family")).toBe(
-      "var(--font-display)",
+      "var(--font-fraunces)",
     );
     for (const nome of ["type-body", "type-meta", "type-micro"]) {
-      expect(decl(utility(nome), "font-family")).toBe("var(--font-sans)");
+      expect(decl(utility(nome), "font-family")).toBe("var(--font-rubik)");
+    }
+  });
+
+  it("aponta para a variável do next/font, não para o apelido do tema", () => {
+    /**
+     * `--font-display` e `--font-sans` vivem em `@theme inline`, e `inline`
+     * quer dizer que o Tailwind troca a chave pelo valor dentro dos
+     * utilitários que ele gera, em vez de emitir a variável no `:root`. Em CSS
+     * escrito à mão elas não existem, e a família cai calada no sans do
+     * sistema: o nome do clube na home perdeu o Fraunces exatamente assim, e
+     * só apareceu porque a tela foi olhada.
+     */
+    for (const nome of ["type-title", "type-body", "type-meta", "type-micro"]) {
+      const familia = decl(utility(nome), "font-family") ?? "";
+      expect(familia).not.toContain("--font-display");
+      expect(familia).not.toContain("--font-sans");
     }
   });
 });
@@ -109,9 +125,77 @@ describe("font-display", () => {
 const AREAS_MIGRADAS = [
   "components/auth",
   "components/onboarding",
+  "components/home",
   "app/auth",
   "app/onboarding",
 ];
+
+/**
+ * O que continua em `text-sm` porque não é papel de texto, e sim medida de
+ * controle: enquanto os primitivos de `ui/` não entrarem na rampa, alinhar
+ * estes dois à escala os deixaria 1px fora dos vizinhos, que é exatamente o
+ * defeito que a rampa existe para tirar.
+ */
+const EXCECOES = new Map([
+  [
+    "components/home/user-menu.tsx",
+    'a linha "Modo escuro" acompanha os botões ghost em volta, que vêm do primitivo Button, e as iniciais do avatar são medida de desenho, não papel de texto',
+  ],
+]);
+
+describe("densidade", () => {
+  const SRC = path.resolve(__dirname, "../..");
+
+  function paddings(rel: string): string[] {
+    const fonte = readFileSync(path.join(SRC, rel), "utf8");
+    return [...new Set(fonte.match(/\b(?:p|px|py)-[0-9.]+/g) ?? [])].sort();
+  }
+
+  /**
+   * Um padding de card e um de card compacto, e mais nenhum.
+   *
+   * Conviviam p-5, p-4, p-3 e p-6 no mesmo app, e é dessa mistura que sai o
+   * salto entre um componente e o skeleton dele: os dois escolhiam o padding
+   * separado, sem nada obrigando a escolher igual. `px-4` continua valendo
+   * dentro de controle — botão tem largura própria e não é superfície.
+   */
+  const PERMITIDOS = new Set(["p-5", "p-3", "px-5", "py-3", "px-4"]);
+
+  const MIGRADOS = [
+    "components/home/group-home-card.tsx",
+    "components/home/home-skeleton.tsx",
+    "components/home/home-state-rail.tsx",
+    "components/home/upcoming-meeting-pill.tsx",
+    "components/home/recent-badge-card.tsx",
+  ];
+
+  it.each(MIGRADOS)("%s usa só a escala de padding decidida", (rel) => {
+    for (const p of paddings(rel)) expect(PERMITIDOS).toContain(p);
+  });
+
+  /**
+   * O par componente/skeleton, que é onde a inconsistência aparece como
+   * movimento na tela: se o card real usa p-5 e o skeleton p-4, a página se
+   * reacomoda 8px no instante em que o dado chega.
+   */
+  const PARES = [
+    {
+      componente: "components/home/group-home-card.tsx",
+      skeleton: "components/home/home-skeleton.tsx",
+    },
+  ];
+
+  it.each(PARES)(
+    "$skeleton reserva o mesmo padding de $componente",
+    ({ componente, skeleton }) => {
+      // Subconjunto, e não igualdade: o card real tem o `px-4` do botão de
+      // ação, que o skeleton desenha como bloco sem texto dentro.
+      for (const p of paddings(skeleton)) {
+        expect(paddings(componente)).toContain(p);
+      }
+    },
+  );
+});
 
 describe("áreas já migradas", () => {
   function tsx(dir: string): string[] {
@@ -133,14 +217,22 @@ describe("áreas já migradas", () => {
   it.each(AREAS_MIGRADAS)("%s não usa text-xs nem text-sm soltos", (area) => {
     const achados: string[] = [];
     for (const file of tsx(path.join(SRC, area))) {
+      const rel = path.relative(SRC, file);
+      if (EXCECOES.has(rel)) continue;
       readFileSync(file, "utf8")
         .split("\n")
         .forEach((linha, i) => {
-          if (/\btext-(xs|sm)\b/.test(linha)) {
-            achados.push(`${path.relative(SRC, file)}:${i + 1}`);
-          }
+          if (/\btext-(xs|sm)\b/.test(linha)) achados.push(`${rel}:${i + 1}`);
         });
     }
     expect(achados).toEqual([]);
+  });
+
+  it("cada exceção aponta para um arquivo que existe", () => {
+    // Exceção que sobrevive ao arquivo que a justificava vira permissão
+    // silenciosa para o resto do diretório.
+    for (const rel of EXCECOES.keys()) {
+      expect(() => statSync(path.join(SRC, rel))).not.toThrow();
+    }
   });
 });
