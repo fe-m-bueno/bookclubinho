@@ -397,7 +397,9 @@ describe("SpoilerOverlay", () => {
         <span>Hidden</span>
       </SpoilerOverlay>,
     );
-    expect(screen.getByText(/Capítulo 7\+/)).toBeInTheDocument();
+    // Uma frase só, e não "Spoiler" seguido de "— Capítulo 7+": o travessão
+    // emendava dois pedaços que sempre foram a mesma etiqueta.
+    expect(screen.getByText("Spoiler do capítulo 7+")).toBeInTheDocument();
   });
 
   it("renders children directly after spoiler is revealed in store", () => {

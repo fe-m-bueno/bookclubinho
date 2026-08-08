@@ -38,7 +38,7 @@ export function MessageReactions({
             transition={{ duration: 0.12, ease: "easeOut" }}
             whileTap={{ scale: 0.88 }}
             onClick={() => onToggle(reaction.emoji)}
-            aria-label={`${reaction.emoji} ${reaction.count} ${reaction.did_i_react ? "— remover reação" : "— reagir"}`}
+            aria-label={`${reaction.emoji}, ${reaction.count}. ${reaction.did_i_react ? "Remover minha reação" : "Reagir"}`}
             aria-pressed={reaction.did_i_react}
             className={cn(
               "flex min-h-[28px] items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors",

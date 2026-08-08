@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SettingsShell } from "@/components/settings/settings-shell";
 
 export const metadata: Metadata = {
-  title: "Configurações — Clube do Livro",
+  title: "Configurações",
 };
 
 export default function SettingsLayout({

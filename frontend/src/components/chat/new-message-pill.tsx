@@ -8,6 +8,19 @@ interface NewMessagePillProps {
   onClick: () => void;
 }
 
+/**
+ * "1 nova mensagem" ou "4 novas mensagens".
+ *
+ * O plural estava montado por pedaços no meio do JSX: `mensagem` mais `ns`
+ * quando `count !== 1`, o que dava "mensagemns" na tela toda vez que chegava
+ * mais de uma. Em português o plural de "mensagem" troca o *m* final, não
+ * acrescenta letra, e essa é uma conta que não cabe em concatenação: as duas
+ * formas escritas por extenso é que não têm como sair erradas.
+ */
+function descreveContagem(count: number): string {
+  return count === 1 ? "1 nova mensagem" : `${count} novas mensagens`;
+}
+
 export function NewMessagePill({ count, onClick }: NewMessagePillProps) {
   return (
     <AnimatePresence>
@@ -24,12 +37,9 @@ export function NewMessagePill({ count, onClick }: NewMessagePillProps) {
             type="button"
             onClick={onClick}
             className="pointer-events-auto flex min-h-[44px] items-center gap-1.5 rounded-full bg-sage-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-sage-700 active:bg-sage-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-sage-500 dark:hover:bg-sage-400"
-            aria-label={`${count} nova(s) mensagem(ns) — rolar para o final`}
+            aria-label={`${descreveContagem(count)}. Ir para o final da conversa`}
           >
-            <span>
-              {count} nova{count !== 1 ? "s" : ""} mensagem
-              {count !== 1 ? "ns" : ""}
-            </span>
+            <span>{descreveContagem(count)}</span>
             <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
           </button>
         </motion.div>

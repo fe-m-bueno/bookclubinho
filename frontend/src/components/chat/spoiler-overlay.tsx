@@ -67,10 +67,9 @@ export function SpoilerOverlay({
               aria-hidden="true"
             />
             <span className="text-xs font-medium text-sage-900 dark:text-sage-100">
-              Spoiler
               {message.spoiler_chapter != null
-                ? ` — Capítulo ${message.spoiler_chapter}+`
-                : ""}
+                ? `Spoiler do capítulo ${message.spoiler_chapter}+`
+                : "Spoiler"}
             </span>
           </motion.button>
         </AnimatePresence>

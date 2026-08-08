@@ -8,7 +8,10 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
   return {
-    title: `@${username} — Clube do Livro`,
+    // Só o identificador, como em toda outra página: nenhuma delas repete o
+    // nome do site no título, e as duas que repetiam faziam isso com um
+    // travessão.
+    title: `@${username}`,
     description: `Perfil de @${username} no Bookclub`,
   };
 }

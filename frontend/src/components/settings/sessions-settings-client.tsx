@@ -119,7 +119,7 @@ function SessionCard({ session }: SessionCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Revogar sessão?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta sessão sera encerrada imediatamente. O dispositivo precisara
+              Esta sessão será encerrada imediatamente. O dispositivo precisará
               fazer login novamente.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -154,10 +154,10 @@ export function SessionsSettingsClient() {
   async function handleRevokeAll() {
     try {
       await revokeAllMutation.mutateAsync();
-      toast.success("Todas as outras sessoes foram encerradas.");
+      toast.success("Todas as outras sessões foram encerradas.");
       setRevokeAllOpen(false);
     } catch {
-      toast.error("Erro ao revogar sessoes. Tente novamente.");
+      toast.error("Erro ao revogar sessões. Tente novamente.");
     }
   }
 
@@ -166,7 +166,7 @@ export function SessionsSettingsClient() {
       <div className="bg-card rounded-2xl shadow-warm-sm p-8 text-center space-y-2">
         <Monitor className="h-10 w-10 text-muted-foreground mx-auto" />
         <p className="text-sm text-muted-foreground">
-          Nenhuma sessao ativa encontrada.
+          Nenhuma sessão ativa encontrada.
         </p>
       </div>
     );
@@ -188,22 +188,22 @@ export function SessionsSettingsClient() {
             onClick={() => setRevokeAllOpen(true)}
             disabled={revokeAllMutation.isPending}
           >
-            Encerrar todas as outras sessoes
+            Encerrar todas as outras sessões
           </Button>
         </div>
       )}
 
       <p className="text-xs text-muted-foreground text-center mt-4">
-        Revogar sessoes encerra o acesso em outros dispositivos.
+        Revogar sessões encerra o acesso em outros dispositivos.
       </p>
 
       <AlertDialog open={revokeAllOpen} onOpenChange={setRevokeAllOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Encerrar outras sessoes?</AlertDialogTitle>
+            <AlertDialogTitle>Encerrar outras sessões?</AlertDialogTitle>
             <AlertDialogDescription>
-              Todas as sessoes, exceto a atual, serao encerradas. Outros
-              dispositivos precisarao fazer login novamente.
+              Todas as sessões, exceto a atual, serão encerradas. Outros
+              dispositivos precisarão fazer login novamente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

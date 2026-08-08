@@ -39,8 +39,8 @@ export function HomeEmptyState({
         Sua estante espera
       </h2>
       <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-        Todo grande clube do livro começa com o primeiro membro. Crie o seu ou
-        entre em um com um código de convite.
+        Crie um clube e chame quem você quer ler junto, ou entre em um que já
+        existe usando o código de convite.
       </p>
 
       <div className="mt-8 flex w-full max-w-xs flex-col gap-3">

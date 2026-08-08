@@ -37,7 +37,7 @@ export function WrappedSummaryCard({ data, cardRef }: WrappedSummaryCardProps) {
             <span className="text-lg">{s.emoji}</span>
             <div>
               <span className="font-medium text-sm">{s.display_name ?? s.username}</span>
-              <span className="text-xs opacity-70 ml-1">— {s.title}</span>
+              <span className="text-xs opacity-70 ml-1">· {s.title}</span>
             </div>
           </div>
         ))}

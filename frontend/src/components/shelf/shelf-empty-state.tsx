@@ -18,7 +18,7 @@ export function ShelfEmptyState({ groupId, showCta }: ShelfEmptyStateProps) {
           Nenhum livro na estante ainda
         </p>
         <p className="text-sm text-muted-foreground">
-          Termine uma rodada para ver os livros aqui — comece uma rodada!
+          Os livros aparecem aqui quando uma rodada termina.
         </p>
       </div>
       {showCta && groupId && (
