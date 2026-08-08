@@ -100,9 +100,7 @@ export default function RegisterPage() {
               📚
             </p>
             <h1 className="text-2xl font-display font-bold tracking-tight">Criar conta</h1>
-            <p className="text-sm text-muted-foreground">
-              Junte-se ao clube
-            </p>
+            <p className="type-meta">Junte-se ao clube</p>
           </CardHeader>
 
           <CardContent>
@@ -184,7 +182,7 @@ export default function RegisterPage() {
           </CardContent>
 
           <CardFooter className="justify-center">
-            <p className="text-sm text-muted-foreground">
+            <p className="type-meta">
               Já tem conta?{" "}
               <Link
                 href="/auth/login"
@@ -208,7 +206,7 @@ export default function RegisterPage() {
             <h1 className="text-2xl font-display font-bold tracking-tight">
               Verifique seu e-mail
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="type-meta">
               Enviamos um link de verificação para{" "}
               <strong className="text-foreground">{submittedEmail}</strong>
             </p>
@@ -233,7 +231,7 @@ export default function RegisterPage() {
             <div className="text-center">
               <Link
                 href="/auth/login"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="type-meta hover:text-foreground transition-colors"
               >
                 Voltar para o login
               </Link>

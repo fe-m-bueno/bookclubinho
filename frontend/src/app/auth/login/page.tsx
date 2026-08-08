@@ -116,9 +116,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-display font-bold tracking-tight">
             Bem-vindo de volta
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Entre na sua conta para continuar
-          </p>
+          <p className="type-meta">Entre na sua conta para continuar</p>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -160,7 +158,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={goToMagicLink}
-                className="-mt-2 block text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="type-meta -mt-2 block hover:text-foreground transition-colors"
               >
                 Esqueci minha senha
               </button>
@@ -183,7 +181,7 @@ export default function LoginPage() {
               className="space-y-4"
               noValidate
             >
-              <p className="text-sm text-muted-foreground">
+              <p className="type-meta">
                 Informe seu e-mail e mandamos um link de acesso. Você entra sem
                 precisar de senha.
               </p>
@@ -240,7 +238,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={toggleMode}
-            className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="type-meta w-full text-center hover:text-foreground transition-colors"
           >
             {mode === "password"
               ? "Entrar com link mágico"
@@ -249,7 +247,7 @@ export default function LoginPage() {
         </CardContent>
 
         <CardFooter className="justify-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="type-meta">
             Não tem conta?{" "}
             <Link
               href="/auth/register"

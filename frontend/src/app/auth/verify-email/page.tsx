@@ -145,12 +145,10 @@ function VerifyEmailContent() {
               <h1 className="text-2xl font-bold tracking-tight">
                 Email verificado!
               </h1>
-              <p className="text-sm text-muted-foreground">
-                Sua conta está pronta.
-              </p>
+              <p className="type-meta">Sua conta está pronta.</p>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="type-meta text-center">
                 Redirecionando em {countdown}...
               </p>
               <Button asChild className="w-full h-11">
@@ -177,7 +175,7 @@ function VerifyEmailContent() {
               <div className="text-center">
                 <Link
                   href="/auth/register"
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="type-meta hover:text-foreground transition-colors"
                 >
                   Voltar para cadastro
                 </Link>

@@ -77,7 +77,7 @@ function TourTooltip({
 }: TooltipRenderProps) {
   return (
     <div className="bg-card text-card-foreground rounded-xl shadow-lg border border-border p-5 max-w-xs">
-      <p className="text-sm leading-relaxed">{step.content as string}</p>
+      <p className="type-body">{step.content as string}</p>
 
       <div className="flex items-center justify-between mt-4 gap-2">
         <Button
@@ -90,7 +90,7 @@ function TourTooltip({
         </Button>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
+          <span className="type-micro">
             {index + 1}/{size}
           </span>
 
