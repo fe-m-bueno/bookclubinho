@@ -247,10 +247,78 @@ em-emoji-picker {
     0 16px 48px oklch(0.40 0.037 75 / 14%);
 }
 
-/* Font display utility — Fraunces with optical size variation */
+/**
+ * Fraunces, com o corte da letra acompanhando o tamanho renderizado.
+ *
+ * O eixo `opsz` existe para isso: em 32 o desenho é de display, com traços
+ * finos e espacejamento apertado, e em 14 ele engrossa e abre. Fixar 32 aqui
+ * aplicava corte de display em qualquer tamanho, e o título do livro no card
+ * da home saía em Fraunces itálico de display a 14px.
+ *
+ * `font-optical-sizing: auto` é o padrão do navegador e resolve isso sozinho,
+ * mas só enquanto `opsz` não estiver escrito em `font-variation-settings`:
+ * valor explícito ali vence o automático. Por isso a lista abaixo carrega só
+ * `SOFT` e `WONK`, que não têm equivalente automático.
+ */
 @utility font-display {
   font-family: var(--font-display);
-  font-variation-settings: "opsz" 32, "SOFT" 50, "WONK" 1;
+  font-variation-settings: "SOFT" 50, "WONK" 1;
+  font-optical-sizing: auto;
+}
+
+/**
+ * A rampa tipográfica: quatro papéis, e cada um decide tamanho, peso, cor e
+ * entrelinha de uma vez.
+ *
+ * O app tinha 21 tamanhos de texto, mas 68% de todo o texto vivia em dois
+ * deles: 14px e 12px. Dois pixels de diferença não separam nada, então o que
+ * sobrava para distinguir informação era cor. É por isso que um card lia como
+ * um bloco só: título, livro, autor e última mensagem tinham todos o mesmo
+ * tamanho.
+ *
+ * Quatro é pouco o bastante para caber na cabeça de quem escreve a próxima
+ * tela. A raiz do problema nunca foi falta de opção, foi falta de regra.
+ *
+ * Título para corpo separa por escala e peso. Corpo para meta separa por cor e
+ * peso. Meta para micro separa por escala.
+ */
+
+/** Nome de clube, título de página, cabeçalho de seção. */
+@utility type-title {
+  font-family: var(--font-display);
+  font-variation-settings: "SOFT" 50, "WONK" 1;
+  font-optical-sizing: auto;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/** O que a pessoa veio ler: título de livro, corpo de mensagem, parágrafo. */
+@utility type-body {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--foreground);
+}
+
+/** Em volta do conteúdo: autor, contagem, prévia de conversa, apoio de campo. */
+@utility type-meta {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+/** O que se lê só quando se procura: timestamp, contador, rótulo de chip. */
+@utility type-micro {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
 }
 
 /* Section divider ornament */

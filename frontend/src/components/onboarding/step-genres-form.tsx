@@ -91,8 +91,8 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <h2 className="text-lg font-display font-semibold">Escolha seus gêneros favoritos</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className="type-title">Escolha seus gêneros favoritos</h2>
+        <p className="type-meta mt-1">
           Selecione de 1 a 10 gêneros que você mais curte.
         </p>
       </div>
@@ -124,14 +124,20 @@ export function StepGenresForm({ onNext, onBack }: StepGenresFormProps) {
                 <span className="text-2xl" aria-hidden="true">
                   {genre.emoji}
                 </span>
-                <span className="text-sm font-medium mt-1">{genre.display_name}</span>
+                {/* O rótulo do gênero é escolha, não apoio: fica no tamanho de
+                    `meta` mas na cor do conteúdo. */}
+                <span className="type-meta mt-1 text-foreground">
+                  {genre.display_name}
+                </span>
               </motion.button>
             );
           })}
         </div>
       )}
 
-      <p className="text-sm text-muted-foreground text-center">
+      {/* Contador, mas não do tipo que se lê só quando se procura: é ele que
+          diz se dá para avançar. Fica em `meta`, e não em `micro`. */}
+      <p className="type-meta text-center">
         {selectedGenres.size} de {MAX_GENRES} selecionados
       </p>
 

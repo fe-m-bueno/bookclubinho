@@ -131,8 +131,8 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-lg font-display font-semibold">Entre em um clube</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className="type-title">Entre em um clube</h2>
+        <p className="type-meta mt-1">
           Use um código de convite ou crie seu próprio clube.
         </p>
       </div>
@@ -184,8 +184,8 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{group.name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="type-body truncate font-medium">{group.name}</p>
+                  <p className="type-micro">
                     {group.member_count}{" "}
                     {group.member_count === 1 ? "membro" : "membros"}
                   </p>
@@ -199,7 +199,7 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-sm text-destructive text-center"
+                className="type-meta text-center text-destructive"
               >
                 Clube não encontrado.
               </motion.p>
@@ -225,7 +225,7 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
             <Plus className="h-5 w-5 text-primary" />
             <h3 className="font-medium">Criar novo clube</h3>
           </div>
-          <p className="text-sm text-muted-foreground flex-1">
+          <p className="type-meta flex-1">
             Crie seu próprio clube do livro e convide seus amigos para
             participar.
           </p>
@@ -256,7 +256,7 @@ export function StepClubForm({ onBack }: StepClubFormProps) {
       <div className="text-center">
         <button
           type="button"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors disabled:opacity-70 disabled:hover:no-underline"
+          className="type-meta inline-flex items-center gap-2 hover:text-foreground underline-offset-4 hover:underline transition-colors disabled:opacity-70 disabled:hover:no-underline"
           onClick={handleSkip}
           disabled={isLoading}
         >

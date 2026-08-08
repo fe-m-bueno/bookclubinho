@@ -37,7 +37,10 @@ export function ProgressHeader({
                   ? { duration: 0 }
                   : { type: "spring", stiffness: 500, damping: 30 }
               }
-              className={`text-xs origin-center ${
+              /* A cor vem do `animate` como estilo inline e o peso vem das
+                 classes abaixo: os dois passam por cima do que `type-micro`
+                 fixa, que aqui é só tamanho e entrelinha. */
+              className={`type-micro origin-center ${
                 isActive
                   ? "font-semibold"
                   : isPast

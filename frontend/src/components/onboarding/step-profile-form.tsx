@@ -147,7 +147,7 @@ export function StepProfileForm({ onNext }: StepProfileFormProps) {
             rows={2}
             {...form.register("statusText")}
           />
-          <span className="absolute bottom-2 right-3 text-xs text-muted-foreground">
+          <span className="type-micro absolute bottom-2 right-3">
             {statusText.length}/100
           </span>
         </div>
