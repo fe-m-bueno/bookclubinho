@@ -15,8 +15,12 @@ import { cn } from "@/lib/utils";
 const tabs = [
   { label: "Chat", icon: MessageCircle, segment: "chat" },
   { label: "Rodada", icon: BookOpen, segment: "round" },
-  { label: "Shelf", icon: Library, segment: "shelf" },
-  { label: "Stats", icon: BarChart3, segment: "stats" },
+  // "Números" e não "Estatísticas": doze caracteres não cabem ao lado de
+  // "Encontros" no controle segmentado de 375px. E não "Progresso", que
+  // colidiria com o progresso de leitura da rodada, que é outra coisa e vive
+  // na aba Rodada.
+  { label: "Estante", icon: Library, segment: "shelf" },
+  { label: "Números", icon: BarChart3, segment: "stats" },
   { label: "Encontros", icon: Calendar, segment: "meetings" },
 ] as const;
 

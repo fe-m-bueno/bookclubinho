@@ -17,7 +17,15 @@ import { SpoilerOverlay } from "./spoiler-overlay";
 interface MessageBubbleProps {
   message: ChatMessage;
   isOwn: boolean;
-  showAvatar: boolean;
+  /**
+   * Última mensagem do bloco: é ela que recebe o avatar e o horário.
+   *
+   * Os dois marcam o fim da fala. O avatar estava na primeira do bloco, com os
+   * vãos das seguintes vazios embaixo dele, e o horário era uma linha própria
+   * dentro de cada bolha — toda bolha pagava uma linha de altura e a largura
+   * de "14:32", que é o motivo de "ok" virar um bloco em vez de uma palavra.
+   */
+  isGroupEnd: boolean;
   showName: boolean;
   currentUserId: string;
   /** Capítulo em que o leitor está — o SpoilerOverlay usa para auto-reveal. */
@@ -51,7 +59,7 @@ function ReplyPreview({ message }: { message: ChatMessage }) {
 export function MessageBubble({
   message,
   isOwn,
-  showAvatar,
+  isGroupEnd,
   showName,
   currentUserId,
   viewerChapter,
@@ -113,10 +121,9 @@ export function MessageBubble({
           isOwn ? "flex-row-reverse" : "flex-row",
         )}
       >
-        {/* Avatar column — invisible placeholder keeps right-side alignment */}
-        {isOwn ? (
-          <div className="w-7 shrink-0" aria-hidden="true" />
-        ) : showAvatar ? (
+        {/* Coluna do avatar. O placeholder invisível mantém as bolhas do bloco
+            alinhadas entre si: sem ele, só a última teria recuo. */}
+        {!isOwn && isGroupEnd ? (
           <Avatar
             className="mb-0.5 size-7 shrink-0 self-end"
             aria-label={authorName}
@@ -172,21 +179,19 @@ export function MessageBubble({
               </SpoilerOverlay>
             )}
 
-            {/* Timestamp + edited marker */}
-            <div
-              className={cn(
-                "mt-1 flex items-center gap-1",
-                isOwn ? "justify-end" : "justify-start",
-              )}
-            >
-              <time
-                dateTime={message.created_at}
-                className="type-micro"
+            {/* O horário saiu daqui; "(editada)" ficou. O horário aparece uma
+                vez por bloco e pode estar em outra bolha, mas a edição é
+                daquela mensagem: fora da bolha ela apontaria para a errada. */}
+            {isEdited && (
+              <div
+                className={cn(
+                  "mt-0.5 flex",
+                  isOwn ? "justify-end" : "justify-start",
+                )}
               >
-                {timeLabel}
-              </time>
-              {isEdited && <span className="type-micro">(editada)</span>}
-            </div>
+                <span className="type-micro">(editada)</span>
+              </div>
+            )}
           </div>
 
           {/* Reactions */}
@@ -199,6 +204,19 @@ export function MessageBubble({
             />
           )}
         </div>
+
+        {/* O horário, uma vez por bloco, do lado de fora da bolha.
+            `shrink-0` com a coluna de conteúdo em `max-w-[75%]`: em 375px a
+            soma de avatar, bolha e horário fica no limite da largura, e é a
+            bolha que tem que ceder — o horário cortado não serve para nada. */}
+        {isGroupEnd && (
+          <time
+            dateTime={message.created_at}
+            className="type-micro mb-0.5 shrink-0 self-end tabular-nums"
+          >
+            {timeLabel}
+          </time>
+        )}
       </div>
     </MessageContextMenu>
   );

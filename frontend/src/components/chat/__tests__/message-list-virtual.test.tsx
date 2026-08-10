@@ -275,4 +275,51 @@ describe("MessageList virtualizada", () => {
       erro.mockRestore();
     }
   });
+
+  /**
+   * O avatar e o horário passaram para a última mensagem do bloco, e
+   * `isGroupEnd` olha a mensagem seguinte. Quando o mesmo autor manda outra, a
+   * linha que era o fim do bloco perde os dois e encolhe — altura diferente num
+   * item que o virtualizador já mediu.
+   *
+   * A remedição tem que acontecer pelo `ResizeObserver` do `measureElement`,
+   * que é o caminho sem `flushSync` (#274). Se voltasse por lá, o aviso
+   * apareceria justamente aqui: numa mudança de altura em pleno commit.
+   */
+  it("não emite aviso de flushSync quando a mensagem nova continua o bloco", async () => {
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const base = Date.parse("2026-01-01T12:00:00.000Z");
+      const doMesmoAutor = (n: number) =>
+        makeMessage({
+          id: `m-${n}`,
+          content_text: `mensagem ${n}`,
+          author: {
+            user_id: "u-other",
+            username: "quem",
+            display_name: "Quem",
+            avatar_url: null,
+          },
+          created_at: new Date(base + n * 60_000).toISOString(),
+        });
+
+      const conversa = Array.from({ length: 12 }, (_, i) => doMesmoAutor(i));
+      const { rerender } = render(listProps({ messages: conversa }));
+      layout.flushRaf();
+      await waitFor(() => expect(mountedIds().length).toBeGreaterThan(0));
+
+      rerender(listProps({ messages: [...conversa, doMesmoAutor(12)] }));
+      layout.flushRaf();
+      await waitFor(() => expect(mountedIds()).toContain("m-12"));
+
+      const avisos = erro.mock.calls
+        .map((args) => args.map((a) => String(a)).join(" "))
+        .filter((msg) => msg.includes("flushSync"));
+
+      expect(avisos).toEqual([]);
+    } finally {
+      erro.mockRestore();
+    }
+  });
 });

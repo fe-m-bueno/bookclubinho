@@ -5,7 +5,7 @@ import { serverApi } from "@/lib/server-api";
 import { createServerQueryClient } from "@/lib/server-query-client";
 import type { ShelfResponse } from "@/lib/types/shelf";
 
-export const metadata = { title: "Shelf" };
+export const metadata = { title: "Estante" };
 
 export default async function ShelfPage({
   params,

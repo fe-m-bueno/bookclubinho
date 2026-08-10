@@ -157,6 +157,12 @@ export const CONVERSA: ChatMessage[] = [
     content_text: "cheguei no 12. alguém mais?",
     created_at: "2026-08-09T21:10:00Z",
   }),
+  // Duas seguidas da mesma pessoa: é o que mostra o bloco — nome no topo,
+  // avatar e horário só no fim.
+  mensagem("about-msg-1b", MEMBROS.ana, {
+    content_text: "esse livro não tem direito",
+    created_at: "2026-08-09T21:10:40Z",
+  }),
   mensagem("about-msg-2", MEMBROS.bruno, {
     content_type: "chapter_marker",
     reference_type: "chapter",
