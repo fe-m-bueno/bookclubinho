@@ -11,9 +11,10 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.exceptions import ServiceError
+from app.core.rls import auth_lookup
 from app.core.security import (
     PAT_PREFIX,
     generate_personal_access_token,
@@ -51,13 +52,17 @@ async def create_token(
     O token em claro é a única coisa que o chamador precisa mostrar ao usuário,
     e a única chance de fazê-lo.
     """
+    # `count()` no servidor em vez de contar as linhas aqui: só o número precisa
+    # atravessar a rede, e é o que o SAST do CI cobra.
     active = await db.execute(
-        select(PersonalAccessToken).where(
+        select(func.count())
+        .select_from(PersonalAccessToken)
+        .where(
             PersonalAccessToken.user_id == user_id,
             PersonalAccessToken.revoked_at.is_(None),
         )
     )
-    if len(active.scalars().all()) >= MAX_TOKENS_PER_USER:
+    if (active.scalar_one() or 0) >= MAX_TOKENS_PER_USER:
         raise PATError(
             f"Limite de {MAX_TOKENS_PER_USER} tokens ativos atingido. Revogue algum antes de criar outro.",
             status_code=409,
@@ -117,13 +122,18 @@ async def resolve_token(db: AsyncSession, raw: str) -> uuid.UUID | None:
         # um PAT, e não vale um SELECT por requisição.
         return None
 
-    result = await db.execute(
-        select(PersonalAccessToken).where(
-            PersonalAccessToken.token_hash == hash_personal_access_token(raw),
-            PersonalAccessToken.revoked_at.is_(None),
+    # A porta da 0025, aberta pelo tempo exato do lookup: aqui não há usuário no
+    # contexto ainda — é justamente isto que vai descobrir qual ele é — e a
+    # requisição segue por uma rota qualquer, que não tem por que continuar com
+    # a tabela legível inteira depois.
+    async with auth_lookup(db):
+        result = await db.execute(
+            select(PersonalAccessToken).where(
+                PersonalAccessToken.token_hash == hash_personal_access_token(raw),
+                PersonalAccessToken.revoked_at.is_(None),
+            )
         )
-    )
-    token = result.scalar_one_or_none()
+        token = result.scalar_one_or_none()
     if token is None:
         return None
 

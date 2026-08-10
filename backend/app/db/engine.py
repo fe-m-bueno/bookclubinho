@@ -1,8 +1,10 @@
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Session
 
 from app.core.config import settings
 from app.core.database_url import normalize_database_url
+from app.core.rls import reapply_context_on_new_transaction
 
 
 def _build_url() -> str:
@@ -30,6 +32,15 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
     autoflush=False,
 )
+
+# O contexto RLS é `SET LOCAL` e portanto morre em cada commit — inclusive nos
+# que acontecem no meio de uma requisição. Reaplicá-lo no início de toda
+# transação é o que mantém as políticas valendo do começo ao fim do request.
+# Ligado na `Session` síncrona porque é ela que a `AsyncSession` dirige por
+# baixo — é lá que o evento `after_begin` existe. Toda sessão ORM deste processo
+# nasce de `AsyncSessionLocal`; o Alembic trabalha em `Connection` crua e não
+# passa por aqui.
+event.listen(Session, "after_begin", reapply_context_on_new_transaction)
 
 
 class Base(DeclarativeBase):

@@ -13,7 +13,7 @@ down_revision = "0023"
 branch_labels = None
 depends_on = None
 
-_UID = "current_setting('app.current_user_id', true)::uuid"
+_UID = "nullif(current_setting('app.current_user_id', true), '')::uuid"
 
 
 def upgrade() -> None:

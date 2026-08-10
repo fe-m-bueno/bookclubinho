@@ -34,6 +34,16 @@ def _db_returning(value: object) -> AsyncMock:
     return db
 
 
+def _db_counting(quantos: int) -> AsyncMock:
+    """Sessão cujo `execute` responde a um `select(func.count())`."""
+    result = MagicMock()
+    result.scalar_one.return_value = quantos
+    db = AsyncMock()
+    db.execute = AsyncMock(return_value=result)
+    db.add = MagicMock()
+    return db
+
+
 def _db_returning_all(values: list[object]) -> AsyncMock:
     scalars = MagicMock()
     scalars.all.return_value = values
@@ -90,7 +100,7 @@ class TestPrimitives:
 class TestCreateToken:
     @pytest.mark.asyncio
     async def test_stores_hash_never_the_token(self) -> None:
-        db = _db_returning_all([])
+        db = _db_counting(0)
         token, raw = await create_token(db, uuid.uuid4(), "meu-cli")
 
         assert token.token_hash == hash_personal_access_token(raw)
@@ -98,19 +108,19 @@ class TestCreateToken:
 
     @pytest.mark.asyncio
     async def test_returns_token_in_clear_once(self) -> None:
-        db = _db_returning_all([])
+        db = _db_counting(0)
         _token, raw = await create_token(db, uuid.uuid4(), "meu-cli")
         assert raw.startswith(PAT_PREFIX)
 
     @pytest.mark.asyncio
     async def test_no_expiry_by_default(self) -> None:
-        db = _db_returning_all([])
+        db = _db_counting(0)
         token, _raw = await create_token(db, uuid.uuid4(), "meu-cli")
         assert token.expires_at is None
 
     @pytest.mark.asyncio
     async def test_expiry_is_computed_from_days(self) -> None:
-        db = _db_returning_all([])
+        db = _db_counting(0)
         token, _raw = await create_token(db, uuid.uuid4(), "meu-cli", expires_in_days=30)
 
         assert token.expires_at is not None
@@ -119,7 +129,7 @@ class TestCreateToken:
 
     @pytest.mark.asyncio
     async def test_rejects_past_the_active_limit(self) -> None:
-        db = _db_returning_all([_make_token() for _ in range(MAX_TOKENS_PER_USER)])
+        db = _db_counting(MAX_TOKENS_PER_USER)
 
         with pytest.raises(PATError) as exc:
             await create_token(db, uuid.uuid4(), "mais um")

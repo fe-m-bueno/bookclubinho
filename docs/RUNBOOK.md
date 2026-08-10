@@ -142,6 +142,72 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 
 ---
 
+## RLS: o app ainda conecta como superusuário
+
+**Estado atual: RLS não está valendo em produção.** O app conecta com um papel
+superusuário, e superusuário não avalia política — nem com `FORCE ROW LEVEL
+SECURITY`. As políticas das migrations 0005 em diante são, hoje, documentação
+executável. **Não troque o `DATABASE_URL` para um papel comum ainda** — leia até
+o fim antes de considerar.
+
+### O que já foi corrigido (migrations 0025 e 0026)
+
+Quatro defeitos que só apareciam sob um papel comum, todos verificados contra um
+Postgres 16 local com papel sem `BYPASSRLS`:
+
+1. **Consultas que estabelecem identidade.** Login, registro, magic link, OAuth,
+   refresh e resolução de Bearer leem `users`/`user_sessions`/
+   `personal_access_tokens` antes de haver `app.current_user_id`. Sem porta, o
+   login responde "credenciais inválidas" para todo mundo. Porta nomeada:
+   `app.auth_lookup` (0025).
+2. **`current_setting` vira `''`, não NULL.** Depois que um `set_config(...,
+   true)` termina, a GUC passa a valer string vazia. Numa conexão de pool,
+   `''::uuid` **levanta erro** e aborta a transação. Eram 63 políticas em 20
+   tabelas; a 0026 reescreveu todas com `nullif(...)`.
+3. **`INSERT ... RETURNING` é checado pela política de SELECT**, não pela de
+   INSERT. Todo `login_failed` e `register` sumia do `audit_log` em silêncio,
+   porque `log_event` engole o próprio erro (0025).
+4. **Commit no meio da requisição zerava o contexto.** `set_config(..., true)`
+   morre no commit, e `register_user` commita antes do `log_event`. Corrigido
+   com um gancho `after_begin` que reaplica o contexto a cada transação nova
+   (`app/db/engine.py` + `rls.reapply_context_on_new_transaction`).
+
+### O que ainda bloqueia a troca
+
+**Políticas recursivas.** `group_members_select/update/delete` consultam
+`group_members` dentro da própria política. Sob RLS isso é
+`infinite recursion detected in policy for relation "group_members"` — erro
+duro, não resultado vazio. E como 31 políticas de outras tabelas checam
+participação lendo `group_members`, todas caem junto: na prática, tudo que é
+grupo, chat, rodada, review e encontro para de funcionar.
+
+A saída usual é uma função `SECURITY DEFINER` que responde "fulano é membro
+deste grupo?" sem passar por RLS. O detalhe que trava: com `FORCE ROW LEVEL
+SECURITY`, nem o dono da tabela escapa das políticas — então a função teria de
+pertencer a um papel com `BYPASSRLS` (exige superusuário para criar) ou seria
+preciso abrir mão do `FORCE` nessas tabelas. As duas opções mexem na postura de
+segurança e dependem do que o Render concede no plano em uso.
+
+### Quando for a hora, o procedimento é
+
+```sql
+CREATE ROLE bookclub_app LOGIN PASSWORD '...';
+GRANT USAGE ON SCHEMA public TO bookclub_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO bookclub_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO bookclub_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO bookclub_app;
+```
+
+Depois aponte o `DATABASE_URL` do serviço para esse papel. As migrations
+continuam rodando com o papel dono — `alembic upgrade head` precisa criar
+políticas, e o app não deve poder fazer isso.
+
+**Rollback:** voltar o `DATABASE_URL` para o papel anterior. Nenhuma migration
+precisa ser revertida; as políticas corrigidas são inertes para quem ignora RLS.
+
+---
+
 ## Checklist de Deploy em Produção
 
 - [ ] `alembic upgrade head` rodou sem erros

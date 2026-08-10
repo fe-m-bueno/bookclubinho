@@ -19,6 +19,9 @@ def _fake_request() -> MagicMock:
     # MagicMock devolve outro MagicMock, e todo `.startswith()` dele é truthy —
     # o teste entraria no caminho do Bearer sem nunca ter pedido isso.
     request.headers = {}
+    # Uma string de verdade: `MagicMock().startswith(...)` é truthy, e o teste
+    # entraria no caminho de autenticação sem nunca ter pedido isso.
+    request.url.path = "/api/v1/groups"
     return request
 
 

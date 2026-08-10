@@ -8,7 +8,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import InterfaceError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rls import apply_rls_user, get_rls_user_id, set_rls_user_id
+from app.core.rls import (
+    apply_rls_user,
+    get_rls_user_id,
+    mark_auth_lookup,
+    reset_auth_lookup,
+    set_rls_user_id,
+)
 from app.core.security import extract_access_token_sub, extract_refresh_token_jti
 from app.db.engine import AsyncSessionLocal
 from app.db.models.group import GroupMember, GroupRole
@@ -17,6 +23,10 @@ from app.services import membership, pat
 
 _NOT_RESOLVED: object = object()  # sentinel for "user not yet looked up"
 logger = structlog.get_logger(__name__)
+
+# Toda rota daqui para baixo existe para estabelecer identidade, então nenhuma
+# delas tem contexto RLS quando começa.
+_AUTH_PATH_PREFIX = "/api/v1/auth"
 
 
 def _is_closed_connection_interface_error(exc: InterfaceError) -> bool:
@@ -35,10 +45,18 @@ async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
     been sent, which is why it can't be the only one — see app/api/route.py.
     """
     async with AsyncSessionLocal() as session:
+        auth_lookup_token = None
         try:
             user_id = get_rls_user_id()
             if user_id:
                 await apply_rls_user(session, user_id)
+            elif request.url.path.startswith(_AUTH_PATH_PREFIX):
+                # Requisição sob /auth sem usuário é, por definição, uma que
+                # ainda vai estabelecer identidade: login, registro, magic link,
+                # callback de OAuth, refresh. Todas leem `users` ou
+                # `user_sessions` antes de haver contexto RLS — ver 0025.
+                # Só a marca; o SQL sai quando houver transação de verdade.
+                auth_lookup_token = mark_auth_lookup()
             request.state.db_session = session
             yield session
         except Exception:
@@ -56,6 +74,9 @@ async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
                 if not _is_closed_connection_interface_error(exc):
                     raise
                 logger.warning("db_session_commit_closed_connection", error=str(exc))
+        finally:
+            if auth_lookup_token is not None:
+                reset_auth_lookup(auth_lookup_token)
 
 
 DBSession = Annotated[AsyncSession, Depends(get_session)]
