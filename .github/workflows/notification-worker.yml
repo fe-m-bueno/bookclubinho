@@ -39,11 +39,16 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/pyproject.toml
 
       - name: Instalar dependências
         working-directory: backend
-        run: pip install -r requirements.txt
+        # `-e .` e não `-r requirements.txt`: as dependências do backend moram no
+        # `pyproject.toml`, e o requirements.txt só tem o sentry-sdk. Instalar por
+        # ele deixa o worker sem redis, sqlalchemy e o resto — foi o que derrubou
+        # a primeira execução com `ModuleNotFoundError: No module named 'redis'`.
+        # É o mesmo comando do Dockerfile; sem `[dev]`, que o worker não usa.
+        run: pip install -e .
 
       - name: Drenar notificações e lembretes
         working-directory: backend
