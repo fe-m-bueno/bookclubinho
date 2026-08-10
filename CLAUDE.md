@@ -125,6 +125,8 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
 ## Segurança — Regras Não-Negociáveis
 
 - **ROW LEVEL SECURITY (RLS) É OBRIGATÓRIO SEMPRE** — toda tabela no PostgreSQL deve ter RLS habilitado com políticas explícitas. Nunca desabilitar.
+  - **Mas hoje ele não está sendo aplicado, e você não pode contar com ele.** O app conecta com um papel superusuário, e superusuário ignora RLS — inclusive com `FORCE ROW LEVEL SECURITY`. As políticas existem e estão corretas; o portão só fecha quando o `DATABASE_URL` do serviço apontar para um papel restrito (sem `SUPERUSER`, sem `BYPASSRLS`, sem posse das tabelas). Procedimento em `docs/RUNBOOK.md`.
+  - Consequência prática ao escrever endpoint: **escope toda query na aplicação** como se RLS não existisse, porque agora não existe. Use `GroupMemberDep`/`GroupAdminDep` e `membership.resolve` em vez de assumir que o banco filtra.
 - NUNCA expor stack traces, tabelas, paths internos em respostas
 - NUNCA SE COLOQUE COMO CO-AUTOR DO PROJETO NO GITHUB
 - NUNCA secrets no frontend — só `NEXT_PUBLIC_*`
