@@ -1,6 +1,14 @@
 "use client";
 
 import { useReducedMotion, motion } from "framer-motion";
+import {
+  BookOpen,
+  Droplet,
+  Dumbbell,
+  Flame,
+  Heart,
+  type LucideIcon,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EmotionalStats } from "@/lib/types/stats";
 
@@ -11,15 +19,25 @@ interface EmotionalStatsSectionProps {
 interface StatBar {
   label: string;
   count: number;
+  icon: LucideIcon;
 }
 
+/**
+ * O ícone saiu do fim do rótulo e virou componente na frente dele.
+ *
+ * Os cinco emoji estavam colados no texto — `"do grupo já chorou 😢"` — e eram
+ * puro reforço: a frase já diz o que a barra mede. Como emoji do sistema, não
+ * obedeciam token, mudavam de desenho entre plataformas e eram lidos em voz
+ * alta pelo leitor de tela depois da frase que eles repetem. Agora são lucide em
+ * sage, à esquerda, decorativos.
+ */
 function buildBars(stats: EmotionalStats): StatBar[] {
   return [
-    { label: `do grupo já chorou 😢`, count: stats.cried_count },
-    { label: `amou o livro 😍`, count: stats.loved_it_count },
-    { label: `sentiu tesão 🥵`, count: stats.felt_aroused_count },
-    { label: `achou pesado 🏋️`, count: stats.found_heavy_count },
-    { label: `quer mais do autor 📚`, count: stats.wants_more_count },
+    { label: "do grupo já chorou", count: stats.cried_count, icon: Droplet },
+    { label: "amou o livro", count: stats.loved_it_count, icon: Heart },
+    { label: "sentiu tesão", count: stats.felt_aroused_count, icon: Flame },
+    { label: "achou pesado", count: stats.found_heavy_count, icon: Dumbbell },
+    { label: "quer mais do autor", count: stats.wants_more_count, icon: BookOpen },
   ];
 }
 
@@ -66,9 +84,17 @@ export function EmotionalStatsSection({ stats }: EmotionalStatsSectionProps) {
               className="space-y-1"
             >
               <div className="flex justify-between items-baseline gap-2">
-                <p className="type-body">
-                  <span className="font-semibold tabular-nums">{pct}%</span>{" "}
-                  {bar.label}
+                {/* O texto fica num filho só: com a frase solta no flex, o
+                    `gap` entrava também entre a porcentagem e o rótulo. */}
+                <p className="type-body inline-flex items-baseline gap-1.5">
+                  <bar.icon
+                    className="h-3.5 w-3.5 shrink-0 self-center text-primary"
+                    aria-hidden="true"
+                  />
+                  <span>
+                    <span className="font-semibold tabular-nums">{pct}%</span>{" "}
+                    {bar.label}
+                  </span>
                 </p>
                 <span className="type-micro flex-none tabular-nums">
                   {bar.count}/{total}

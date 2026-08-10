@@ -86,8 +86,14 @@ export default async function PublicShelfPage({
                 />
               </div>
             ) : (
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-sage-100 dark:bg-sage-900 text-2xl shadow-warm-md">
-                📚
+              // `Users`, e não o 📚 que estava aqui: o slot é o da foto do
+              // grupo, então o que falta é um grupo — um livro no lugar dele é
+              // o ícone errado, emoji ou não.
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-sage-100 dark:bg-sage-900 shadow-warm-md">
+                <Users
+                  className="h-7 w-7 text-sage-600 dark:text-sage-300"
+                  aria-hidden="true"
+                />
               </div>
             )}
 

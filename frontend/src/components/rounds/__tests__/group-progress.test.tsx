@@ -93,7 +93,9 @@ describe("GroupProgress", () => {
         progress={[makeProgress({ streak_current: 7, percentage: 50 })]}
       />,
     );
-    expect(screen.getByText("🔥 7")).toBeInTheDocument();
+    // O 🔥 virou `Flame` do lucide (#322): o que sobra de texto é o número.
+    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(document.querySelector(".lucide-flame")).toBeInTheDocument();
   });
 
   it("does not show streak badge when streak_current is 0", () => {
@@ -103,7 +105,7 @@ describe("GroupProgress", () => {
         progress={[makeProgress({ streak_current: 0, percentage: 50 })]}
       />,
     );
-    expect(screen.queryByText(/🔥/)).not.toBeInTheDocument();
+    expect(document.querySelector(".lucide-flame")).not.toBeInTheDocument();
   });
 
   it("shows finished label with days when roundStartedAt and updated_at available", () => {

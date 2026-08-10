@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { FormField } from "@/components/auth/form-field";
 import { PasswordInput } from "@/components/auth/password-input";
+import { BookMark } from "@/components/brand/book-mark";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
 import { useResendCooldown } from "@/hooks/use-resend-cooldown";
 import { passwordField } from "@/lib/password";
@@ -96,9 +97,10 @@ export default function RegisterPage() {
       {!submitted ? (
         <>
           <CardHeader className="text-center space-y-1">
-            <p className="text-4xl" aria-hidden="true">
-              📚
-            </p>
+            {/* A mesma marca do login e da landing — ver `BookMark`. */}
+            <div className="flex justify-center pb-2">
+              <BookMark size="sm" />
+            </div>
             <h1 className="text-2xl font-display font-bold tracking-tight">Criar conta</h1>
             <p className="type-meta">Junte-se ao clube</p>
           </CardHeader>

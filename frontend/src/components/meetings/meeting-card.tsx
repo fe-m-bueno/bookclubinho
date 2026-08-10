@@ -49,6 +49,7 @@ export function MeetingCard({
   const isCreator = meeting.created_by === currentUserId;
   const canManage = isCreator || isAdmin;
   const typeBadge = TYPE_BADGE[meeting.meeting_type];
+  const TypeIcon = typeBadge.icon;
   const formattedDate = DATE_FORMATTER.format(new Date(meeting.scheduled_at));
 
   const handleRsvp = (status: Exclude<RsvpStatus, "pending">) => {
@@ -92,7 +93,8 @@ export function MeetingCard({
       <div className="flex items-start justify-between gap-2">
         <h3 className="type-title">{meeting.title}</h3>
         <span className="type-micro shrink-0 inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5">
-          {typeBadge.icon} {typeBadge.label}
+          <TypeIcon className="h-3 w-3 text-primary" aria-hidden="true" />
+          {typeBadge.label}
         </span>
       </div>
 

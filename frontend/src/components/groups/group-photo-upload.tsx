@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Camera } from "lucide-react";
+import { Camera, Users } from "lucide-react";
 import { toast } from "sonner";
 
 interface GroupPhotoUploadProps {
@@ -88,9 +88,12 @@ export function GroupPhotoUpload({ value, onChange, existingUrl }: GroupPhotoUpl
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <span className="text-4xl" aria-hidden="true">
-                📚
-              </span>
+              {/* O placeholder é da foto do grupo — `Users`, não o 📚 que
+                  estava aqui. O badge de câmera já diz que é para enviar. */}
+              <Users
+                className="h-10 w-10 text-muted-foreground/60"
+                aria-hidden="true"
+              />
             </motion.div>
           )}
         </AnimatePresence>

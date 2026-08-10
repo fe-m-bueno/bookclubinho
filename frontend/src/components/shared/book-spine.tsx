@@ -43,6 +43,8 @@ interface BookSpineProps {
   className?: string;
   depth?: Depth;
   style?: CSSProperties;
+  /** O livro é decoração em quase todo uso; quem tem legenda própria marca aqui. */
+  "aria-hidden"?: boolean;
 }
 
 export function BookSpine({
@@ -50,6 +52,7 @@ export function BookSpine({
   className,
   depth = "sm",
   style,
+  "aria-hidden": ariaHidden,
 }: BookSpineProps) {
   const { transform, boxShadow, spine, spineTint } = DEPTHS[depth];
 
@@ -57,6 +60,7 @@ export function BookSpine({
     <div
       className={cn("relative overflow-hidden", className)}
       style={{ transform, boxShadow, ...style }}
+      aria-hidden={ariaHidden}
     >
       {children}
       <div

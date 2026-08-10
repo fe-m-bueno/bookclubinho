@@ -20,6 +20,7 @@ import {
 import { FormField } from "@/components/auth/form-field";
 import { PasswordInput } from "@/components/auth/password-input";
 import { GoogleIcon } from "@/components/icons/google-icon";
+import { BookMark } from "@/components/brand/book-mark";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
 
 const loginSchema = z.object({
@@ -110,9 +111,11 @@ export default function LoginPage() {
 
       <Card className="max-w-sm w-full">
         <CardHeader className="text-center space-y-1">
-          <p className="text-4xl" aria-hidden="true">
-            📚
-          </p>
+          {/* A marca, e não o 📚: quem chega aqui vem da landing, que desenha
+              este mesmo livro, e é ele que o favicon mostra na aba. */}
+          <div className="flex justify-center pb-2">
+            <BookMark size="sm" />
+          </div>
           <h1 className="text-2xl font-display font-bold tracking-tight">
             Bem-vindo de volta
           </h1>

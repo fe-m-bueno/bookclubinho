@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { differenceInDays, parseISO } from "date-fns";
 import { motion, useReducedMotion } from "framer-motion";
-import { BookOpen, CheckCircle2 } from "lucide-react";
+import { BookOpen, CheckCircle2, Flame } from "lucide-react";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -143,9 +143,10 @@ export function GroupProgress({
                     {item.streak_current > 0 && (
                       <Badge
                         variant="secondary"
-                        className="py-0 px-1.5 shrink-0"
+                        className="py-0 px-1.5 shrink-0 gap-1"
                       >
-                        🔥 {item.streak_current}
+                        <Flame className="h-3 w-3" aria-hidden="true" />
+                        {item.streak_current}
                       </Badge>
                     )}
                   </div>

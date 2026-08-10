@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Blend, House, Video, type LucideIcon } from "lucide-react";
 import type { MeetingType } from "@/lib/types/meeting";
 
 export const meetingSchema = z.object({
@@ -29,16 +30,28 @@ export const meetingSchema = z.object({
 
 export type MeetingFormData = z.infer<typeof meetingSchema>;
 
-export const TYPE_OPTIONS: { value: MeetingType; label: string }[] = [
-  { value: "in_person", label: "🏠 Presencial" },
-  { value: "virtual", label: "💻 Virtual" },
-  { value: "hybrid", label: "🔄 Híbrido" },
+/**
+ * O ícone é componente, não caractere dentro do rótulo.
+ *
+ * Antes o label era `"🏠 Presencial"` — emoji do sistema colado na string, que
+ * não obedece token, muda de desenho entre plataformas e ignora o dark mode.
+ * Separar os dois campos deixa os quatro consumidores (os dois diálogos, o card
+ * e o detalhe) renderizarem o `LucideIcon` em sage ao lado do texto.
+ */
+export const TYPE_OPTIONS: {
+  value: MeetingType;
+  label: string;
+  icon: LucideIcon;
+}[] = [
+  { value: "in_person", label: "Presencial", icon: House },
+  { value: "virtual", label: "Virtual", icon: Video },
+  { value: "hybrid", label: "Híbrido", icon: Blend },
 ];
 
-export const TYPE_BADGE: Record<string, { label: string; icon: string }> = {
-  in_person: { label: "Presencial", icon: "🏠" },
-  virtual: { label: "Virtual", icon: "💻" },
-  hybrid: { label: "Híbrido", icon: "🔄" },
+export const TYPE_BADGE: Record<string, { label: string; icon: LucideIcon }> = {
+  in_person: { label: "Presencial", icon: House },
+  virtual: { label: "Virtual", icon: Video },
+  hybrid: { label: "Híbrido", icon: Blend },
 };
 
 import type { RsvpStatus } from "@/lib/types/meeting";
