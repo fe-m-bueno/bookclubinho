@@ -36,6 +36,26 @@ describe("middleware", () => {
       expect(res.headers.get("Location")).toBeNull();
     });
 
+    /**
+     * A /about existe para ser aberta por quem ainda não tem conta — é a
+     * resposta para quem caiu num convite ou num link de estante e não sabe o
+     * que é o app. Pedir login nela seria pedir cadastro antes de explicar.
+     */
+    it("passes through /about sem sessão", () => {
+      const res = proxy(makeRequest("/about"));
+      expect(res.headers.get("Location")).toBeNull();
+    });
+
+    it("passes through /about mesmo com onboarding pendente", () => {
+      const token = encodeJwtPayload({
+        sub: "user-1",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        onb: false,
+      });
+      const res = proxy(makeRequest("/about", { access_token: token }));
+      expect(res.headers.get("Location")).toBeNull();
+    });
+
     it("passes through /api/v1/auth/login", () => {
       const res = proxy(makeRequest("/api/v1/auth/login"));
       expect(res.headers.get("Location")).toBeNull();

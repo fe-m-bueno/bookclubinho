@@ -13,6 +13,7 @@ import {
   AvatarGroupCount,
 } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { BookSpine } from "@/components/shared/book-spine";
 import { describeDeadline } from "@/lib/deadline";
 import { cn } from "@/lib/utils";
 import type { GroupListItem, RoundStatus } from "@/lib/types/group";
@@ -125,14 +126,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
       <div className="flex gap-4 p-5">
         {hasCover ? (
           <div className="relative shrink-0">
-            <div
-              className="relative h-[88px] w-[60px] overflow-hidden rounded-lg"
-              style={{
-                transform: "perspective(400px) rotateY(-5deg)",
-                boxShadow:
-                  "-3px 2px 8px rgba(0,0,0,0.2), 1px 2px 6px rgba(0,0,0,0.08)",
-              }}
-            >
+            <BookSpine className="h-[88px] w-[60px] rounded-lg">
               <Image
                 src={round!.book_cover_url!}
                 alt={round!.book_title!}
@@ -144,14 +138,7 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
                    o título do livro vazava como texto cru no slot de 60×88. */
                 onError={() => setCoverFailed(true)}
               />
-              <div
-                className="pointer-events-none absolute inset-y-0 left-0 w-3"
-                style={{
-                  background:
-                    "linear-gradient(to right, rgba(0,0,0,0.25), transparent)",
-                }}
-              />
-            </div>
+            </BookSpine>
             <Avatar className="absolute -bottom-1.5 -right-1.5 h-7 w-7 ring-2 ring-card">
               <AvatarImage
                 src={group.photo_url ?? undefined}

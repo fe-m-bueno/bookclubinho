@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300" role="img" aria-label="Capa fictícia de A Casa das Marés">
+  <rect width="200" height="300" fill="#2f4f43"/>
+  <rect x="0" y="0" width="14" height="300" fill="#223b32"/>
+  <circle cx="100" cy="120" r="46" fill="none" stroke="#a8c8b6" stroke-width="1.5"/>
+  <path d="M54 138q23 -16 46 0t46 0" fill="none" stroke="#a8c8b6" stroke-width="1.5"/>
+  <path d="M54 152q23 -16 46 0t46 0" fill="none" stroke="#a8c8b6" stroke-width="1.5" opacity="0.6"/>
+  <text x="100" y="212" text-anchor="middle" fill="#f2ece0" font-family="Georgia, serif" font-size="19">A Casa</text>
+  <text x="100" y="236" text-anchor="middle" fill="#f2ece0" font-family="Georgia, serif" font-size="19">das Marés</text>
+  <text x="100" y="266" text-anchor="middle" fill="#a8c8b6" font-family="Georgia, serif" font-size="11" letter-spacing="2">CLARA RIBEIRO</text>
+</svg>

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   ArrowLeft,
   Bell,
+  Info,
   Lock,
   Menu,
   Plug,
@@ -28,6 +29,9 @@ const sections = [
   { label: "Integrações", href: "/settings/integrations", icon: Plug },
   { label: "Sessões", href: "/settings/sessions", icon: Smartphone },
   { label: "Dados e Privacidade", href: "/settings/privacy", icon: Shield },
+  // Fora do /settings de propósito: a /about é pública e explica o produto,
+  // não configura nada. Está aqui porque é onde se procura "o que é isso".
+  { label: "Sobre o app", href: "/about", icon: Info },
 ];
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {

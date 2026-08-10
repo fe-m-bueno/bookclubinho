@@ -13,7 +13,10 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
-const PUBLIC_PREFIXES = ["/auth", "/shelf"];
+// A /about entra aqui pelo mesmo motivo que a /shelf: ela existe para ser
+// aberta por quem ainda não tem conta. Mandá-la para o login seria pedir
+// cadastro para responder "o que é isso?".
+const PUBLIC_PREFIXES = ["/auth", "/shelf", "/about"];
 
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(
