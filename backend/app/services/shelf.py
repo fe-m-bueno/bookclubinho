@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 from app.core.exceptions import ServiceError
 from app.core.redis import get_redis
+from app.core.rls import group_lookup
 from app.db.models.book_review import BookReview
 from app.db.models.group import Group
 from app.db.models.round import Round, RoundStatus
@@ -70,7 +71,17 @@ async def populate_shelf_cache(
 
     try:
         async with AsyncSessionLocal() as db:
-            group_result = await db.execute(select(Group).where(Group.id == group_id))
+            # Background task não tem usuário no contexto, então nenhuma política
+            # keyed em participação a autoriza. A porta da 0028 cobre a leitura
+            # do grupo.
+            #
+            # ATENÇÃO: `_build_shelf_data` abaixo lê `rounds` e `book_reviews`,
+            # que têm políticas próprias keyed em participação e **não** estão
+            # cobertas aqui. Sob papel restrito este job falha ali — o `except`
+            # abaixo engole e a estante pública apenas não atualiza. Está
+            # anotado em docs/RUNBOOK.md como pendência antes da troca de papel.
+            async with group_lookup(db):
+                group_result = await db.execute(select(Group).where(Group.id == group_id))
             group = group_result.scalar_one_or_none()
             if group is None:
                 return

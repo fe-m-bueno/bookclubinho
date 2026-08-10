@@ -181,6 +181,13 @@ ignora RLS não enxerga política nenhuma.
    com um gancho `after_begin` que reaplica o contexto a cada transação nova
    (`app/db/engine.py` + `rls.reapply_context_on_new_transaction`).
 
+6. **`groups` era legível por qualquer autenticado** (0028). `groups_select` dizia
+   `is_active AND current_setting('app.current_user_id') != ''` — ou seja,
+   qualquer usuário logado lia **qualquer** grupo ativo. E RLS filtra linha, não
+   coluna, então isso incluía o `invite_code`, que é a credencial de entrada.
+   Era a única tabela em que ligar RLS não somava nada. Medido na branch de
+   validação: antes, um usuário sem vínculo lia os 3 grupos; depois, 0.
+
 5. **Políticas recursivas** (0027). `group_members_select/update/delete`
    perguntavam "você participa deste grupo?" lendo `group_members` de dentro da
    política de `group_members` — `infinite recursion detected in policy`, erro
@@ -236,6 +243,12 @@ existe.
 O banco é **Neon**; o backend roda no Render. `neondb_owner` é o papel
 privilegiado e **tem `BYPASSRLS`** — por isso as políticas não valem para ele, e
 por isso ele é o certo para migration e o errado para o app.
+
+> **Ordem obrigatória:** o papel restrito só funciona depois que as migrations
+> 0024–0028 rodaram. Setar `DATABASE_APP_URL` antes disso derruba o app — as
+> políticas antigas têm os seis defeitos acima, e o login para de funcionar.
+> Primeiro faça o deploy (o pre-deploy roda `alembic upgrade head`), depois sete a
+> variável.
 
 **1. Criar o papel restrito.** Rode no SQL Editor do Neon, conectado como
 `neondb_owner`:
@@ -310,13 +323,28 @@ Duas consequências, e as duas já estão tratadas no código:
 precisa ser revertida; as políticas corrigidas são inertes para quem ignora RLS.
 O rollback é imediato e não perde dados.
 
-### Ainda não coberto
+### Ainda não coberto — leia antes de trocar
 
-O ambiente de verificação foi um Postgres local com dados de teste. O que ele não
-exercita: workers (`app/workers/`), SSE do chat, export de dados e o wrapped
-anual. Esses caminhos usam as mesmas sessões e políticas, mas não passaram pelo
-teste de fumaça — vale rodar cada um uma vez depois da troca, com o rollback à
-mão.
+A verificação rodou numa **branch do Neon** criada a partir da produção, com
+dados reais, endpoint pooler e o app no papel `bookclub_app`. Cobriu: registro,
+login, rota autenticada, criação de grupo, lista de membros, chat, stats,
+cria/usa/revoga token, entrada por código de convite e isolamento entre dois
+usuários. Tudo verde. A branch foi apagada.
+
+O que **não** foi exercitado, e onde eu esperaria problema:
+
+- **`populate_shelf_cache`** (`app/services/shelf.py`) — background task, roda sem
+  usuário no contexto. A leitura do grupo já está coberta pela porta da 0028, mas
+  `_build_shelf_data` logo depois lê `rounds` e `book_reviews`, cujas políticas são
+  keyed em participação. Sob papel restrito isso falha, o `except Exception` do job
+  engole, e a estante pública apenas para de atualizar. **É a pendência mais
+  concreta**: degradação silenciosa, não erro visível.
+- **Workers** (`app/workers/`) — mesmo padrão: sessão própria, sem usuário.
+- **SSE do chat**, **export de dados** e **wrapped anual** — usam as mesmas sessões
+  e políticas dos caminhos testados, mas não passaram pelo teste de fumaça.
+
+Recomendação: depois de setar `DATABASE_APP_URL`, exercite cada um desses uma vez
+e olhe o log. O rollback é remover a variável.
 
 ---
 

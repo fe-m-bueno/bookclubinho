@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 _current_user_id: contextvars.ContextVar[str] = contextvars.ContextVar("current_user_id", default="")
 _auth_lookup_on: contextvars.ContextVar[bool] = contextvars.ContextVar("auth_lookup_on", default=False)
+_group_lookup_on: contextvars.ContextVar[bool] = contextvars.ContextVar("group_lookup_on", default=False)
 
 # `SET LOCAL` não aceita bind parameters, o que forçava interpolar o UUID na string SQL.
 # `set_config(name, value, is_local=true)` é equivalente e aceita bind — o UUID nunca
@@ -32,6 +33,10 @@ _SET_RLS_USER = text("SELECT set_config('app.current_user_id', :uid, true)")
 # A porta nomeada para as consultas que *estabelecem* identidade e por isso
 # rodam antes de existir identidade — ver a migration 0025.
 _SET_AUTH_LOOKUP = text("SELECT set_config('app.auth_lookup', :estado, true)")
+
+# A porta para ler um grupo sem ser membro dele. São três casos, todos legítimos
+# e todos fora de uma sessão de membro — ver a migration 0028.
+_SET_GROUP_LOOKUP = text("SELECT set_config('app.group_lookup', :estado, true)")
 
 
 def get_rls_user_id() -> str:
@@ -85,6 +90,8 @@ def reapply_context_on_new_transaction(_session: object, _transaction: object, c
         connection.execute(_SET_RLS_USER, {"uid": uid})
     if _auth_lookup_on.get():
         connection.execute(_SET_AUTH_LOOKUP, {"estado": "on"})
+    if _group_lookup_on.get():
+        connection.execute(_SET_GROUP_LOOKUP, {"estado": "on"})
 
 
 def mark_auth_lookup() -> contextvars.Token[bool]:
@@ -150,6 +157,35 @@ async def auth_lookup(session: AsyncSession) -> AsyncIterator[None]:
         raise
     else:
         await disable_auth_lookup(session)
+
+
+@asynccontextmanager
+async def group_lookup(session: AsyncSession) -> AsyncIterator[None]:
+    """Permite ler um grupo sem ser membro dele, pelo tempo do bloco.
+
+    Antes da 0028 isto não era necessário porque `groups_select` liberava
+    **qualquer grupo ativo para qualquer usuário autenticado** — inclusive o
+    `invite_code`, já que RLS filtra linha e não coluna. Nenhum endpoint expõe
+    isso hoje, mas era a única tabela em que RLS não somava nada.
+
+    Fechada a política, sobraram três leituras legítimas de grupo fora de uma
+    sessão de membro. Cada uma abre esta porta explicitamente, e é assim que se
+    vê, lendo o código, quem lê grupo sem participar dele.
+
+    Mesma disciplina de :func:`auth_lookup`: não usa `finally`, para não trocar
+    um erro de banco real pelo "current transaction is aborted" do comando de
+    saída.
+    """
+    _group_lookup_on.set(True)
+    await session.execute(_SET_GROUP_LOOKUP, {"estado": "on"})
+    try:
+        yield
+    except Exception:
+        _group_lookup_on.set(False)
+        raise
+    else:
+        _group_lookup_on.set(False)
+        await session.execute(_SET_GROUP_LOOKUP, {"estado": "off"})
 
 
 class RLSMiddleware(BaseHTTPMiddleware):
