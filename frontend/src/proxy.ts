@@ -24,8 +24,32 @@ function isPublicRoute(pathname: string): boolean {
   );
 }
 
+/**
+ * Os arquivos que o Next gera a partir das convenções de metadata.
+ *
+ * Eles são pedidos por quem nunca terá cookie: o crawler que monta o cartão do
+ * link, o browser que busca o ícone da aba. Mandá-los para o login devolve um
+ * 307 no lugar da imagem, e o cartão sai quebrado em toda parte onde o link
+ * for colado. Os que terminam em extensão já caem na regra de arquivo
+ * estático; estes não têm ponto nenhum no caminho.
+ */
+const METADATA_ROUTES = [
+  "/opengraph-image",
+  "/twitter-image",
+  "/icon",
+  "/apple-icon",
+  "/manifest.webmanifest",
+];
+
 function isSkippedRoute(pathname: string): boolean {
   if (pathname.startsWith("/api/") || pathname.startsWith("/_next/")) {
+    return true;
+  }
+  if (
+    METADATA_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(`${route}-`),
+    )
+  ) {
     return true;
   }
   if (pathname.includes(".")) {

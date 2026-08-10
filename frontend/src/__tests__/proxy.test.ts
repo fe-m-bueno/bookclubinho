@@ -56,6 +56,23 @@ describe("middleware", () => {
       expect(res.headers.get("Location")).toBeNull();
     });
 
+    /**
+     * O cartão do link e o ícone da aba são pedidos por quem nunca terá
+     * cookie: o crawler do WhatsApp, do Slack, do X. Um 307 para o login no
+     * lugar do PNG deixa o cartão quebrado em toda parte onde o link circular.
+     */
+    it.each([
+      "/opengraph-image",
+      "/twitter-image",
+      "/icon",
+      "/apple-icon",
+      "/favicon.ico",
+      "/icon.svg",
+    ])("passes through %s sem sessão", (rota) => {
+      const res = proxy(makeRequest(rota));
+      expect(res.headers.get("Location")).toBeNull();
+    });
+
     it("passes through /api/v1/auth/login", () => {
       const res = proxy(makeRequest("/api/v1/auth/login"));
       expect(res.headers.get("Location")).toBeNull();
