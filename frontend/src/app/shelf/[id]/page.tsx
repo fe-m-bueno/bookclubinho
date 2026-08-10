@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Users } from "lucide-react";
 import { ShelfGrid } from "@/components/shelf/shelf-grid";
@@ -117,6 +118,20 @@ export default async function PublicShelfPage({
           <ShelfGrid books={shelf.books} />
         )}
       </main>
+
+      {/* A estante é feita para circular — tem OG image própria e responde sem
+          cookie. Quem clica no link cai numa grade de capas sem saber de onde
+          ela veio; este é o único caminho da página para a resposta. */}
+      <footer className="border-t">
+        <div className="mx-auto flex max-w-4xl justify-center px-4 py-6">
+          <Link
+            href="/about"
+            className="type-meta inline-flex min-h-11 items-center rounded-lg px-3 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            o que é o bookclubinho?
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }

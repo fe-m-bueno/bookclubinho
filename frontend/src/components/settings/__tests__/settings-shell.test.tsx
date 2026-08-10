@@ -41,6 +41,21 @@ describe("SettingsShell", () => {
     expect(screen.getAllByTestId("child").length).toBeGreaterThan(0);
   });
 
+  /**
+   * "Sobre o app" não configura nada e nem mora sob /settings — está aqui
+   * porque é onde se procura "o que é isso", e é uma das quatro entradas da
+   * /about (as outras: landing, /groups/join e a estante pública).
+   */
+  it("leva à /about pelo item Sobre o app", () => {
+    render(
+      <SettingsShell>
+        <div />
+      </SettingsShell>
+    );
+    const links = screen.getAllByRole("link", { name: /sobre o app/i });
+    expect(links.some((l) => l.getAttribute("href") === "/about")).toBe(true);
+  });
+
   it("renders Perfil link with correct href", () => {
     render(
       <SettingsShell>

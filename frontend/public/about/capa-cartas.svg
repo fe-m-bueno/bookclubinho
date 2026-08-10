@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300" role="img" aria-label="Capa fictícia de Cartas ao Vento">
+  <rect width="200" height="300" fill="#8a5a2b"/>
+  <rect x="0" y="0" width="14" height="300" fill="#6d4520"/>
+  <path d="M56 96h88v62H56z" fill="none" stroke="#f0dcc0" stroke-width="1.5"/>
+  <path d="M56 96l44 34 44-34" fill="none" stroke="#f0dcc0" stroke-width="1.5"/>
+  <text x="100" y="212" text-anchor="middle" fill="#f7ecdb" font-family="Georgia, serif" font-size="20">Cartas</text>
+  <text x="100" y="236" text-anchor="middle" fill="#f7ecdb" font-family="Georgia, serif" font-size="20">ao Vento</text>
+  <text x="100" y="266" text-anchor="middle" fill="#f0dcc0" font-family="Georgia, serif" font-size="11" letter-spacing="2">TERESA LOBO</text>
+</svg>

@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Users, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,6 +106,16 @@ function JoinGroupContent() {
                 "Entrar no clube"
               )}
             </Button>
+
+            {/* A entrada de maior valor para a /about: esta tela renderiza
+                deslogada, então quem recebeu o convite decide se cria conta
+                olhando para o nome de um clube que não conhece e nada mais. */}
+            <Link
+              href="/about"
+              className="type-meta inline-flex min-h-11 items-center rounded-lg px-3 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              o que é o bookclubinho?
+            </Link>
           </div>
         )}
 
