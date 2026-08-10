@@ -6,6 +6,7 @@ from app.db.models.group import Group, GroupMember
 from app.db.models.hall_of_quote import HallOfQuote, QuoteVote
 from app.db.models.meeting import Meeting, MeetingRsvp, MeetingType, RsvpStatus
 from app.db.models.message import ContentType, GroupMessage, MessageReaction, ReferenceType
+from app.db.models.personal_access_token import PersonalAccessToken
 from app.db.models.reading_progress import ReadingProgress
 from app.db.models.reading_session import ReadingSession
 from app.db.models.report import MessageReport, ReportReason, ReportStatus
@@ -29,6 +30,7 @@ __all__ = [
     "MeetingType",
     "MessageReaction",
     "MessageReport",
+    "PersonalAccessToken",
     "QuoteVote",
     "ReadingProgress",
     "ReadingSession",

@@ -15,6 +15,10 @@ def _fake_request() -> MagicMock:
     """get_session publica a sessão em request.state para o middleware de commit."""
     request = MagicMock()
     request.state = SimpleNamespace()
+    # Um dict de verdade, e não o mock: `headers.get("authorization", "")` de um
+    # MagicMock devolve outro MagicMock, e todo `.startswith()` dele é truthy —
+    # o teste entraria no caminho do Bearer sem nunca ter pedido isso.
+    request.headers = {}
     return request
 
 
@@ -245,6 +249,7 @@ class TestGetCurrentUser:
         user = make_user()
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(user)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=str(user.id)):
@@ -272,6 +277,7 @@ class TestGetCurrentUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(None)
 
         with pytest.raises(HTTPException) as exc_info:
@@ -285,6 +291,7 @@ class TestGetCurrentUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(None)
 
         with (
@@ -301,6 +308,7 @@ class TestGetCurrentUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(None)
 
         with (
@@ -317,6 +325,7 @@ class TestGetCurrentUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(None)
 
         with (
@@ -334,6 +343,7 @@ class TestGetCurrentUser:
         user = make_user()
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(user)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=str(user.id)):
@@ -370,6 +380,7 @@ class TestGetOptionalUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(None)
 
         result = await get_optional_user(request, db, access_token=None)
@@ -381,6 +392,7 @@ class TestGetOptionalUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(None)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=None):
@@ -394,6 +406,7 @@ class TestGetOptionalUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(None)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=None):
@@ -407,6 +420,7 @@ class TestGetOptionalUser:
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(None)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=str(uuid.uuid4())):
@@ -421,6 +435,7 @@ class TestGetOptionalUser:
         user = make_user()
         request = MagicMock()
         request.state = MagicMock(spec=[])
+        request.headers = {}
         db = mock_db_returning(user)
 
         with patch("app.core.deps.extract_access_token_sub", return_value=str(user.id)):

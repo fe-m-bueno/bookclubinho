@@ -1,3 +1,4 @@
+import hashlib
 import hmac
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -160,6 +161,47 @@ def generate_group_code() -> str:
 def generate_magic_token() -> str:
     """Generate a cryptographically secure URL-safe token for magic link auth."""
     return secrets.token_urlsafe(32)
+
+
+# ── Personal access tokens ────────────────────────────────────────────────────
+
+PAT_PREFIX = "bcp_"
+_PAT_SECRET_BYTES = 32
+_PAT_DISPLAY_CHARS = 8
+
+
+def generate_personal_access_token() -> str:
+    """Token opaco de 256 bits, prefixado para ser reconhecível.
+
+    O prefixo não é decoração: é o que permite recusar um Authorization que
+    obviamente não é um PAT antes de gastar um SELECT, e é o que os scanners de
+    segredo vazado (GitHub, gitleaks) usam para achar um token colado num
+    repositório público.
+    """
+    return f"{PAT_PREFIX}{secrets.token_urlsafe(_PAT_SECRET_BYTES)}"
+
+
+def hash_personal_access_token(token: str) -> str:
+    """SHA-256 hex do token, que é o que vai para o banco.
+
+    SHA-256 e não bcrypt — o contrário do que se faz com senha, de propósito.
+    bcrypt é lento *para atrapalhar quem adivinha*, e só existe porque senha
+    humana vive num espaço de busca pequeno. Este token são 256 bits que nós
+    sorteamos: não há o que adivinhar. O que sobraria do bcrypt aqui é só o
+    custo — ~100ms em *toda* requisição autenticada por token, contra ~1µs
+    deste hash. Um vazamento do banco também não é explorável: sem o token em
+    claro, o hash não autentica nada.
+    """
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def personal_access_token_prefix(token: str) -> str:
+    """Os primeiros caracteres do token, guardados em claro só para exibição.
+
+    É como o usuário reconhece qual linha da lista é qual token sem que a gente
+    precise saber o segredo — o mesmo truque do `ghp_xxxx…` do GitHub.
+    """
+    return token[: len(PAT_PREFIX) + _PAT_DISPLAY_CHARS]
 
 
 def extract_refresh_token_jti(token: str) -> str | None:

@@ -30,6 +30,19 @@ def get_rls_user_id() -> str:
     return _current_user_id.get()
 
 
+def set_rls_user_id(user_id: str) -> None:
+    """Popula o contexto RLS depois que o middleware já passou.
+
+    Existe para o Bearer. O middleware consegue resolver o cookie sozinho porque
+    decodificar um JWT é operação pura; um token opaco exige ir ao banco, e ali
+    ainda não há sessão. Então quem resolve o Bearer é a dependência — que já
+    tem sessão — e avisa aqui.
+
+    O `reset` continua sendo do middleware, no `finally` do dispatch.
+    """
+    _current_user_id.set(user_id)
+
+
 async def apply_rls_user(session: AsyncSession, user_id: str | uuid.UUID) -> None:
     """Aplica o contexto RLS na transação atual da sessão.
 

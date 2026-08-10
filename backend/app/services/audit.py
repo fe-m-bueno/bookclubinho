@@ -29,6 +29,8 @@ OAUTH_LOGIN = "oauth_login"
 TOKEN_REFRESH = "token_refresh"
 SESSION_REVOKED = "session_revoked"
 ACCOUNT_LOCKED = "account_locked"
+TOKEN_CREATED = "token_created"
+TOKEN_REVOKED = "token_revoked"
 
 # Conta
 PASSWORD_CHANGED = "password_changed"
