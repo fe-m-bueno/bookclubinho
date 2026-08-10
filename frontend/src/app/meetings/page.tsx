@@ -16,7 +16,7 @@ export default function MeetingsPage() {
               Voltar
             </Link>
           </Button>
-          <p className="text-sm text-muted-foreground">agenda</p>
+          <p className="type-meta">agenda</p>
           <h1 className="mt-1 text-3xl font-display font-bold tracking-tight md:text-4xl">
             encontros
           </h1>

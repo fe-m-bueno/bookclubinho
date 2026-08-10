@@ -80,26 +80,26 @@ export function QuoteFullView({ quote, open, onOpenChange }: QuoteFullViewProps)
           ref={cardRef}
           className="rounded-xl p-6 bg-gradient-to-br from-[oklch(0.90_0.06_68)] to-[oklch(0.84_0.08_55)] dark:from-[oklch(0.30_0.06_55)] dark:to-[oklch(0.24_0.08_50)]"
         >
-          <p className="italic font-medium text-base leading-relaxed text-foreground mb-4">
+          <p className="type-body italic mb-4">
             &ldquo;{quote.quote_text}&rdquo;
           </p>
 
           {quote.page_reference && (
-            <p className="text-xs text-muted-foreground mb-3">
+            <p className="type-micro mb-3">
               {quote.page_reference}
             </p>
           )}
 
           <div className="border-t border-foreground/10 pt-3 mt-3">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="type-body">
               {quote.book_title}
             </p>
             {quote.book_author && (
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="type-micro mt-0.5">
                 {quote.book_author}
               </p>
             )}
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="type-micro mt-2">
               &mdash; {authorName}
             </p>
           </div>

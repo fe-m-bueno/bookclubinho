@@ -68,7 +68,7 @@ function OnelinerCarousel({ oneliners }: { oneliners: string[] }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="text-sm italic text-muted-foreground text-center"
+            className="type-meta italic text-center"
           >
             &ldquo;{oneliners[current]}&rdquo;
           </motion.p>
@@ -131,7 +131,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted p-3">
               <BookOpen className="h-8 w-8 text-muted-foreground/50" />
-              <p className="text-center text-xs text-muted-foreground line-clamp-3">
+              <p className="type-micro text-center line-clamp-3">
                 {book.book_title}
               </p>
             </div>
@@ -148,7 +148,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
 
         {/* Title + stars below cover */}
         <div className="mt-2 px-1 space-y-1">
-          <p className="text-xs font-medium line-clamp-2 text-center text-foreground/80 leading-tight">
+          <p className="type-micro line-clamp-2 text-center">
             {book.book_title}
           </p>
           {book.average_rating != null && (
@@ -163,7 +163,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm overflow-y-auto max-h-[90dvh]">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold leading-tight pr-6">
+            <DialogTitle className="pr-6">
               {book.book_title}
             </DialogTitle>
             {book.book_author && (
@@ -198,23 +198,23 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
                       rating={Math.round(book.average_rating)}
                       size="md"
                     />
-                    <span className="text-xs text-muted-foreground">
+                    <span className="type-micro">
                       {book.average_rating.toFixed(1)}
                     </span>
                   </div>
                 )}
                 {book.page_count != null && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="type-micro">
                     {book.page_count.toLocaleString("pt-BR")} páginas
                   </p>
                 )}
                 {readDate && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="type-micro">
                     Lido em {readDate}
                   </p>
                 )}
                 {book.review_count > 0 && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="type-micro">
                     {book.review_count} review
                     {book.review_count !== 1 ? "s" : ""}
                   </p>
@@ -226,7 +226,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
             {book.genres.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {book.genres.map((g) => (
-                  <Badge key={g} variant="secondary" className="text-xs">
+                  <Badge key={g} variant="secondary">
                     {g}
                   </Badge>
                 ))}
@@ -236,7 +236,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
             {/* One-liner carousel */}
             {book.top_oneliners.length > 0 && (
               <div className="rounded-lg bg-muted/60 p-3">
-                <p className="text-xs font-medium mb-2.5 text-muted-foreground">
+                <p className="type-micro mb-2.5">
                   O que o grupo disse:
                 </p>
                 <OnelinerCarousel oneliners={book.top_oneliners} />
@@ -247,7 +247,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
             {groupId && (
               <Link
                 href={`/groups/${groupId}/quotes`}
-                className="block text-center text-xs text-sage-600 dark:text-sage-400 hover:underline"
+                className="type-micro block text-center text-sage-600 dark:text-sage-400 hover:underline"
                 onClick={() => setOpen(false)}
               >
                 Ver todas as quotes →

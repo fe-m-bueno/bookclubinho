@@ -58,7 +58,7 @@ export function MeetingsClient() {
       ) : !isLoading && meetings.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Calendar className="h-12 w-12 text-muted-foreground/50 mb-3" />
-          <p className="text-muted-foreground text-sm">
+          <p className="type-meta">
             {activeTab === "upcoming"
               ? "Nenhum encontro agendado"
               : "Nenhum encontro passado"}

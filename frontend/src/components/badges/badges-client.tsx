@@ -78,7 +78,7 @@ export function BadgesClient() {
             Conquistas
           </h1>
           {!isLoading && !showSkeleton && !error && (
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="type-meta mt-1">
               {earnedCount} de {totalCount} desbloqueadas
             </p>
           )}
@@ -114,7 +114,7 @@ export function BadgesClient() {
               <TabsContent key={tab.value} value={tab.value} className="mt-4">
                 {filteredBadges.length === 0 ? (
                   <div className="flex items-center justify-center py-16">
-                    <p className="text-muted-foreground text-sm">
+                    <p className="type-meta">
                       Nenhuma conquista nesta categoria.
                     </p>
                   </div>

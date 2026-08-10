@@ -114,7 +114,7 @@ export function EditMeetingDialog({
                 autoFocus
                 {...form.register("title")}
               />
-              <span className="absolute bottom-2 right-3 text-xs text-muted-foreground">
+              <span className="type-micro absolute bottom-2 right-3">
                 {title.length}/200
               </span>
             </div>

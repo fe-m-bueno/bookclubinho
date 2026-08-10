@@ -35,7 +35,7 @@ function StatCard({ label, value, icon }: StatCardProps) {
     <div className="bg-card rounded-2xl p-4 space-y-1 shadow-warm-sm">
       <div className="flex items-center gap-1.5 text-muted-foreground">
         {icon}
-        <span className="text-xs">{label}</span>
+        <span className="type-micro">{label}</span>
       </div>
       <p className="font-display font-bold text-lg">{value}</p>
     </div>
@@ -71,7 +71,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
         </div>
         <p className="text-5xl">404</p>
         <h1 className="text-xl font-semibold">Usuário não encontrado</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="type-meta">
           O usuário{" "}
           <span className="font-mono font-medium">@{username}</span> não existe
           ou não está disponível.
@@ -130,18 +130,18 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
             {profile.display_name ?? profile.username ?? "Usuario"}
           </h1>
           {profile.username && (
-            <p className="text-sm text-muted-foreground">
+            <p className="type-meta">
               @{profile.username}
             </p>
           )}
           {profile.status_text && (
-            <p className="text-sm italic text-muted-foreground mt-1">
+            <p className="type-meta italic mt-1">
               &ldquo;{profile.status_text}&rdquo;
             </p>
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="type-micro">
           Membro{" "}
           <span className="font-medium text-foreground">
             {memberSince}
@@ -185,7 +185,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
       {/* Genres */}
       {profile.preferred_genres.length > 0 && (
         <div className="bg-card rounded-2xl p-5 shadow-warm-sm space-y-3">
-          <h2 className="font-semibold text-sm">Gêneros favoritos</h2>
+          <h2 className="type-title">Gêneros favoritos</h2>
           <div className="flex flex-wrap gap-2">
             {profile.preferred_genres.map((genre) => (
               <Badge key={genre} variant="secondary" className="rounded-full">
@@ -199,7 +199,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
       {/* Badges */}
       {profile.badges.length > 0 && (
         <div className="bg-card rounded-2xl p-5 shadow-warm-sm space-y-3">
-          <h2 className="font-semibold text-sm">Conquistas</h2>
+          <h2 className="type-title">Conquistas</h2>
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
             {profile.badges.slice(0, 12).map((badge) => {
               // O mesmo badge conquistado em vários clubes vem agrupado com
@@ -217,7 +217,7 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
                   </span>
                   {/* `truncate` cortava "Fundador ×2" em 375px, onde a célula
                       tem ~70px. Nome de badge é curto: duas linhas cabem. */}
-                  <span className="w-full text-center text-xs leading-tight text-muted-foreground line-clamp-2">
+                  <span className="type-micro w-full text-center line-clamp-2">
                     {rotulo}
                   </span>
                 </div>
@@ -230,18 +230,18 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
       {/* Shared groups */}
       {profile.shared_group_count > 0 && (
         <div className="bg-card rounded-2xl p-5 shadow-warm-sm space-y-3">
-          <h2 className="font-semibold text-sm flex items-center gap-2">
+          <h2 className="type-title flex items-center gap-2">
             <Users className="h-4 w-4" />
             Clubes em comum
           </h2>
           {groupsLoading ? (
-            <p className="text-xs text-muted-foreground">Carregando...</p>
+            <p className="type-micro">Carregando...</p>
           ) : (
             <ul className="space-y-2">
               {(sharedGroups ?? []).map((group) => (
                 <li
                   key={group.id}
-                  className="flex items-center justify-between text-sm"
+                  className="type-body flex items-center justify-between"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     {group.photo_url ? (
@@ -258,9 +258,9 @@ export function UserProfileClient({ username }: UserProfileClientProps) {
                         <BookOpen className="h-4 w-4 text-muted-foreground" />
                       </div>
                     )}
-                    <span className="font-medium truncate">{group.name}</span>
+                    <span className="truncate">{group.name}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                  <span className="type-micro shrink-0 ml-2">
                     {group.member_count} membro{group.member_count !== 1 ? "s" : ""}
                   </span>
                 </li>

@@ -64,7 +64,7 @@ export function BadgeCard({ badge, isEarned, earnedAt }: BadgeCardProps) {
           )}
         </span>
 
-        <span className="text-xs text-center text-foreground/80 line-clamp-2 leading-tight w-full">
+        <span className="type-micro text-center line-clamp-2 w-full">
           {badge.name}
         </span>
       </button>

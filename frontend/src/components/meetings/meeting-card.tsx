@@ -90,14 +90,14 @@ export function MeetingCard({
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-semibold text-base leading-tight">{meeting.title}</h3>
-        <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
+        <h3 className="type-title">{meeting.title}</h3>
+        <span className="type-micro shrink-0 inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5">
           {typeBadge.icon} {typeBadge.label}
         </span>
       </div>
 
       {/* Date & details */}
-      <div className="space-y-1.5 text-sm text-muted-foreground">
+      <div className="type-meta space-y-1.5">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 shrink-0" />
           <span className="capitalize">{formattedDate}</span>
@@ -128,7 +128,7 @@ export function MeetingCard({
       </div>
 
       {meeting.description && (
-        <p className="text-sm text-muted-foreground">{meeting.description}</p>
+        <p className="type-meta">{meeting.description}</p>
       )}
 
       {/* RSVP buttons */}
@@ -144,7 +144,7 @@ export function MeetingCard({
           >
             {label}
             {meeting.rsvp_counts[value] > 0 && (
-              <span className="ml-1.5 text-xs opacity-70">
+              <span className="type-micro ml-1.5 opacity-70">
                 {meeting.rsvp_counts[value]}
               </span>
             )}
@@ -197,7 +197,7 @@ export function MeetingCard({
           )}
         </div>
 
-        <span className="text-xs text-muted-foreground">
+        <span className="type-micro">
           por {meeting.creator_username}
         </span>
       </div>

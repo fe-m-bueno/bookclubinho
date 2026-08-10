@@ -33,7 +33,7 @@ export function ShelfClient() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="type-meta">
           {books.length} livro{books.length !== 1 ? "s" : ""} lido
           {books.length !== 1 ? "s" : ""}
         </p>

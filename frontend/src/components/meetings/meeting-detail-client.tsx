@@ -119,14 +119,14 @@ export function MeetingDetailClient({ meetingId }: MeetingDetailClientProps) {
         <div className="flex items-start justify-between gap-2">
           <div>
             <h1 className="text-2xl font-bold">{meeting.title}</h1>
-            <span className="inline-flex items-center gap-1.5 mt-2 rounded-full bg-muted px-3 py-1 text-sm font-medium">
+            <span className="type-meta inline-flex items-center gap-1.5 mt-2 rounded-full bg-muted px-3 py-1 text-foreground">
               {typeBadge.icon} {typeBadge.label}
             </span>
           </div>
         </div>
 
         {/* Date & details */}
-        <div className="space-y-2 text-sm text-muted-foreground">
+        <div className="type-meta space-y-2">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 shrink-0" />
             <span className="capitalize">{formattedDate}</span>
@@ -157,7 +157,7 @@ export function MeetingDetailClient({ meetingId }: MeetingDetailClientProps) {
         </div>
 
         {meeting.description && (
-          <p className="text-sm text-muted-foreground">{meeting.description}</p>
+          <p className="type-meta">{meeting.description}</p>
         )}
 
         {/* RSVP buttons */}
@@ -173,7 +173,7 @@ export function MeetingDetailClient({ meetingId }: MeetingDetailClientProps) {
             >
               {label}
               {meeting.rsvp_counts[value] > 0 && (
-                <span className="ml-1.5 text-xs opacity-70">
+                <span className="type-micro ml-1.5 opacity-70">
                   {meeting.rsvp_counts[value]}
                 </span>
               )}
@@ -223,7 +223,7 @@ export function MeetingDetailClient({ meetingId }: MeetingDetailClientProps) {
         </div>
 
         {meeting.rsvps.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="type-meta">
             Ninguém respondeu ainda
           </p>
         ) : (
@@ -243,16 +243,16 @@ export function MeetingDetailClient({ meetingId }: MeetingDetailClientProps) {
                 </Avatar>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
+                  <p className="type-body truncate">
                     {rsvp.display_name || rsvp.username}
                   </p>
-                  <p className={`text-xs font-medium ${RSVP_COLORS[rsvp.status]}`}>
+                  <p className={`type-micro ${RSVP_COLORS[rsvp.status]}`}>
                     {rsvp.status !== "pending" ? RSVP_LABELS[rsvp.status] : "Sem resposta"}
                   </p>
                 </div>
 
                 {rsvp.responded_at && (
-                  <span className="text-xs text-muted-foreground shrink-0">
+                  <span className="type-micro shrink-0">
                     {DATE_ONLY_FORMATTER.format(new Date(rsvp.responded_at))}
                   </span>
                 )}
@@ -263,7 +263,7 @@ export function MeetingDetailClient({ meetingId }: MeetingDetailClientProps) {
       </div>
 
       {/* Creator info */}
-      <div className="text-xs text-muted-foreground text-center">
+      <div className="type-micro text-center">
         Criado por {meeting.creator_username} em{" "}
         {DATE_ONLY_FORMATTER.format(new Date(meeting.created_at))}
       </div>
