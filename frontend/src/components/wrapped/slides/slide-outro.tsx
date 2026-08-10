@@ -65,19 +65,19 @@ export function SlideOutro({ data, groupId, year }: SlideOutroProps) {
         >
           <div className="bg-foreground/10 rounded-2xl p-4 text-center">
             <p className="text-2xl font-display font-black text-foreground">{data.total_books_read}</p>
-            <p className="text-xs text-foreground/60 mt-0.5">livros</p>
+            <p className="type-micro text-foreground/60 mt-0.5">livros</p>
           </div>
           <div className="bg-foreground/10 rounded-2xl p-4 text-center">
             <p className="text-2xl font-black text-foreground">
               {data.total_pages.toLocaleString("pt-BR")}
             </p>
-            <p className="text-xs text-foreground/60 mt-0.5">páginas</p>
+            <p className="type-micro text-foreground/60 mt-0.5">páginas</p>
           </div>
           <div className="bg-foreground/10 rounded-2xl p-4 text-center">
             <p className="text-2xl font-black text-foreground">
               {Math.round(data.total_reading_hours)}h
             </p>
-            <p className="text-xs text-foreground/60 mt-0.5">lendo</p>
+            <p className="type-micro text-foreground/60 mt-0.5">lendo</p>
           </div>
         </motion.div>
 

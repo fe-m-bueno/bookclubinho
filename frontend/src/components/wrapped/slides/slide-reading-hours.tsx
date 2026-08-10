@@ -41,7 +41,7 @@ export function SlideReadingHours({ data }: SlideReadingHoursProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.3 }}
       >
-        <p className="text-sm font-semibold text-foreground/60 uppercase tracking-widest">
+        <p className="type-meta font-semibold text-foreground/60 uppercase tracking-widest">
           Tempo de leitura
         </p>
       </motion.div>
@@ -77,7 +77,7 @@ export function SlideReadingHours({ data }: SlideReadingHoursProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.4, delay: 0.6 }}
       >
-        <p className="text-foreground/70 text-base">
+        <p className="type-body text-foreground/70">
           O equivalente a{" "}
           <span className="font-bold text-foreground">{days} dias</span> lendo sem parar
         </p>

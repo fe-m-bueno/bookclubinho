@@ -47,10 +47,10 @@ export function MemberLeaderboard({ members }: MemberLeaderboardProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Ranking de membros</CardTitle>
+          <CardTitle>Ranking de membros</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-6">
+          <p className="type-meta text-center py-6">
             Nenhum membro ainda.
           </p>
         </CardContent>
@@ -61,14 +61,14 @@ export function MemberLeaderboard({ members }: MemberLeaderboardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Ranking de membros</CardTitle>
+        <CardTitle>Ranking de membros</CardTitle>
         <div className="flex flex-wrap gap-2 mt-2">
           {SORT_OPTIONS.map((opt) => (
             <Button
               key={opt.key}
               variant={sortKey === opt.key ? "default" : "outline"}
               size="sm"
-              className="h-8 text-xs"
+              className="type-micro h-8"
               onClick={() => setSortKey(opt.key)}
             >
               {opt.label}
@@ -82,7 +82,7 @@ export function MemberLeaderboard({ members }: MemberLeaderboardProps) {
             key={member.user_id}
             className="flex items-center gap-3 min-h-[44px]"
           >
-            <span className="text-sm font-medium w-5 text-center flex-none text-muted-foreground">
+            <span className="type-meta w-5 text-center flex-none tabular-nums">
               {index === 0 ? "🏆" : index + 1}
             </span>
 
@@ -95,10 +95,10 @@ export function MemberLeaderboard({ members }: MemberLeaderboardProps) {
             </Avatar>
 
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+              <p className="type-body truncate">
                 {member.display_name || member.username || "Membro"}
               </p>
-              <p className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+              <p className="type-micro flex flex-wrap gap-x-3 gap-y-0.5">
                 <span>{member.books_finished} livros</span>
                 <span>
                   {member.avg_rating !== null
@@ -111,7 +111,7 @@ export function MemberLeaderboard({ members }: MemberLeaderboardProps) {
             </div>
 
             <div className="flex-none text-right">
-              <p className="text-sm font-semibold tabular-nums">
+              <p className="type-body font-semibold tabular-nums">
                 {sortKey === "books_finished" && member.books_finished}
                 {sortKey === "avg_rating" &&
                   (member.avg_rating !== null ? member.avg_rating.toFixed(1) : "—")}
@@ -119,7 +119,7 @@ export function MemberLeaderboard({ members }: MemberLeaderboardProps) {
                 {sortKey === "reading_time_minutes" &&
                   formatReadingTime(member.reading_time_minutes)}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="type-micro">
                 {sortKey === "books_finished" && "livros"}
                 {sortKey === "avg_rating" && "★"}
                 {sortKey === "current_streak" && "dias"}

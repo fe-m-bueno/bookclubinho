@@ -86,19 +86,19 @@ function SessionCard({ session }: SessionCardProps) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium truncate">
+            <span className="type-body truncate">
               {session.device_info ?? "Dispositivo desconhecido"}
             </span>
             {session.is_current && (
               <Badge
                 variant="outline"
-                className="text-xs border-green-500 text-green-600 dark:text-green-400"
+                className="type-micro border-green-500 text-green-600 dark:text-green-400"
               >
                 Sessão atual
               </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="type-micro mt-0.5">
             {session.ip_address ?? "IP desconhecido"} &middot; Ultima atividade:{" "}
             {lastActive}
           </p>
@@ -165,7 +165,7 @@ export function SessionsSettingsClient() {
     return (
       <div className="bg-card rounded-2xl shadow-warm-sm p-8 text-center space-y-2">
         <Monitor className="h-10 w-10 text-muted-foreground mx-auto" />
-        <p className="text-sm text-muted-foreground">
+        <p className="type-meta">
           Nenhuma sessão ativa encontrada.
         </p>
       </div>
@@ -193,7 +193,7 @@ export function SessionsSettingsClient() {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground text-center mt-4">
+      <p className="type-micro text-center mt-4">
         Revogar sessões encerra o acesso em outros dispositivos.
       </p>
 

@@ -30,10 +30,10 @@ export function EmotionalStatsSection({ stats }: EmotionalStatsSectionProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Como o grupo sentiu</CardTitle>
+          <CardTitle>Como o grupo sentiu</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-6">
+          <p className="type-meta text-center py-6">
             Nenhuma review ainda.
           </p>
         </CardContent>
@@ -47,7 +47,7 @@ export function EmotionalStatsSection({ stats }: EmotionalStatsSectionProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Como o grupo sentiu</CardTitle>
+        <CardTitle>Como o grupo sentiu</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         {bars.map((bar, i) => {
@@ -66,11 +66,11 @@ export function EmotionalStatsSection({ stats }: EmotionalStatsSectionProps) {
               className="space-y-1"
             >
               <div className="flex justify-between items-baseline gap-2">
-                <p className="text-sm">
+                <p className="type-body">
                   <span className="font-semibold tabular-nums">{pct}%</span>{" "}
                   {bar.label}
                 </p>
-                <span className="text-xs text-muted-foreground flex-none">
+                <span className="type-micro flex-none tabular-nums">
                   {bar.count}/{total}
                 </span>
               </div>

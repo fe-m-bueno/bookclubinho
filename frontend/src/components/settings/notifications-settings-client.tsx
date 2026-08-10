@@ -86,8 +86,8 @@ export function NotificationsSettingsClient() {
         <div key={toggle.key} className="bg-card rounded-2xl shadow-warm-sm p-5">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">{toggle.label}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="type-body">{toggle.label}</p>
+              <p className="type-micro mt-0.5">
                 {toggle.description}
               </p>
             </div>
@@ -105,10 +105,10 @@ export function NotificationsSettingsClient() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium">E-mails de segurança</p>
+              <p className="type-body">E-mails de segurança</p>
               <Lock className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="type-micro mt-0.5">
               Verificação de e-mail, magic links e exportação de dados (obrigatório)
             </p>
           </div>

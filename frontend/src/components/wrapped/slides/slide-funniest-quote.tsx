@@ -17,7 +17,7 @@ export function SlideFunniestQuote({ data }: SlideFunniestQuoteProps) {
       <div className="flex flex-col items-center justify-center gap-4 w-full max-w-sm mx-auto text-center">
         <p className="text-5xl">😂</p>
         <h2 className="text-2xl font-display font-bold text-foreground">Sem one-liners ainda</h2>
-        <p className="text-base text-foreground/60">Escrevam reviews para aparecer aqui!</p>
+        <p className="type-body text-foreground/60">Escrevam reviews para aparecer aqui!</p>
       </div>
     );
   }
@@ -27,7 +27,7 @@ export function SlideFunniestQuote({ data }: SlideFunniestQuoteProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-6 w-full max-w-sm mx-auto">
       <motion.p
-        className="text-sm font-semibold text-foreground/60 uppercase tracking-widest text-center"
+        className="type-meta font-semibold text-foreground/60 uppercase tracking-widest text-center"
         initial={shouldReduce ? {} : { opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.3 }}
@@ -79,9 +79,9 @@ export function SlideFunniestQuote({ data }: SlideFunniestQuoteProps) {
           )}
         </div>
         <div className="text-left">
-          <p className="font-semibold text-sm text-foreground">{authorName}</p>
+          <p className="type-body font-semibold text-foreground">{authorName}</p>
           {quote.vote_count > 0 && (
-            <p className="text-xs text-foreground/50">
+            <p className="type-micro text-foreground/50">
               {quote.vote_count} {quote.vote_count === 1 ? "voto" : "votos"}
             </p>
           )}

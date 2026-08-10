@@ -46,7 +46,7 @@ export function SlideEmotionalStats({ data }: SlideEmotionalStatsProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.3 }}
       >
-        <p className="text-sm font-semibold text-foreground/60 uppercase tracking-widest">
+        <p className="type-meta font-semibold text-foreground/60 uppercase tracking-widest">
           Como o grupo sentiu
         </p>
       </motion.div>
@@ -67,11 +67,11 @@ export function SlideEmotionalStats({ data }: SlideEmotionalStatsProps) {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{row.emoji}</span>
-                  <span className="text-sm font-medium text-foreground">
+                  <span className="type-body text-foreground">
                     <span className="font-bold tabular-nums">{pct}%</span> {row.label}
                   </span>
                 </div>
-                <span className="text-xs text-foreground/50 flex-none">
+                <span className="type-micro text-foreground/50 flex-none">
                   {row.count}/{total}
                 </span>
               </div>

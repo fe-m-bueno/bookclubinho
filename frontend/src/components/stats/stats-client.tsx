@@ -24,16 +24,16 @@ import { errorMessage } from "@/lib/api";
  */
 function WrappedBanner({ groupId, year }: { groupId: string; year: number }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-200 via-brand-300 to-brand-400 dark:from-brand-800 dark:via-brand-700 dark:to-brand-800 p-6">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-200 via-brand-300 to-brand-400 dark:from-brand-800 dark:via-brand-700 dark:to-brand-800 p-5">
       <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-brand-700 dark:text-brand-300" />
-            <h3 className="font-display text-lg font-bold text-brand-900 dark:text-brand-100">
+            <h3 className="type-title text-brand-900 dark:text-brand-100">
               Wrapped {year}
             </h3>
           </div>
-          <p className="text-sm text-brand-700 dark:text-brand-300">
+          <p className="type-meta text-brand-700 dark:text-brand-300">
             Reviva os melhores momentos do clube em {year}.
           </p>
         </div>
@@ -77,7 +77,7 @@ export function StatsClient({ groupId }: StatsClientProps) {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <p className="text-sm text-muted-foreground">{errorMessage(error)}</p>
+        <p className="type-meta">{errorMessage(error)}</p>
         <Button variant="outline" size="sm" onClick={refetch}>
           Tentar novamente
         </Button>
@@ -88,8 +88,8 @@ export function StatsClient({ groupId }: StatsClientProps) {
   if (!data || data.total_books_read === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 p-8 text-center">
-        <p className="text-base font-medium">Nenhum livro lido ainda</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="type-title">Nenhum livro lido ainda</p>
+        <p className="type-meta">
           Completem a primeira rodada para ver as estatísticas do grupo.
         </p>
       </div>
@@ -118,7 +118,7 @@ export function StatsClient({ groupId }: StatsClientProps) {
       <div className="text-center pt-2">
         <Link
           href="/badges"
-          className="text-sm text-primary underline-offset-4 hover:underline"
+          className="type-meta text-primary underline-offset-4 hover:underline"
         >
           Ver conquistas →
         </Link>

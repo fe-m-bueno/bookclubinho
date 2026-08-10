@@ -34,10 +34,10 @@ export function ReadingTimeline({ books }: ReadingTimelineProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Linha do tempo</CardTitle>
+          <CardTitle>Linha do tempo</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-6">
+          <p className="type-meta text-center py-6">
             Nenhum livro finalizado ainda.
           </p>
         </CardContent>
@@ -48,7 +48,7 @@ export function ReadingTimeline({ books }: ReadingTimelineProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Linha do tempo</CardTitle>
+        <CardTitle>Linha do tempo</CardTitle>
       </CardHeader>
       <CardContent>
         <div
@@ -78,11 +78,11 @@ export function ReadingTimeline({ books }: ReadingTimelineProps) {
                   </div>
                 )}
               </div>
-              <p className="text-xs mt-1 leading-tight text-foreground line-clamp-2">
+              <p className="type-meta mt-1 text-foreground line-clamp-2">
                 {book.book_title}
               </p>
               {book.finished_at && (
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="type-micro mt-0.5">
                   {formatMonthYear(book.finished_at)}
                 </p>
               )}

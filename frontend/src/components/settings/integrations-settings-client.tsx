@@ -56,13 +56,13 @@ function FutureIntegrationCard({
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm">{name}</span>
-            <Badge variant="secondary" className="text-xs">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="type-body">{name}</span>
+            <Badge variant="secondary" className="type-micro whitespace-nowrap">
               Em breve
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+          <p className="type-micro mt-0.5 truncate">
             {description}
           </p>
         </div>
@@ -129,15 +129,18 @@ function HardcoverCard() {
             <BookOpen className="h-5 w-5 text-foreground" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-sm">Hardcover</span>
+            {/* `flex-wrap`: em 375px o botão de ação come a linha, e "Não
+                conectado" quebrava no meio da frase. Envolvido, o status desce
+                inteiro para a linha de baixo. */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="type-body">Hardcover</span>
               {!statusLoading && (
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 whitespace-nowrap">
                   <span
                     className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-500" : "bg-muted-foreground/50"}`}
                     aria-hidden="true"
                   />
-                  <span className="text-xs text-muted-foreground">
+                  <span className="type-micro">
                     {isConnected
                       ? `Conectado como @${hardcoverUsername ?? "desconhecido"}`
                       : "Não conectado"}
@@ -145,7 +148,7 @@ function HardcoverCard() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="type-micro mt-0.5">
               Sincronize sua estante do Hardcover
             </p>
           </div>
@@ -172,8 +175,8 @@ function HardcoverCard() {
         {isConnected && (
           <div className="flex items-center justify-between pt-1 border-t border-border">
             <div>
-              <p className="text-sm font-medium">Sincronização automática</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="type-body">Sincronização automática</p>
+              <p className="type-micro">
                 Atualizar progresso de leitura automaticamente
               </p>
             </div>
@@ -207,7 +210,7 @@ function HardcoverCard() {
           </DialogHeader>
 
           <div className="space-y-2">
-            <label htmlFor="hardcover-token" className="text-sm font-medium">
+            <label htmlFor="hardcover-token" className="type-body">
               Token de API
             </label>
             <Input

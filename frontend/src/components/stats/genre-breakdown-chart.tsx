@@ -21,10 +21,10 @@ export function GenreBreakdownChart({ data }: GenreBreakdownChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Gêneros lidos</CardTitle>
+          <CardTitle>Gêneros lidos</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
+          <p className="type-meta text-center py-8">
             Nenhum gênero registrado ainda.
           </p>
         </CardContent>
@@ -35,7 +35,7 @@ export function GenreBreakdownChart({ data }: GenreBreakdownChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Gêneros lidos</CardTitle>
+        <CardTitle>Gêneros lidos</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={280}>

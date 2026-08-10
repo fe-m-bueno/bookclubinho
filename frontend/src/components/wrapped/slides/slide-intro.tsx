@@ -72,7 +72,7 @@ export function SlideIntro({ data }: SlideIntroProps) {
         )}
 
         <motion.div variants={variants.item}>
-          <p className="text-sm text-foreground/60">
+          <p className="type-meta text-foreground/60">
             Deslize para começar →
           </p>
         </motion.div>

@@ -62,7 +62,7 @@ export function SlideBookPages({ data }: SlideBooksPageProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.4, delay: 0.2 }}
       >
-        <p className="text-sm font-medium text-foreground/60 uppercase tracking-widest">
+        <p className="type-meta text-foreground/60 uppercase tracking-widest">
           Vocês leram
         </p>
         <div className="flex flex-col items-center">
@@ -83,7 +83,7 @@ export function SlideBookPages({ data }: SlideBooksPageProps) {
         animate={{ opacity: 1, scale: 1 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.4, delay: 0.5 }}
       >
-        <p className="text-sm text-foreground/60 uppercase tracking-widest">
+        <p className="type-meta text-foreground/60 uppercase tracking-widest">
           Isso representa
         </p>
         <div className="flex items-baseline gap-2 justify-center">
