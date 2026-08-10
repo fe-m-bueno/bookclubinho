@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 80" width="56" height="80">
+  <!--
+    O livro do FloatingBook da landing, em SVG.
+
+    Não é desenho novo: é o mesmo markup traduzido. Lá ele é uma div de
+    `h-20 w-14 rounded-md` com `bg-gradient-to-b from-sage-300 to-sage-400`,
+    a lombada do BookSpine (gradiente preto a 25% nos 12px da esquerda) e três
+    fios de 1px a partir de `ml-5 mr-3 mt-4`. Aqui são as mesmas medidas em
+    unidades de usuário, com os sage já resolvidos de oklch para hex.
+
+    Sem fundo: o favicon deita sobre a aba, clara ou escura.
+    Sem a rotação e sem a sombra do card: em 16px as duas viram sujeira.
+  -->
+  <defs>
+    <linearGradient id="capa" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9ec2a2"/>
+      <stop offset="1" stop-color="#7ba580"/>
+    </linearGradient>
+    <linearGradient id="lombada" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="corte">
+      <rect x="0" y="0" width="56" height="80" rx="6"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#corte)">
+    <rect x="0" y="0" width="56" height="80" fill="url(#capa)"/>
+    <rect x="0" y="0" width="12" height="80" fill="url(#lombada)"/>
+  </g>
+  <rect x="0.5" y="0.5" width="55" height="79" rx="5.5" fill="none"
+        stroke="#7ba580" stroke-opacity="0.5"/>
+
+  <!-- As três linhas da capa, a partir da lombada. Somem em 16px e voltam a
+       aparecer em 32px, que é o tamanho em que o favicon tem detalhe. -->
+  <g fill="#3d6646">
+    <rect x="20" y="16" width="25" height="1" opacity="0.35"/>
+    <rect x="20" y="22" width="19" height="1" opacity="0.25"/>
+    <rect x="20" y="28" width="13" height="1" opacity="0.2"/>
+  </g>
+</svg>

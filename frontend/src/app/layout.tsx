@@ -22,9 +22,32 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/**
+ * A base das URLs absolutas do metadata.
+ *
+ * O cartão de link só existe em URL absoluta, e sem isto o Next monta a do
+ * `opengraph-image` sobre `localhost` no build. Em produção a Vercel entrega
+ * `VERCEL_URL` sem protocolo; o domínio próprio, quando houver, entra por
+ * `NEXT_PUBLIC_SITE_URL`.
+ */
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Clube do Livro",
   description: "Seu clube de leitura favorito",
+  openGraph: {
+    siteName: "Bookclubinho",
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default async function RootLayout({
