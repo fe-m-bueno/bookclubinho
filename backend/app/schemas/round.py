@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003
 from datetime import date, datetime  # noqa: TC003
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -115,4 +116,4 @@ class RoundDetailResponse(BaseModel):
     finished_at: datetime | None
     created_at: datetime
     nominations: list[NominationSummary]
-    tiebreak_info: dict | None = None
+    tiebreak_info: dict[str, Any] | None = None

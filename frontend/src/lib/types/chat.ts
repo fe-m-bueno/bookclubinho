@@ -1,3 +1,5 @@
+import type { MessageRichContent } from "./rich-content";
+
 export type ContentType =
   | "text"
   | "image"
@@ -28,7 +30,7 @@ export interface ChatMessage {
   author: MessageAuthor;
   content_type: ContentType;
   content_text: string | null;
-  content_rich_json: Record<string, unknown> | null;
+  content_rich_json: MessageRichContent | null;
   media_url: string | null;
   thumbnail_url: string | null;
   reference_type: "chapter" | "page" | "quote" | null;
@@ -51,7 +53,7 @@ export interface MessageListResponse {
 export interface MessageCreatePayload {
   content_type: ContentType;
   content_text?: string | null;
-  content_rich_json?: Record<string, unknown> | null;
+  content_rich_json?: MessageRichContent | null;
   /** Chave do objeto devolvida pelo upload — é o que o backend persiste. */
   media_key?: string | null;
   thumbnail_key?: string | null;
@@ -72,7 +74,7 @@ export interface MessageCreatePayload {
 
 export interface MessageEditPayload {
   content_text?: string | null;
-  content_rich_json?: Record<string, unknown> | null;
+  content_rich_json?: MessageRichContent | null;
 }
 
 export interface ReactionPayload {

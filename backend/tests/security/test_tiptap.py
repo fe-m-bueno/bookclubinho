@@ -161,6 +161,43 @@ class TestSanitizeTiptapJson:
         assert sanitize_tiptap_json([]) == []
         assert sanitize_tiptap_json({}) == {}
 
+    def test_deeply_nested_doc_does_not_blow_the_stack(self) -> None:
+        """Profundidade absurda tem que virar conteúdo descartado, não RecursionError.
+
+        `content_rich_json` é um `dict` que chega do cliente, e o sanitizador é
+        recursivo. Sem teto de profundidade, um documento com alguns milhares de
+        níveis estoura a pilha do worker — e um `RecursionError` no meio de um
+        POST é 500, não 422. Um documento real do editor tem menos de dez
+        níveis; o teto existe para o que não é real.
+        """
+        node: dict[str, object] = {"type": "text", "text": "fundo do poço"}
+        for _ in range(5_000):
+            node = {"type": "blockquote", "content": [node]}
+        doc = {"type": "doc", "content": [node]}
+
+        result = sanitize_tiptap_json(doc)
+
+        assert result is not None
+        assert result["type"] == "doc"
+
+    def test_keeps_nesting_within_the_allowed_depth(self) -> None:
+        """O teto não pode cortar documento que o editor produz de verdade.
+
+        Lista aninhada com citação dentro passa dos dez níveis e continua sendo
+        algo que um usuário escreve sem esforço.
+        """
+        node: dict[str, object] = {"type": "text", "text": "ainda aqui"}
+        for _ in range(6):
+            node = {"type": "blockquote", "content": [node]}
+        doc = {"type": "doc", "content": [node]}
+
+        result = sanitize_tiptap_json(doc)
+
+        current = result
+        for _ in range(6):
+            current = current["content"][0]
+        assert current["content"][0]["text"] == "ainda aqui"
+
     def test_handles_nested_lists(self) -> None:
         doc = {
             "type": "doc",

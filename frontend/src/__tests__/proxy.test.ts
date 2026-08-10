@@ -2,11 +2,23 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { proxy } from "../proxy";
 
-function encodeJwtPayload(payload: Record<string, unknown>): string {
+/**
+ * Os claims que o backend emite. Solto de propósito nos tipos — os testes de
+ * payload malformado precisam justamente emitir o que o backend não emitiria.
+ */
+interface TestClaims {
+  sub?: unknown;
+  exp?: unknown;
+  onb?: unknown;
+}
+
+function encodeJwtPayload(payload: TestClaims | unknown[] | string | number): string {
   const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const body = btoa(JSON.stringify(payload));
   return `${header}.${body}.fakesignature`;
 }
+
+const FUTURE_EXP = () => Math.floor(Date.now() / 1000) + 3600;
 
 function makeRequest(path: string, cookies?: Record<string, string>): NextRequest {
   const url = `http://localhost:3000${path}`;
@@ -111,6 +123,59 @@ describe("middleware", () => {
       const res = proxy(makeRequest("/dashboard", { access_token: token }));
       expect(res.status).toBe(307);
       expect(new URL(res.headers.get("Location")!).pathname).toBe("/auth/login");
+    });
+
+    /**
+     * `JSON.parse` aceita muito mais do que objeto: `"123"`, `null` e `[1,2]`
+     * são JSON válido. Enquanto o payload era lido como `Record<string,
+     * unknown>`, cada um deles virava uma "sessão" — `payload.exp` em cima de um
+     * número dá `undefined`, a checagem de expiração era pulada, e a requisição
+     * seguia para uma rota privada com um token que não é um token.
+     */
+    it.each([
+      ["um número", 123],
+      ["uma string", "nem token nem payload"],
+      ["um array", [1, 2, 3]],
+    ])("redirects to /auth/login when the payload is %s", (_label, payload) => {
+      const token = encodeJwtPayload(payload as never);
+      const res = proxy(makeRequest("/dashboard", { access_token: token }));
+      expect(res.status).toBe(307);
+      expect(new URL(res.headers.get("Location")!).pathname).toBe("/auth/login");
+    });
+
+    /**
+     * Sem `exp` numérico não há como afirmar que o token está no prazo. Antes a
+     * checagem era `typeof exp === "number" && expirou` — a conjunção deixava
+     * passar todo token sem `exp`, que é exatamente o token que nunca expira.
+     */
+    it.each([
+      ["missing", undefined],
+      ["a string", "9999999999"],
+      ["null", null],
+    ])("redirects to /auth/login when exp is %s", (_label, exp) => {
+      const token = encodeJwtPayload({ sub: "user-1", exp, onb: true });
+      const res = proxy(makeRequest("/dashboard", { access_token: token }));
+      expect(res.status).toBe(307);
+      expect(new URL(res.headers.get("Location")!).pathname).toBe("/auth/login");
+    });
+
+    /**
+     * O `sub` vira o valor do header `x-user-id`. Um número passava pelo `as
+     * string` e chegava ao `headers.set` como número; um valor com `\r\n` é
+     * response splitting, e no runtime do Next derruba o `set` — 500 no lugar de
+     * um redirect.
+     */
+    it.each([
+      ["um número", 42],
+      ["um objeto", { id: "user-1" }],
+      ["vazio", ""],
+      ["um valor com CRLF", "user-1\r\nx-admin: true"],
+    ])("redirects to /auth/login when sub is %s", (_label, sub) => {
+      const token = encodeJwtPayload({ sub, exp: FUTURE_EXP(), onb: true });
+      const res = proxy(makeRequest("/dashboard", { access_token: token }));
+      expect(res.status).toBe(307);
+      expect(new URL(res.headers.get("Location")!).pathname).toBe("/auth/login");
+      expect(res.headers.get("x-user-id")).toBeNull();
     });
   });
 

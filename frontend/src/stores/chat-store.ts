@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { MessageRichContent } from "@/lib/types/rich-content";
 
 interface ReplyTo {
   id: string;
@@ -9,7 +10,7 @@ interface ReplyTo {
 interface EditingMessage {
   id: string;
   content_text: string | null;
-  content_rich_json: Record<string, unknown> | null;
+  content_rich_json: MessageRichContent | null;
 }
 
 export interface TypingUser {

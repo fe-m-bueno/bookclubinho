@@ -101,6 +101,25 @@ export interface SessionListResponse {
   next_cursor: string | null;
 }
 
+export type ProgressType = "page" | "chapter" | "percentage" | "finished";
+
+/**
+ * O corpo de `POST /rounds/{id}/progress`.
+ *
+ * Espelha `ProgressUpdateRequest` em
+ * `backend/app/schemas/reading_progress.py`, que rejeita o payload sem
+ * `current_page` **e** sem `percentage` — daí os dois serem opcionais aqui e
+ * nenhum dos dois ser obrigatório no tipo: quem monta o corpo escolhe o par
+ * certo por aba, e o backend é a validação final.
+ */
+export interface ProgressUpdateRequest {
+  current_page?: number;
+  percentage?: number;
+  progress_type: ProgressType;
+  total_pages?: number;
+  note?: string;
+}
+
 export interface ProgressResponse {
   id: string;
   user_id: string;

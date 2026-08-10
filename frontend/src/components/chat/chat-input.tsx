@@ -10,6 +10,7 @@ import { InputToolbar } from "./input-toolbar";
 import { UploadProgressBar } from "./upload-progress-bar";
 import { cn } from "@/lib/utils";
 import type { MessageCreatePayload } from "@/lib/types/chat";
+import type { RichTextDoc } from "@/lib/types/rich-content";
 
 /**
  * O editor sai do bundle inicial do chat.
@@ -42,10 +43,7 @@ const TiptapEditor = dynamic(
 );
 
 interface ChatInputProps {
-  onSend: (
-    text: string,
-    richJson: Record<string, unknown>,
-  ) => boolean | Promise<boolean>;
+  onSend: (text: string, richJson: RichTextDoc) => boolean | Promise<boolean>;
   onTyping: () => void;
   onImageSelect: (file: File) => void;
   onSendSpecial: (payload: Partial<MessageCreatePayload>) => void;
@@ -71,7 +69,7 @@ export function ChatInput({
   const editorHandleRef = useRef<TiptapEditorHandle | null>(null);
 
   const handleSend = useCallback(
-    async (text: string, richJson: Record<string, unknown>) => {
+    async (text: string, richJson: RichTextDoc) => {
       const ok = await onSend(text, richJson);
       if (editingMessage) setEditingMessage(null);
       if (replyTo) setReplyTo(null);

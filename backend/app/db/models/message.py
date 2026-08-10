@@ -3,6 +3,7 @@
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -80,7 +81,7 @@ class GroupMessage(CreatedAtMixin, Base):
     )
     content_type: Mapped[str] = mapped_column(Text, nullable=False)
     content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    content_rich_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    content_rich_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     # Chave do objeto no bucket (media/{group_id}/{uuid}.webp) — o dado durável
     # para mídia enviada pelo chat. A URL é resolvida na serialização.
     media_key: Mapped[str | None] = mapped_column(Text, nullable=True)

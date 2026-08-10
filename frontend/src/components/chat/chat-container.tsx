@@ -20,6 +20,7 @@ import { ChatInput } from "./chat-input";
 import { NewMessagePill } from "./new-message-pill";
 import { ReactionPicker } from "./reaction-picker";
 import type { ChatMessage, MessageCreatePayload } from "@/lib/types/chat";
+import type { RichTextDoc } from "@/lib/types/rich-content";
 
 interface ChatContainerProps {
   groupId: string;
@@ -69,7 +70,7 @@ export function ChatContainer({ groupId }: ChatContainerProps) {
   const chatAreaRef = useRef<HTMLDivElement>(null);
 
   const handleSend = useCallback(
-    async (text: string, richJson: Record<string, unknown>) => {
+    async (text: string, richJson: RichTextDoc) => {
       if (editingMessage) {
         try {
           await editMutation.mutateAsync({

@@ -4,7 +4,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { fetchChatMessagesPage } from "@/lib/chat-api";
 import { queryKeys } from "@/lib/query-keys";
-import type { ChatMessage, MessageListResponse } from "@/lib/types/chat";
+import type { ChatMessage } from "@/lib/types/chat";
 
 interface UseChatMessagesOptions {
   groupId: string;
@@ -18,14 +18,15 @@ export function useChatMessages({
   chapterFilter,
 }: UseChatMessagesOptions) {
 
-  const query = useInfiniteQuery<MessageListResponse, Error>({
+  // Sem genéricos explícitos de propósito: preenchendo só os dois primeiros, o
+  // `TPageParam` ficava `unknown` e o cursor precisava de um `as string` em cada
+  // `queryFn` — um cast que não verifica nada. Pela inferência, o
+  // `initialPageParam` é que define o tipo do `pageParam`, e o cursor devolvido
+  // pelo `getNextPageParam` passa a ser conferido pelo compilador.
+  const query = useInfiniteQuery({
     queryKey: queryKeys.chat.messages(groupId, { roundId, chapterFilter }),
     queryFn: ({ pageParam }) =>
-      fetchChatMessagesPage(
-        groupId,
-        { roundId, chapterFilter },
-        pageParam as string | undefined,
-      ),
+      fetchChatMessagesPage(groupId, { roundId, chapterFilter }, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
   });

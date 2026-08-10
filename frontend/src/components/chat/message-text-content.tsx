@@ -2,10 +2,11 @@
 
 import { Fragment } from "react";
 import { isValidHttpUrl, TRAILING_PUNCT_RE } from "@/lib/url-utils";
+import type { MessageRichContent } from "@/lib/types/rich-content";
 
 interface MessageTextContentProps {
   text: string | null;
-  richJson: Record<string, unknown> | null;
+  richJson: MessageRichContent | null;
 }
 
 // Regex used to split text into alternating plain/URL segments.

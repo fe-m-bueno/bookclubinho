@@ -1,6 +1,7 @@
 import uuid
 from datetime import date, datetime
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import (
     ARRAY,
@@ -65,7 +66,7 @@ class Round(CreatedAtMixin, Base):
         default=RoundStatus.NOMINATING,
     )
     deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
-    tiebreak_info: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    tiebreak_info: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(

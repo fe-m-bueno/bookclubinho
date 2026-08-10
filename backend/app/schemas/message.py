@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, model_validator
 class MessageCreateRequest(BaseModel):
     content_type: Literal["text", "image", "gif", "video_link", "quote", "chapter_marker", "page_marker", "system"]
     content_text: str | None = Field(default=None, max_length=4000)
-    content_rich_json: dict | None = None
+    content_rich_json: dict[str, Any] | None = None
     # Mídia enviada pelo chat: o cliente devolve a *chave* do upload, nunca a URL.
     # O backend valida a chave contra o grupo e resolve a URL na serialização.
     media_key: str | None = Field(default=None, max_length=512)
@@ -51,7 +51,7 @@ class MessageCreateRequest(BaseModel):
 
 class MessageEditRequest(BaseModel):
     content_text: str | None = Field(default=None, max_length=4000)
-    content_rich_json: dict | None = None
+    content_rich_json: dict[str, Any] | None = None
 
 
 class ReactionRequest(BaseModel):
@@ -80,7 +80,7 @@ class ChatMessageResponse(BaseModel):
     author: MessageAuthor
     content_type: str
     content_text: str | None
-    content_rich_json: dict | None
+    content_rich_json: dict[str, Any] | None
     media_url: str | None
     thumbnail_url: str | None
     reference_type: str | None
