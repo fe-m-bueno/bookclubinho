@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
-import { BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { BookSpine } from "@/components/shared/book-spine";
@@ -136,10 +135,17 @@ export function LandingPage() {
         <ThemeToggle />
       </div>
 
-      {/* Três livros, não seis: em 56px cada um pesa o triplo do que pesava em
-          32px, e o que era textura vira ornamento. A opacidade é maior no
-          dark: sage escuro sobre carvão tem menos contraste do que sage médio
-          sobre creme, e é a lombada que se perde primeiro. */}
+      {/* Três livros na tela estreita, seis a partir de `lg`.
+          A conta é de densidade, não de gosto: eram seis a 32×48 em qualquer
+          largura, e em 375px eles se atropelavam. A 56×80 cada um pesa o
+          triplo, e três bastam para uma tela de telefone — mas em 1920px o
+          mesmo trio se perde num campo de creme vazio. Os três de baixo só
+          existem onde há margem lateral para eles: `lg` é a largura em que a
+          coluna de conteúdo (`max-w-lg`) para de encostar nas bordas.
+
+          A opacidade é maior no dark: sage escuro sobre carvão tem menos
+          contraste do que sage médio sobre creme, e é a lombada que se perde
+          primeiro. */}
       <FloatingBook
         className="absolute top-[10%] left-[6%]"
         tone="opacity-60 dark:opacity-70"
@@ -163,6 +169,28 @@ export function LandingPage() {
         rotate={12}
       />
 
+      {/* O reforço de tela larga. Todos entre 3% e 17% das bordas: é a faixa
+          que sobra dos dois lados quando a coluna de conteúdo trava em
+          `max-w-lg`, e nenhum deles cruza o texto nem os CTAs. */}
+      <FloatingBook
+        className="absolute top-[52%] left-[15%] hidden lg:block"
+        tone="opacity-40 dark:opacity-50"
+        delay={0.3}
+        rotate={-8}
+      />
+      <FloatingBook
+        className="absolute top-[64%] right-[16%] hidden lg:block"
+        tone="opacity-40 dark:opacity-50"
+        delay={0.8}
+        rotate={10}
+      />
+      <FloatingBook
+        className="absolute bottom-[10%] left-[4%] hidden lg:block"
+        tone="opacity-45 dark:opacity-55"
+        delay={1.3}
+        rotate={-16}
+      />
+
       {/* Main content */}
       <div className="relative z-[1] flex flex-col items-center text-center max-w-lg">
         {/* Top ornament */}
@@ -170,27 +198,21 @@ export function LandingPage() {
           <Ornament className="w-24 sm:w-28 text-brand-400 dark:text-brand-500 mb-6 sm:mb-8" />
         </motion.div>
 
-        {/* Icon */}
-        <motion.div {...item(1)} className="mb-4 sm:mb-5">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-sage-100 dark:bg-sage-900/50 border border-sage-200/60 dark:border-sage-700/30 shadow-warm-sm">
-            <BookOpen
-              className="w-7 h-7 sm:w-8 sm:h-8 text-sage-600 dark:text-sage-400"
-              strokeWidth={1.5}
-            />
-          </div>
-        </motion.div>
-
-        {/* Overline */}
+        {/* A marca, e não um ícone genérico dentro de um quadrado. O ícone de
+            livro no topo era o mesmo lucide que a UI funcional usa a 16px —
+            aqui ele só ocupava o lugar em que o nome do produto deveria estar.
+            O "Clube do Livro" em caixa alta saiu junto: dizia em rótulo o que
+            o nome já diz, e o título logo abaixo repete de novo. */}
         <motion.p
-          {...item(2)}
-          className="text-[0.7rem] sm:text-xs font-medium tracking-[0.25em] uppercase text-muted-foreground mb-3 sm:mb-4"
+          {...item(1)}
+          className="font-display text-3xl sm:text-4xl tracking-tight text-foreground/90 mb-5 sm:mb-6"
         >
-          Clube do Livro
+          Bookclubinho
         </motion.p>
 
         {/* Title */}
         <motion.h1
-          {...item(3)}
+          {...item(2)}
           className="font-display text-[2.5rem] sm:text-5xl md:text-6xl leading-[1.05] tracking-tight text-foreground mb-4 sm:mb-5"
         >
           Leia junto.
@@ -200,7 +222,7 @@ export function LandingPage() {
 
         {/* Subtitle */}
         <motion.p
-          {...item(4)}
+          {...item(3)}
           className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xs sm:max-w-md mb-6 sm:mb-8"
         >
           O jeito mais fácil de manter um clube do livro. Porque ler
@@ -209,7 +231,7 @@ export function LandingPage() {
 
         {/* Divider */}
         <motion.div
-          {...item(5)}
+          {...item(4)}
           className="w-full max-w-[200px] mb-6 sm:mb-8"
         >
           <div className="divider-ornament">
@@ -219,7 +241,7 @@ export function LandingPage() {
 
         {/* CTAs */}
         <motion.div
-          {...item(6)}
+          {...item(5)}
           className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto"
         >
           <Button
@@ -240,16 +262,17 @@ export function LandingPage() {
         </motion.div>
 
         {/* Bottom ornament */}
-        <motion.div {...item(7)} className="mt-8 sm:mt-10">
+        <motion.div {...item(6)} className="mt-8 sm:mt-10">
           <Ornament className="w-24 sm:w-28 text-brand-400 dark:text-brand-500 rotate-180" />
         </motion.div>
       </div>
 
-      {/* A assinatura do rodapé era texto morto — a única coisa na tela que
-          parecia clicável e não era. Vira a porta discreta para o /about, que
-          é onde a explicação do produto mora; a landing continua sendo uma
-          tela só, com dois CTAs. O `bottom-1` com alvo de 44px deixa o texto
-          na mesma altura visual de antes. */}
+      {/* O rodapé era a assinatura "bookclubinho" — texto morto, e agora
+          também repetido: o nome subiu para o topo em Fraunces. No lugar dela
+          fica a única coisa que o rodapé precisa fazer, que é abrir a
+          explicação do produto para quem chegou por convite e não faz ideia do
+          que é isto. O `bottom-1` com alvo de 44px mantém o texto na mesma
+          altura visual da assinatura antiga. */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -260,7 +283,7 @@ export function LandingPage() {
           href="/about"
           className="inline-flex min-h-11 items-center rounded-md px-3 text-[0.65rem] tracking-widest uppercase text-muted-foreground/50 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          bookclubinho
+          o que é isso?
         </Link>
       </motion.p>
     </div>

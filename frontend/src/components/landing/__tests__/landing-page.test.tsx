@@ -65,20 +65,21 @@ describe("LandingPage — viewport de pouca altura", () => {
     expect(el.className).toContain("overflow-x-clip");
   });
 
-  it("reserva espaço para a atribuição, que é absolute e não empurra nada", () => {
+  it("reserva espaço para o rodapé, que é absolute e não empurra nada", () => {
     const el = root();
 
     expect(el.className).toMatch(/\bpy-\d+\b/);
-    const attribution = screen.getByRole("link", { name: "bookclubinho" });
-    expect(attribution.parentElement?.className).toContain("absolute");
+    const footer = screen.getByRole("link", { name: "o que é isso?" });
+    expect(footer.parentElement?.className).toContain("absolute");
   });
 });
 
 /**
  * O ornamento é o que diz, sem texto, que este app é sobre livros. Em 32×48px
  * e a 20–50% de opacidade ele não dizia nada — era um retângulo arredondado
- * repetido seis vezes. jsdom não desenha, então o que se garante aqui é a
- * decisão: menos livros, maiores, com o tratamento que o resto do app usa.
+ * repetido seis vezes em qualquer largura. jsdom não desenha nem resolve media
+ * query, então o que se garante aqui é a decisão: maiores, com o tratamento
+ * que o resto do app usa, e três deles reservados para onde há margem lateral.
  */
 describe("LandingPage — ornamento", () => {
   function books() {
@@ -88,8 +89,15 @@ describe("LandingPage — ornamento", () => {
     );
   }
 
-  it("desenha três livros, não seis", () => {
-    expect(books()).toHaveLength(3);
+  it("mostra três na tela estreita e seis a partir de lg", () => {
+    const all = books();
+    const semprevisiveis = all.filter((b) => !b.className.includes("hidden"));
+
+    expect(all).toHaveLength(6);
+    expect(semprevisiveis).toHaveLength(3);
+    all
+      .filter((b) => b.className.includes("hidden"))
+      .forEach((b) => expect(b.className).toContain("lg:block"));
   });
 
   it("usa o tratamento de lombada do app, e não um segundo desenho de livro", () => {
@@ -98,7 +106,7 @@ describe("LandingPage — ornamento", () => {
       '[style*="perspective(400px)"]',
     );
 
-    expect(spines).toHaveLength(3);
+    expect(spines).toHaveLength(6);
     // 56×80: abaixo disso o detalhe de lombada não sobrevive à opacidade.
     spines.forEach((spine) => {
       expect(spine.className).toContain("w-14");
@@ -136,24 +144,35 @@ describe("LandingPage — ornamento", () => {
 });
 
 /**
- * A landing é uma tela só — a explicação do produto mora no /about. A
- * assinatura do rodapé é o único caminho até lá; enquanto era `<p>`, ela
- * parecia clicável e não era.
+ * A landing é uma tela só — a explicação do produto mora no /about. O rodapé
+ * é o único caminho até lá; enquanto era a assinatura "bookclubinho", ele
+ * parecia clicável e não era, e passou a repetir o nome que agora está no topo.
  */
 describe("LandingPage — porta para o /about", () => {
-  it("a assinatura do rodapé leva ao /about", () => {
+  it("o rodapé leva ao /about", () => {
     render(<LandingPage />);
 
-    const link = screen.getByRole("link", { name: "bookclubinho" });
+    const link = screen.getByRole("link", { name: "o que é isso?" });
     expect(link.getAttribute("href")).toBe("/about");
   });
 
-  it("a assinatura alcança o alvo de toque de 44px", () => {
+  it("o rodapé alcança o alvo de toque de 44px", () => {
     render(<LandingPage />);
 
     expect(
-      screen.getByRole("link", { name: "bookclubinho" }).className,
+      screen.getByRole("link", { name: "o que é isso?" }).className,
     ).toContain("min-h-11");
+  });
+
+  it("a marca fica no topo, em Fraunces, e não repete no rodapé", () => {
+    render(<LandingPage />);
+
+    // O lugar do nome era um ícone de livro do lucide dentro de um quadrado —
+    // o mesmo ícone que a UI funcional usa a 16px, ocupando o espaço da marca.
+    const marca = screen.getByText("Bookclubinho");
+    expect(marca.className).toContain("font-display");
+    expect(screen.queryByText("Clube do Livro")).toBeNull();
+    expect(screen.queryByRole("link", { name: /bookclubinho/i })).toBeNull();
   });
 
   it("mantém os dois CTAs e nada além disso", () => {
