@@ -53,8 +53,8 @@ describe("GroupTabBar", () => {
 
     expect(screen.getByText("Chat")).toBeInTheDocument();
     expect(screen.getByText("Rodada")).toBeInTheDocument();
-    expect(screen.getByText("Shelf")).toBeInTheDocument();
-    expect(screen.getByText("Stats")).toBeInTheDocument();
+    expect(screen.getByText("Estante")).toBeInTheDocument();
+    expect(screen.getByText("Números")).toBeInTheDocument();
     expect(screen.getByText("Encontros")).toBeInTheDocument();
   });
 
@@ -79,11 +79,11 @@ describe("GroupTabBar", () => {
       "href",
       "/groups/g1/round",
     );
-    expect(screen.getByText("Shelf").closest("a")).toHaveAttribute(
+    expect(screen.getByText("Estante").closest("a")).toHaveAttribute(
       "href",
       "/groups/g1/shelf",
     );
-    expect(screen.getByText("Stats").closest("a")).toHaveAttribute(
+    expect(screen.getByText("Números").closest("a")).toHaveAttribute(
       "href",
       "/groups/g1/stats",
     );
@@ -143,7 +143,7 @@ describe("GroupTabBar", () => {
       const user = userEvent.setup();
       render(<GroupTabBar groupId="g1" variant="mobile" />);
 
-      const esperado = ["Chat", "Rodada", "Shelf", "Stats", "Encontros"];
+      const esperado = ["Chat", "Rodada", "Estante", "Números", "Encontros"];
       for (const label of esperado) {
         await user.tab();
         expect(screen.getByText(label).closest("a")).toHaveFocus();
@@ -157,7 +157,7 @@ describe("GroupTabBar", () => {
         "aria-current",
         "page",
       );
-      expect(screen.getByText("Stats").closest("a")).not.toHaveAttribute(
+      expect(screen.getByText("Números").closest("a")).not.toHaveAttribute(
         "aria-current",
       );
     });

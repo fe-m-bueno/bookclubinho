@@ -62,7 +62,7 @@ import { makeMessage } from "./helpers";
 
 const defaultProps = {
   isOwn: false,
-  showAvatar: true,
+  isGroupEnd: true,
   showName: false,
   currentUserId: "u2",
   viewerChapter: null,
@@ -131,34 +131,29 @@ describe("MessageBubble", () => {
     expect(bubble).toBeInTheDocument();
   });
 
-  it("shows avatar when showAvatar is true and message is not own", () => {
+  it("põe o avatar na última mensagem do bloco", () => {
     const msg = makeMessage();
     render(
-      <MessageBubble
-        {...defaultProps}
-        message={msg}
-        isOwn={false}
-        showAvatar
-      />,
+      <MessageBubble {...defaultProps} message={msg} isOwn={false} isGroupEnd />,
     );
     // Avatar renders with aria-label matching the author name
     expect(screen.getByLabelText("Alice")).toBeInTheDocument();
   });
 
-  it("hides avatar when showAvatar is false", () => {
+  it("não repete o avatar no meio do bloco", () => {
     const msg = makeMessage();
     render(
       <MessageBubble
         {...defaultProps}
         message={msg}
         isOwn={false}
-        showAvatar={false}
+        isGroupEnd={false}
       />,
     );
     expect(screen.queryByLabelText("Alice")).not.toBeInTheDocument();
   });
 
-  it("shows no avatar element for own messages regardless of showAvatar", () => {
+  it("shows no avatar element for own messages regardless of isGroupEnd", () => {
     const msg = makeMessage();
     render(
       <MessageBubble
@@ -166,7 +161,7 @@ describe("MessageBubble", () => {
         message={msg}
         isOwn
         currentUserId="u1"
-        showAvatar
+        isGroupEnd
       />,
     );
     // Own messages never render an Avatar component
@@ -252,6 +247,49 @@ describe("MessageBubble", () => {
     const timeEl = document.querySelector("time");
     expect(timeEl).toBeInTheDocument();
     expect(timeEl).toHaveAttribute("dateTime", ts);
+  });
+
+  /**
+   * O horário era uma linha própria dentro de cada bolha: toda mensagem pagava
+   * uma linha de altura e, no mínimo, a largura de "14:32" — que é o motivo de
+   * um "ok" virar um bloco em vez de uma palavra. Agora ele aparece uma vez por
+   * bloco, na última mensagem, do lado de fora.
+   */
+  it("mostra o horário só no fim do bloco, e fora da bolha", () => {
+    const msg = makeMessage();
+    const { container } = render(
+      <MessageBubble {...defaultProps} message={msg} isGroupEnd />,
+    );
+
+    const timeEl = container.querySelector("time")!;
+    expect(timeEl).toBeInTheDocument();
+    // A bolha é quem tem o fundo; o horário não pode estar dentro dela.
+    expect(timeEl.closest(".rounded-2xl")).toBeNull();
+  });
+
+  it("não repete o horário no meio do bloco", () => {
+    const msg = makeMessage();
+    const { container } = render(
+      <MessageBubble {...defaultProps} message={msg} isGroupEnd={false} />,
+    );
+
+    expect(container.querySelector("time")).toBeNull();
+  });
+
+  /**
+   * "(editada)" fica dentro da bolha mesmo com o horário fora: o horário é do
+   * bloco e pode estar em outra mensagem, mas a edição é daquela.
+   */
+  it("mantém '(editada)' dentro da bolha da mensagem editada", () => {
+    const msg = makeMessage({
+      created_at: "2026-01-01T10:00:00Z",
+      updated_at: "2026-01-01T10:05:00Z",
+    });
+    render(
+      <MessageBubble {...defaultProps} message={msg} isGroupEnd={false} />,
+    );
+
+    expect(screen.getByText("(editada)").closest(".rounded-2xl")).not.toBeNull();
   });
 
   it("falls back to username for display when display_name is null", () => {

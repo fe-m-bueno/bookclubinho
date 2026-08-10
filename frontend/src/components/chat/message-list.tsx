@@ -339,7 +339,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
                     <MessageBubble
                       message={row.message}
                       isOwn={row.message.author.user_id === currentUserId}
-                      showAvatar={row.isGroupStart}
+                      isGroupEnd={row.isGroupEnd}
                       showName={row.isGroupStart}
                       currentUserId={currentUserId}
                       viewerChapter={viewerChapter}

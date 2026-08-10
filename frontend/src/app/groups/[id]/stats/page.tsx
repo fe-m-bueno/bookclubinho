@@ -6,7 +6,7 @@ import { createServerQueryClient } from "@/lib/server-query-client";
 import type { GroupStatsResponse } from "@/lib/types/stats";
 import type { ShelfResponse } from "@/lib/types/shelf";
 
-export const metadata = { title: "Stats" };
+export const metadata = { title: "Números" };
 
 export default async function StatsPage({
   params,
