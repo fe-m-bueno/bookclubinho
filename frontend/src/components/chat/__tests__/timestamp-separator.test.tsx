@@ -74,7 +74,10 @@ describe("TimestampSeparator", () => {
     const timestamp = todayAt(12, 0);
     render(<TimestampSeparator timestamp={timestamp} />);
 
-    const span = document.querySelector("span.text-xs");
+    // Pelo papel, e não pela classe de tamanho: o teste quebrava toda vez que
+    // a escala tipográfica mudava de nome, sem que nada do comportamento
+    // tivesse mudado.
+    const span = screen.getByRole("separator").querySelector("span");
     expect(span).toBeInTheDocument();
     expect(span?.textContent).toMatch(/^Hoje \d{2}:\d{2}$/);
   });
@@ -86,7 +89,7 @@ describe("TimestampSeparator", () => {
     const separator = screen.getByRole("separator");
     const label = separator.getAttribute("aria-label") ?? "";
     // The visible span text and aria-label must match
-    const span = document.querySelector("span.text-xs");
+    const span = separator.querySelector("span");
     expect(label).toBe(span?.textContent);
   });
 

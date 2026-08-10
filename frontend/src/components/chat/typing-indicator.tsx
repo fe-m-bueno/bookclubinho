@@ -69,7 +69,7 @@ export function TypingIndicator({ users }: TypingIndicatorProps) {
               </div>
             ))}
           </div>
-          <span className="text-xs text-muted-foreground">
+          <span className="type-micro">
             {formatTypingText(users)}
             <TypingDots />
           </span>

@@ -54,7 +54,7 @@ export function GroupTabBar({
               key={segment}
               href={href}
               className={cn(
-                "relative flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors",
+                "type-meta relative flex items-center gap-2 px-5 py-3 transition-colors",
                 isActive
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground",
@@ -110,7 +110,7 @@ export function GroupTabBar({
             key={segment}
             href={href}
             className={cn(
-              "relative flex min-h-9 flex-1 items-center justify-center rounded-lg px-1 text-[11px] font-medium transition-colors",
+              "type-micro relative flex min-h-9 flex-1 items-center justify-center rounded-lg px-1 transition-colors",
               isActive ? "text-foreground" : "text-muted-foreground",
             )}
             aria-current={isActive ? "page" : undefined}

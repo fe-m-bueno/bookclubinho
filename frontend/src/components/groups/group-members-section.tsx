@@ -105,18 +105,16 @@ export function GroupMembersSection({
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium truncate">
+                  <span className="type-body truncate font-medium">
                     {displayName}
                   </span>
                   {isCurrentUser && (
-                    <span className="text-xs text-muted-foreground">
-                      (Você)
-                    </span>
+                    <span className="type-micro">(Você)</span>
                   )}
                 </div>
                 <Badge
                   variant={isMemberAdmin ? "default" : "secondary"}
-                  className="text-[10px] px-1.5 py-0"
+                  className="type-micro px-1.5 py-0 text-inherit"
                 >
                   {isMemberAdmin ? "Admin" : "Membro"}
                 </Badge>
@@ -139,7 +137,7 @@ export function GroupMembersSection({
                           isMemberAdmin ? "member" : "admin",
                         )
                       }
-                      className="text-xs h-7"
+                      className="type-micro h-7 text-inherit"
                     >
                       Confirmar?
                     </Button>
@@ -176,7 +174,7 @@ export function GroupMembersSection({
                       variant="destructive"
                       disabled={actionLoading}
                       onClick={() => handleRemove(member)}
-                      className="text-xs h-7"
+                      className="type-micro h-7 text-inherit"
                     >
                       Confirmar?
                     </Button>

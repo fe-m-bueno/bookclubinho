@@ -70,10 +70,10 @@ export function LinkPreviewCard({ url }: LinkPreviewCardProps) {
           className="size-4 shrink-0 text-muted-foreground"
           aria-hidden="true"
         />
-        <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+        <span className="type-meta min-w-0 flex-1 truncate text-foreground">
           {displayUrl}
         </span>
-        <span className="shrink-0 text-xs text-muted-foreground">Abrir ↗</span>
+        <span className="type-micro shrink-0">Abrir ↗</span>
       </a>
     );
   }
@@ -109,27 +109,21 @@ export function LinkPreviewCard({ url }: LinkPreviewCardProps) {
         )}
         <div className="min-w-0 flex-1">
           {data.site_name && (
-            <p className="truncate text-xs text-muted-foreground">
-              {data.site_name}
-            </p>
+            <p className="type-micro truncate">{data.site_name}</p>
           )}
           {data.title && (
-            <p className="truncate text-sm font-medium text-foreground">
-              {data.title}
-            </p>
+            <p className="type-meta truncate text-foreground">{data.title}</p>
           )}
           {data.description && (
-            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+            <p className="type-micro mt-0.5 line-clamp-2">
               {data.description}
             </p>
           )}
           {!data.title && !data.description && (
-            <p className="truncate text-sm text-foreground">{displayUrl}</p>
+            <p className="type-meta truncate text-foreground">{displayUrl}</p>
           )}
         </div>
-        <span className="shrink-0 self-center text-xs text-muted-foreground">
-          ↗
-        </span>
+        <span className="type-micro shrink-0 self-center">↗</span>
       </div>
     </a>
   );

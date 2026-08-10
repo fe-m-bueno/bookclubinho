@@ -32,7 +32,9 @@ export function MessageTextContent({ text }: MessageTextContentProps) {
   const lines = text.split("\n");
 
   return (
-    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+    /* O texto da mensagem é o conteúdo do app: papel `body`, e a cor vem da
+       bolha em volta, que muda entre mensagem própria e alheia. */
+    <p className="type-body whitespace-pre-wrap break-words text-inherit">
       {lines.map((line, lineIdx) => (
         <span key={lineIdx}>
           {line.split(URL_SPLIT_RE).map((segment, segIdx) => {

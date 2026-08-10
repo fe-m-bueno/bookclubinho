@@ -66,7 +66,7 @@ export function SpoilerOverlay({
               className="size-5 text-sage-800 dark:text-sage-200"
               aria-hidden="true"
             />
-            <span className="text-xs font-medium text-sage-900 dark:text-sage-100">
+            <span className="type-micro text-sage-900 dark:text-sage-100">
               {message.spoiler_chapter != null
                 ? `Spoiler do capítulo ${message.spoiler_chapter}+`
                 : "Spoiler"}

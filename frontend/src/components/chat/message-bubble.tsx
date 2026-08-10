@@ -39,10 +39,10 @@ function ReplyPreview({ message }: { message: ChatMessage }) {
         aria-hidden="true"
       />
       <div className="min-w-0">
-        <p className="truncate text-xs font-medium text-sage-700 dark:text-sage-300">
+        <p className="type-micro truncate text-sage-700 dark:text-sage-300">
           {authorName}
         </p>
-        <p className="truncate text-xs text-muted-foreground">{preview}</p>
+        <p className="type-micro truncate">{preview}</p>
       </div>
     </div>
   );
@@ -140,15 +140,15 @@ export function MessageBubble({
         >
           {/* Sender name (others only) */}
           {showName && !isOwn && (
-            <span className="px-1 text-xs text-muted-foreground">
-              {authorName}
-            </span>
+            <span className="type-micro px-1">{authorName}</span>
           )}
 
           {/* Bubble */}
           <div
             className={cn(
-              "relative rounded-2xl px-3 py-2 text-sm",
+              // A bolha não fixa tamanho: quem manda é o `type-body` do texto
+              // da mensagem lá dentro. Aqui ela só herda a cor.
+              "relative rounded-2xl px-3 py-2",
               isOwn
                 ? "rounded-br-sm bg-sage-100 text-sage-900 dark:bg-sage-800 dark:text-sage-100"
                 : "rounded-bl-sm bg-muted text-foreground",
@@ -181,15 +181,11 @@ export function MessageBubble({
             >
               <time
                 dateTime={message.created_at}
-                className="text-[10px] text-muted-foreground/70"
+                className="type-micro"
               >
                 {timeLabel}
               </time>
-              {isEdited && (
-                <span className="text-[10px] text-muted-foreground/60">
-                  (editada)
-                </span>
-              )}
+              {isEdited && <span className="type-micro">(editada)</span>}
             </div>
           </div>
 
