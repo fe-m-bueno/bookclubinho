@@ -12,6 +12,9 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
+import pytest
+from boto3.session import Session as BotoSession
+from botocore.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from freezegun import freeze_time
@@ -19,6 +22,32 @@ from freezegun import freeze_time
 from app.api.v1.endpoints.messages import group_messages_router, messages_router
 from app.core.deps import get_current_active_user, get_group_membership, get_session
 from tests.conftest import make_user
+
+
+@pytest.fixture(autouse=True)
+def _cliente_s3_de_teste() -> object:
+    """Dá ao teste um cliente S3 próprio, em vez de depender do ambiente.
+
+    Estes testes presignam de verdade — é assim que verificam que a URL é
+    assinada na hora da resposta, e não guardada no banco. Assinar é cálculo
+    local (nenhuma rede), mas o boto3 exige um endpoint: com `S3_ENDPOINT`
+    vazio ele levanta `ValueError: Invalid endpoint:`.
+
+    Antes disso, os dois testes só passavam onde as variáveis de S3 estivessem
+    no ambiente — no CI passavam, em qualquer shell sem elas falhavam. Um teste
+    que depende de ambiente ambiente afora não diz o que quer dizer.
+    """
+    cliente = BotoSession().client(
+        "s3",
+        endpoint_url="http://s3-de-teste.local:9000",
+        aws_access_key_id="chave-de-teste",
+        aws_secret_access_key="segredo-de-teste",
+        region_name="auto",
+        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+    )
+    with patch("app.storage.s3_storage._client", return_value=cliente):
+        yield
+
 
 FAKE_GROUP_ID = uuid.uuid4()
 FAKE_USER = make_user()

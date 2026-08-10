@@ -37,6 +37,12 @@ STREAM_KEY = group_events.NOTIFICATIONS_KEY
 CONSUMER_GROUP = "notification-workers"
 CONSUMER_NAME = "worker-1"
 HEARTBEAT_KEY = "worker:notifications:heartbeat"
+# Modo --once: o TTL cobre folgadamente o intervalo do cron (10 min), porque o
+# atraso do agendador do GitHub é comum. Ver `run_once`.
+ONCE_HEARTBEAT_TTL = 25 * 60
+# Teto de lotes por corrida: 10 eventos cada, então 200 eventos. Impede que uma
+# enxurrada segure o job indefinidamente — o resto fica no stream para a próxima.
+ONCE_MAX_BATCHES = 20
 MEETING_REMINDERS_KEY = "meeting_reminders"
 HEARTBEAT_INTERVAL = 30  # seconds
 REMINDER_POLL_INTERVAL = 60  # seconds
@@ -217,29 +223,53 @@ async def _handle_new_message(redis: aioredis.Redis, data: dict[str, str]) -> No
         await _send_to_each(recipients, _send, event="digest_email_failed")
 
 
-async def _consume_notification_stream(redis: aioredis.Redis, stop_event: asyncio.Event) -> None:
-    """Consume events from the notifications Redis stream."""
+async def _ensure_consumer_group(redis: aioredis.Redis) -> None:
     with contextlib.suppress(Exception):
         await redis.xgroup_create(STREAM_KEY, CONSUMER_GROUP, id="0", mkstream=True)
+
+
+async def _read_and_process_batch(redis: aioredis.Redis, *, block_ms: int | None) -> int:
+    """Lê um lote do stream, processa e confirma. Devolve quantos processou.
+
+    Um lote só, sem laço: quem repete é o chamador — o daemon para sempre, o
+    modo `--once` até esvaziar.
+
+    `block_ms=None` é leitura sem bloqueio; devolve na hora se o stream estiver
+    vazio. **Não use `0`**: em Redis, `BLOCK 0` quer dizer bloquear para sempre,
+    e não "não bloqueie" — o modo `--once` travava até o timeout do socket.
+    """
+    results = await redis.xreadgroup(
+        groupname=CONSUMER_GROUP,
+        consumername=CONSUMER_NAME,
+        streams={STREAM_KEY: ">"},
+        count=10,
+        block=block_ms,
+    )
+
+    lidos = 0
+    for _stream, messages in results or []:
+        for msg_id, data in messages:
+            lidos += 1
+            try:
+                await process_event(redis, msg_id, data)
+                await redis.xack(STREAM_KEY, CONSUMER_GROUP, msg_id)
+            except Exception:
+                logger.exception("notification_processing_failed", event_id=msg_id)
+    # Devolve o que leu, não o que deu certo: quem chama usa isto para saber se
+    # o stream secou. Contar só os sucessos faria um lote inteiro de falhas
+    # parecer fim de fila, e a drenagem pararia cedo.
+    return lidos
+
+
+async def _consume_notification_stream(redis: aioredis.Redis, stop_event: asyncio.Event) -> None:
+    """Consume events from the notifications Redis stream."""
+    await _ensure_consumer_group(redis)
 
     logger.info("notification_consumer_started", stream=STREAM_KEY)
 
     while not stop_event.is_set():
         try:
-            results = await redis.xreadgroup(
-                groupname=CONSUMER_GROUP,
-                consumername=CONSUMER_NAME,
-                streams={STREAM_KEY: ">"},
-                count=10,
-                block=5000,
-            )
-            for _stream, messages in results or []:
-                for msg_id, data in messages:
-                    try:
-                        await process_event(redis, msg_id, data)
-                        await redis.xack(STREAM_KEY, CONSUMER_GROUP, msg_id)
-                    except Exception:
-                        logger.exception("notification_processing_failed", event_id=msg_id)
+            await _read_and_process_batch(redis, block_ms=5000)
         except Exception:
             if not stop_event.is_set():
                 logger.exception("notification_consumer_error")
@@ -312,24 +342,27 @@ async def _process_single_reminder(redis: aioredis.Redis, entry: str) -> None:
     logger.info("meeting_reminder_sent", entry=entry)
 
 
+async def _process_due_reminders(redis: aioredis.Redis) -> int:
+    """Uma passada nos lembretes vencidos. Devolve quantos processou."""
+    now_ts = time.time()
+    due: list[str] = await redis.zrangebyscore(MEETING_REMINDERS_KEY, "-inf", now_ts, start=0, num=REMINDER_BATCH_SIZE)
+
+    for entry in due:
+        try:
+            await _process_single_reminder(redis, entry)
+        except Exception:
+            logger.exception("meeting_reminder_processing_failed", entry=entry)
+            await redis.zrem(MEETING_REMINDERS_KEY, entry)
+    return len(due)
+
+
 async def _poll_meeting_reminders(redis: aioredis.Redis, stop_event: asyncio.Event) -> None:
     """Poll the meeting_reminders sorted set and send reminder emails."""
     logger.info("meeting_reminder_poller_started")
 
     while not stop_event.is_set():
         try:
-            now_ts = time.time()
-            due: list[str] = await redis.zrangebyscore(
-                MEETING_REMINDERS_KEY, "-inf", now_ts, start=0, num=REMINDER_BATCH_SIZE
-            )
-
-            for entry in due:
-                try:
-                    await _process_single_reminder(redis, entry)
-                except Exception:
-                    logger.exception("meeting_reminder_processing_failed", entry=entry)
-                    await redis.zrem(MEETING_REMINDERS_KEY, entry)
-
+            await _process_due_reminders(redis)
         except Exception:
             if not stop_event.is_set():
                 logger.exception("meeting_reminder_poller_error")
@@ -383,5 +416,59 @@ async def run() -> None:
         logger.info("notification_worker_stopped")
 
 
+async def run_once(*, heartbeat_ttl: int = ONCE_HEARTBEAT_TTL) -> None:
+    """Drena o que houver acumulado e sai. É o modo do cron.
+
+    Existe porque o plano free do Render não tem Background Worker e o daemon
+    não tinha onde morar — então ninguém nunca o iniciou, e o
+    `notification_worker` do /health reportava `heartbeat missing` desde sempre.
+
+    Nada se perde entre execuções: o stream é lido por consumer group, então o
+    que chega com o worker fora fica pendente e é entregue na próxima corrida.
+    O preço é latência — o e-mail sai com até um intervalo de cron de atraso.
+
+    O `heartbeat_ttl` é maior que o intervalo de propósito: para um job em lote,
+    "vivo" quer dizer "rodou há pouco", não "está rodando agora". Com o TTL de
+    90s do daemon, o /health passaria a maior parte do tempo dizendo `error`
+    mesmo com tudo funcionando.
+    """
+    redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    logger.info("notification_worker_once_started")
+
+    try:
+        await redis.set(HEARTBEAT_KEY, str(int(time.time())), ex=heartbeat_ttl)
+        await _ensure_consumer_group(redis)
+
+        eventos = 0
+        # Sem bloqueio: a corrida acaba quando o stream seca, em vez de esperar
+        # por evento que não existe. O teto evita que uma enxurrada segure o job.
+        for _ in range(ONCE_MAX_BATCHES):
+            lote = await _read_and_process_batch(redis, block_ms=None)
+            if lote == 0:
+                break
+            eventos += lote
+
+        lembretes = await _process_due_reminders(redis)
+        logger.info("notification_worker_once_finished", eventos=eventos, lembretes=lembretes)
+    finally:
+        await redis.aclose()
+
+
 if __name__ == "__main__":
-    asyncio.run(run())
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Notification worker")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Drena o que houver e sai, em vez de rodar como daemon. Usado pelo cron.",
+    )
+    parser.add_argument(
+        "--heartbeat-ttl",
+        type=int,
+        default=ONCE_HEARTBEAT_TTL,
+        help=f"TTL do heartbeat no modo --once, em segundos (padrão {ONCE_HEARTBEAT_TTL}).",
+    )
+    args = parser.parse_args()
+
+    asyncio.run(run_once(heartbeat_ttl=args.heartbeat_ttl) if args.once else run())
