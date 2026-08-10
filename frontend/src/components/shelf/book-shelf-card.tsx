@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { StarsDisplay } from "@/components/ui/stars-display";
+import { BookSpine } from "@/components/shared/book-spine";
 import { useTick } from "@/hooks/use-tick";
 import { getTickSnapshot } from "@/stores/tick-store";
 import type { ShelfBook } from "@/lib/types/shelf";
@@ -111,13 +112,9 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
       >
         {/* Book cover with 3D spine effect */}
-        <div
-          className="relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-sage-200 dark:border-sage-700"
-          style={{
-            transform: "perspective(600px) rotateY(-8deg)",
-            boxShadow:
-              "-6px 4px 14px rgba(0,0,0,0.28), 2px 3px 10px rgba(0,0,0,0.12)",
-          }}
+        <BookSpine
+          depth="lg"
+          className="aspect-[2/3] w-full rounded-xl border border-sage-200 dark:border-sage-700"
         >
           {book.book_cover_url ? (
             <Image
@@ -136,15 +133,7 @@ export function BookShelfCard({ book, groupId }: BookShelfCardProps) {
               </p>
             </div>
           )}
-          {/* Spine shadow overlay */}
-          <div
-            className="pointer-events-none absolute inset-y-0 left-0 w-5"
-            style={{
-              background:
-                "linear-gradient(to right, rgba(0,0,0,0.32), transparent)",
-            }}
-          />
-        </div>
+        </BookSpine>
 
         {/* Title + stars below cover */}
         <div className="mt-2 px-1 space-y-1">

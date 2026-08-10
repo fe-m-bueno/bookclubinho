@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { BookSpine } from "@/components/shared/book-spine";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const stagger = 0.08;
@@ -30,12 +31,33 @@ function Ornament({ className }: { className?: string }) {
   );
 }
 
+/**
+ * O ornamento precisa ler como livro.
+ *
+ * Eram seis retângulos de 32×48px com gradiente sage e três fios de 1px a
+ * 20–50% de opacidade. Nesse tamanho e nesse contraste nenhum detalhe
+ * sobrevive: o que se via era um retângulo arredondado. Agora são três, a
+ * 56×80, com o mesmo tratamento de perspectiva e lombada que o card da home e
+ * a estante usam — em 56px o detalhe finalmente aparece, e menos elementos
+ * aliviam a colisão em viewport de pouca altura.
+ *
+ * A rotação de cada livro fica no wrapper e a perspectiva dentro do
+ * `BookSpine`: as duas na mesma `transform` se sobrescrevem.
+ */
 function FloatingBook({
   className,
+  tone,
   delay,
   rotate,
 }: {
   className?: string;
+  /**
+   * A opacidade fica aqui, e não no `className` da posição: o elemento de fora
+   * anima `opacity` de 0 a 1, e o `style` inline do Framer ganha de qualquer
+   * classe utilitária. Os seis livros originais pediam 20–50% e recebiam 100%
+   * — o véu que devia manter o ornamento no fundo nunca chegou a existir.
+   */
+  tone: string;
   delay: number;
   rotate: number;
 }) {
@@ -65,13 +87,19 @@ function FloatingBook({
           delay,
         }}
         style={{ rotate }}
-        className="w-8 h-12 rounded-sm shadow-warm-md bg-gradient-to-b from-sage-200 to-sage-300 dark:from-sage-700 dark:to-sage-800 border border-sage-300/50 dark:border-sage-600/30"
+        className={tone}
       >
-        <div className="mt-2 mx-1.5 space-y-0.5">
-          <div className="h-px bg-sage-500/30 dark:bg-sage-400/20" />
-          <div className="h-px bg-sage-500/20 dark:bg-sage-400/15 w-3/4" />
-          <div className="h-px bg-sage-500/15 dark:bg-sage-400/10 w-1/2" />
-        </div>
+        {/* O sage claro do desenho antigo sumia sobre o creme do light: no
+            claro o livro é um tom mais fundo. */}
+        <BookSpine className="h-20 w-14 rounded-md bg-gradient-to-b from-sage-300 to-sage-400 dark:from-sage-700 dark:to-sage-800 border border-sage-400/50 dark:border-sage-600/40">
+          {/* As linhas da capa começam depois da lombada — passando por baixo
+              dela, o gradiente as apagava justo onde elas nascem. */}
+          <div className="mt-4 ml-5 mr-3 space-y-1.5">
+            <div className="h-px bg-sage-600/35 dark:bg-sage-300/25" />
+            <div className="h-px w-3/4 bg-sage-600/25 dark:bg-sage-300/20" />
+            <div className="h-px w-1/2 bg-sage-600/20 dark:bg-sage-300/15" />
+          </div>
+        </BookSpine>
       </motion.div>
     </motion.div>
   );
@@ -108,36 +136,31 @@ export function LandingPage() {
         <ThemeToggle />
       </div>
 
-      {/* Floating decorative books */}
+      {/* Três livros, não seis: em 56px cada um pesa o triplo do que pesava em
+          32px, e o que era textura vira ornamento. A opacidade é maior no
+          dark: sage escuro sobre carvão tem menos contraste do que sage médio
+          sobre creme, e é a lombada que se perde primeiro. */}
       <FloatingBook
-        className="absolute top-[12%] left-[8%] opacity-40 sm:opacity-50"
+        className="absolute top-[10%] left-[6%]"
+        tone="opacity-60 dark:opacity-70"
         delay={0}
         rotate={-12}
       />
       <FloatingBook
-        className="absolute top-[18%] right-[10%] opacity-30 sm:opacity-40"
+        className="absolute top-[16%] right-[8%]"
+        tone="opacity-50 dark:opacity-60"
         delay={0.5}
         rotate={8}
       />
+      {/* O terceiro troca de canto em telas estreitas. Em 375px os CTAs são
+          faixas da largura inteira, e o "Já tenho conta" é outline — o livro
+          atrás dele aparecia através do botão. Embaixo à esquerda, abaixo dos
+          CTAs e fora da faixa central da assinatura, ele não cruza nada. */}
       <FloatingBook
-        className="absolute bottom-[15%] left-[12%] opacity-25 sm:opacity-35"
+        className="absolute bottom-[4%] left-[5%] sm:bottom-[14%] sm:left-auto sm:right-[10%]"
+        tone="opacity-50 dark:opacity-60"
         delay={1}
-        rotate={-6}
-      />
-      <FloatingBook
-        className="absolute bottom-[20%] right-[8%] opacity-35 sm:opacity-45"
-        delay={1.5}
-        rotate={15}
-      />
-      <FloatingBook
-        className="hidden sm:block absolute top-[45%] left-[5%] opacity-20"
-        delay={0.7}
-        rotate={-20}
-      />
-      <FloatingBook
-        className="hidden sm:block absolute top-[40%] right-[5%] opacity-25"
-        delay={1.2}
-        rotate={10}
+        rotate={12}
       />
 
       {/* Main content */}
@@ -222,14 +245,23 @@ export function LandingPage() {
         </motion.div>
       </div>
 
-      {/* Bottom subtle attribution */}
+      {/* A assinatura do rodapé era texto morto — a única coisa na tela que
+          parecia clicável e não era. Vira a porta discreta para o /about, que
+          é onde a explicação do produto mora; a landing continua sendo uma
+          tela só, com dois CTAs. O `bottom-1` com alvo de 44px deixa o texto
+          na mesma altura visual de antes. */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={reduced ? { duration: 0 } : { delay: 1.2, duration: 0.8 }}
-        className="absolute bottom-5 text-[0.65rem] tracking-widest uppercase text-muted-foreground/50"
+        className="absolute bottom-1"
       >
-        bookclubinho
+        <Link
+          href="/about"
+          className="inline-flex min-h-11 items-center rounded-md px-3 text-[0.65rem] tracking-widest uppercase text-muted-foreground/50 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          bookclubinho
+        </Link>
       </motion.p>
     </div>
   );

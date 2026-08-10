@@ -69,6 +69,102 @@ describe("LandingPage — viewport de pouca altura", () => {
     const el = root();
 
     expect(el.className).toMatch(/\bpy-\d+\b/);
-    expect(screen.getByText("bookclubinho").className).toContain("absolute");
+    const attribution = screen.getByRole("link", { name: "bookclubinho" });
+    expect(attribution.parentElement?.className).toContain("absolute");
+  });
+});
+
+/**
+ * O ornamento é o que diz, sem texto, que este app é sobre livros. Em 32×48px
+ * e a 20–50% de opacidade ele não dizia nada — era um retângulo arredondado
+ * repetido seis vezes. jsdom não desenha, então o que se garante aqui é a
+ * decisão: menos livros, maiores, com o tratamento que o resto do app usa.
+ */
+describe("LandingPage — ornamento", () => {
+  function books() {
+    const { container } = render(<LandingPage />);
+    return Array.from(
+      container.querySelectorAll<HTMLElement>('[aria-hidden="true"].absolute'),
+    );
+  }
+
+  it("desenha três livros, não seis", () => {
+    expect(books()).toHaveLength(3);
+  });
+
+  it("usa o tratamento de lombada do app, e não um segundo desenho de livro", () => {
+    const { container } = render(<LandingPage />);
+    const spines = container.querySelectorAll<HTMLElement>(
+      '[style*="perspective(400px)"]',
+    );
+
+    expect(spines).toHaveLength(3);
+    // 56×80: abaixo disso o detalhe de lombada não sobrevive à opacidade.
+    spines.forEach((spine) => {
+      expect(spine.className).toContain("w-14");
+      expect(spine.className).toContain("h-20");
+    });
+  });
+
+  /**
+   * O véu que mantém o ornamento no fundo estava na camada errada: a mesma
+   * `motion.div` que anima `opacity` de 0 a 1 carregava as classes
+   * `opacity-*`, e o `style` inline do Framer ganha de qualquer utilitário —
+   * os seis livros pediam 20–50% e apareciam a 100%. A opacidade mora na
+   * camada de dentro, que só anima `y`.
+   */
+  it("não pendura a opacidade na camada que o Framer anima", () => {
+    books().forEach((book) => {
+      expect(book.className).not.toMatch(/\bopacity-\d+\b/);
+      const inner = book.firstElementChild as HTMLElement;
+      expect(inner.className).toMatch(/\bopacity-\d+\b/);
+      expect(inner.className).toMatch(/\bdark:opacity-\d+\b/);
+    });
+  });
+
+  it("não vaza na horizontal em nenhuma largura", () => {
+    const { container } = render(<LandingPage />);
+    const root = container.firstElementChild as HTMLElement;
+
+    // Os livros são `absolute` dentro deste container; `overflow-x-clip` é o
+    // que impede que a rotação de um livro na borda crie scroll lateral.
+    expect(root.className).toContain("overflow-x-clip");
+    books().forEach((book) => {
+      expect(book.className).toMatch(/\b(left|right)-\[\d+%\]/);
+    });
+  });
+});
+
+/**
+ * A landing é uma tela só — a explicação do produto mora no /about. A
+ * assinatura do rodapé é o único caminho até lá; enquanto era `<p>`, ela
+ * parecia clicável e não era.
+ */
+describe("LandingPage — porta para o /about", () => {
+  it("a assinatura do rodapé leva ao /about", () => {
+    render(<LandingPage />);
+
+    const link = screen.getByRole("link", { name: "bookclubinho" });
+    expect(link.getAttribute("href")).toBe("/about");
+  });
+
+  it("a assinatura alcança o alvo de toque de 44px", () => {
+    render(<LandingPage />);
+
+    expect(
+      screen.getByRole("link", { name: "bookclubinho" }).className,
+    ).toContain("min-h-11");
+  });
+
+  it("mantém os dois CTAs e nada além disso", () => {
+    render(<LandingPage />);
+
+    expect(
+      screen.getByRole("link", { name: "Criar meu clube" }).getAttribute("href"),
+    ).toBe("/auth/register");
+    expect(
+      screen.getByRole("link", { name: "Já tenho conta" }).getAttribute("href"),
+    ).toBe("/auth/login");
+    expect(screen.getAllByRole("link")).toHaveLength(3);
   });
 });
