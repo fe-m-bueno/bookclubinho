@@ -57,6 +57,7 @@ export function MeetingDetailClient({ meetingId }: MeetingDetailClientProps) {
   if (!meeting) return null;
 
   const typeBadge = TYPE_BADGE[meeting.meeting_type];
+  const TypeIcon = typeBadge.icon;
   const formattedDate = DATE_FORMATTER.format(new Date(meeting.scheduled_at));
 
   const handleRsvp = (status: Exclude<RsvpStatus, "pending">) => {
@@ -120,7 +121,8 @@ export function MeetingDetailClient({ meetingId }: MeetingDetailClientProps) {
           <div>
             <h1 className="text-2xl font-bold">{meeting.title}</h1>
             <span className="type-meta inline-flex items-center gap-1.5 mt-2 rounded-full bg-muted px-3 py-1 text-foreground">
-              {typeBadge.icon} {typeBadge.label}
+              <TypeIcon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+              {typeBadge.label}
             </span>
           </div>
         </div>

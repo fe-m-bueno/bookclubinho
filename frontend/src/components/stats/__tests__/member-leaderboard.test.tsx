@@ -57,7 +57,7 @@ describe("MemberLeaderboard", () => {
 
   it("shows trophy icon for first place", () => {
     render(<MemberLeaderboard members={mockMembers} />);
-    expect(screen.getByText("🏆")).toBeInTheDocument();
+    expect(screen.getByLabelText("Primeiro lugar")).toBeInTheDocument();
   });
 
   it("renders sort buttons", () => {
@@ -85,7 +85,7 @@ describe("MemberLeaderboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Streak" }));
 
     // Alice has highest streak (14), should still show trophy
-    expect(screen.getByText("🏆")).toBeInTheDocument();
+    expect(screen.getByLabelText("Primeiro lugar")).toBeInTheDocument();
   });
 
   it("sorts by avg_rating when Nota button is clicked", () => {

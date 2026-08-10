@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { Flame, Star, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,8 +83,17 @@ export function MemberLeaderboard({ members }: MemberLeaderboardProps) {
             key={member.user_id}
             className="flex items-center gap-3 min-h-[44px]"
           >
-            <span className="type-meta w-5 text-center flex-none tabular-nums">
-              {index === 0 ? "🏆" : index + 1}
+            {/* O primeiro lugar ganha troféu; do segundo em diante, o número.
+                Era 🏆 — emoji do sistema numa tela de consulta diária. */}
+            <span className="type-meta w-5 flex-none tabular-nums flex justify-center">
+              {index === 0 ? (
+                <Trophy
+                  className="h-4 w-4 text-primary"
+                  aria-label="Primeiro lugar"
+                />
+              ) : (
+                index + 1
+              )}
             </span>
 
             <Avatar className="h-10 w-10 flex-none">
@@ -100,12 +110,26 @@ export function MemberLeaderboard({ members }: MemberLeaderboardProps) {
               </p>
               <p className="type-micro flex flex-wrap gap-x-3 gap-y-0.5">
                 <span>{member.books_finished} livros</span>
-                <span>
-                  {member.avg_rating !== null
-                    ? `${member.avg_rating.toFixed(1)} ★`
-                    : "sem nota"}
+                {/* Estrela e chama viram ícone: o `★` era glifo tipográfico e o
+                    🔥 era emoji do sistema, dois desenhos de origens diferentes
+                    na mesma linha. */}
+                <span className="inline-flex items-center gap-0.5">
+                  {member.avg_rating !== null ? (
+                    <>
+                      {member.avg_rating.toFixed(1)}
+                      <Star
+                        className="h-3 w-3 fill-current text-primary"
+                        aria-label="de nota"
+                      />
+                    </>
+                  ) : (
+                    "sem nota"
+                  )}
                 </span>
-                <span>{member.current_streak}🔥</span>
+                <span className="inline-flex items-center gap-0.5">
+                  {member.current_streak}
+                  <Flame className="h-3 w-3 text-primary" aria-label="dias de streak" />
+                </span>
                 <span>{formatReadingTime(member.reading_time_minutes)}</span>
               </p>
             </div>
@@ -119,9 +143,11 @@ export function MemberLeaderboard({ members }: MemberLeaderboardProps) {
                 {sortKey === "reading_time_minutes" &&
                   formatReadingTime(member.reading_time_minutes)}
               </p>
+              {/* "nota", e não `★`: os outros três rótulos desta linha são
+                  palavras, e um glifo solto entre elas lia como enfeite. */}
               <p className="type-micro">
                 {sortKey === "books_finished" && "livros"}
-                {sortKey === "avg_rating" && "★"}
+                {sortKey === "avg_rating" && "nota"}
                 {sortKey === "current_streak" && "dias"}
                 {sortKey === "reading_time_minutes" && "lidos"}
               </p>

@@ -133,7 +133,7 @@ export function CreateMeetingDialog({
             error={form.formState.errors.meeting_type?.message}
           >
             <div className="flex gap-2">
-              {TYPE_OPTIONS.map(({ value, label }) => (
+              {TYPE_OPTIONS.map(({ value, label, icon: Icon }) => (
                 <Button
                   key={value}
                   type="button"
@@ -142,6 +142,7 @@ export function CreateMeetingDialog({
                   className="flex-1"
                   onClick={() => form.setValue("meeting_type", value)}
                 >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
                   {label}
                 </Button>
               ))}

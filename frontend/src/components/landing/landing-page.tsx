@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
-import { BookSpine } from "@/components/shared/book-spine";
+import { BookMark } from "@/components/brand/book-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const stagger = 0.08;
@@ -39,6 +39,10 @@ function Ornament({ className }: { className?: string }) {
  * 56×80, com o mesmo tratamento de perspectiva e lombada que o card da home e
  * a estante usam — em 56px o detalhe finalmente aparece, e menos elementos
  * aliviam a colisão em viewport de pouca altura.
+ *
+ * O desenho em si saiu daqui para o `BookMark`: virou a marca do app quando os
+ * headers de auth trocaram o 📚 por ela. O que sobra neste arquivo é só o
+ * movimento.
  *
  * A rotação de cada livro fica no wrapper e a perspectiva dentro do
  * `BookSpine`: as duas na mesma `transform` se sobrescrevem.
@@ -88,17 +92,7 @@ function FloatingBook({
         style={{ rotate }}
         className={tone}
       >
-        {/* O sage claro do desenho antigo sumia sobre o creme do light: no
-            claro o livro é um tom mais fundo. */}
-        <BookSpine className="h-20 w-14 rounded-md bg-gradient-to-b from-sage-300 to-sage-400 dark:from-sage-700 dark:to-sage-800 border border-sage-400/50 dark:border-sage-600/40">
-          {/* As linhas da capa começam depois da lombada — passando por baixo
-              dela, o gradiente as apagava justo onde elas nascem. */}
-          <div className="mt-4 ml-5 mr-3 space-y-1.5">
-            <div className="h-px bg-sage-600/35 dark:bg-sage-300/25" />
-            <div className="h-px w-3/4 bg-sage-600/25 dark:bg-sage-300/20" />
-            <div className="h-px w-1/2 bg-sage-600/20 dark:bg-sage-300/15" />
-          </div>
-        </BookSpine>
+        <BookMark />
       </motion.div>
     </motion.div>
   );
