@@ -8,11 +8,28 @@ from app.core.rls import reapply_context_on_new_transaction
 
 
 def _build_url() -> str:
+    """A URL privilegiada — cria tabela e política.
+
+    `alembic/env.py` importa esta, e é de propósito: migration precisa do papel
+    que possui as tabelas e pode escrever política. Não troque por
+    :func:`_build_app_url` — o app não deve ter esse poder, e o papel restrito
+    não conseguiria migrar.
+    """
     return normalize_database_url(str(settings.DATABASE_URL))
 
 
+def _build_app_url() -> str:
+    """A URL que o app usa: o papel restrito quando houver.
+
+    Sem `DATABASE_APP_URL` cai na privilegiada, que é o estado de hoje — e nesse
+    estado as políticas não valem, porque o papel ignora RLS.
+    """
+    restrita = settings.DATABASE_APP_URL
+    return normalize_database_url(str(restrita if restrita is not None else settings.DATABASE_URL))
+
+
 engine = create_async_engine(
-    _build_url(),
+    _build_app_url(),
     echo=settings.DEBUG,
     pool_pre_ping=True,  # reconnect after idle connection drop
     pool_size=5,

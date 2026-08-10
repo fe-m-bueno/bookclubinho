@@ -132,13 +132,17 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 
 ## Recuperação de Banco de Dados
 
-### Restore de Backup (Render Postgres)
+### Restore de Backup (Neon)
 
-1. Acesse o painel Render → Postgres → Backups.
-2. Selecione o ponto de restauração.
-3. Faça o restore em um banco temporário primeiro para validar.
-4. Atualize `DATABASE_URL` para apontar ao banco restaurado.
+1. Acesse o painel do Neon → o projeto → Branches / Restore.
+2. Selecione o ponto de restauração (Neon faz point-in-time por branch).
+3. Restaure para uma **branch nova** primeiro, para validar sem tocar na atual.
+4. Atualize `DATABASE_URL` (e `DATABASE_APP_URL`, se estiver em uso) para apontar
+   ao endpoint da branch restaurada.
 5. Execute `alembic upgrade head` para garantir que migrations estão sincronizadas.
+6. Se `DATABASE_APP_URL` estiver em uso, o papel `bookclub_app` precisa existir na
+   branch restaurada com os mesmos `GRANT`s — papel e privilégio acompanham a
+   branch, mas confira antes de apontar o serviço para lá.
 
 ---
 
@@ -205,26 +209,48 @@ O único cenário que o `FORCE` cobria é o app conectando **como dono da tabela
 exatamente o que a separação de papéis elimina. Se um dia o app voltar a
 conectar como dono, este raciocínio deixa de valer.
 
-`BYPASSRLS` não é usado em lugar nenhum, e não precisa ser.
+Nada aqui **cria** um papel com `BYPASSRLS`. No Neon o `neondb_owner` já vem com
+ele, e é isso que o torna certo para migration e errado para o app.
+
+Consequência boa disso: como a função `SECURITY DEFINER` é criada pelas
+migrations, ela pertence ao `neondb_owner` e herda o `BYPASSRLS` dele — então no
+Neon o `NO FORCE` da 0027 nem precisa entrar em ação. Ele fica como garantia de
+portabilidade: se um dia o dono das tabelas não tiver `BYPASSRLS`, a função
+continua funcionando.
 
 ### Migrations continuam precisando de papel privilegiado
 
-Não é escolha nossa: adicionar uma FK a `group_members` dispara validação que
-avalia política, e com `FORCE` ligado num dono comum isso falhava. Migration roda
-com o papel privilegiado (como hoje), o app roda com o restrito. É também o que
-se quer por outro motivo: `alembic upgrade head` cria políticas, e o app não deve
-poder fazer isso.
+Dois motivos independentes:
 
-### Procedimento da troca
+- `alembic upgrade head` cria e altera política. O app não deve poder fazer isso.
+- Adicionar FK a `group_members` dispara validação que avalia política. Num dono
+  **sem** `BYPASSRLS` e com `FORCE`, isso falha — foi o que aconteceu no ambiente
+  de verificação. No Neon não aparece, porque `neondb_owner` tem `BYPASSRLS`.
 
-Rode como o papel privilegiado atual (o mesmo do `DATABASE_URL` de hoje):
+No Render isso já está separado na prática: o `alembic upgrade head` roda no
+pre-deploy, e é ele que lê `DATABASE_URL`. O app lê `DATABASE_APP_URL` quando
+existe.
+
+### Procedimento da troca (Neon)
+
+O banco é **Neon**; o backend roda no Render. `neondb_owner` é o papel
+privilegiado e **tem `BYPASSRLS`** — por isso as políticas não valem para ele, e
+por isso ele é o certo para migration e o errado para o app.
+
+**1. Criar o papel restrito.** Rode no SQL Editor do Neon, conectado como
+`neondb_owner`:
 
 ```sql
-CREATE ROLE bookclub_app LOGIN PASSWORD '...';
+CREATE ROLE bookclub_app WITH LOGIN PASSWORD '...';
+
+GRANT CONNECT ON DATABASE neondb TO bookclub_app;
 GRANT USAGE ON SCHEMA public TO bookclub_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO bookclub_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO bookclub_app;
--- Para as tabelas que migrations futuras criarem:
+
+-- Para as tabelas que migrations futuras criarem. Tem de ser executado por
+-- `neondb_owner`: `ALTER DEFAULT PRIVILEGES` vale para objetos criados pelo
+-- papel que rodou o comando, e é ele quem roda as migrations.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO bookclub_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
@@ -232,20 +258,53 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 ```
 
 Note o que **não** está aí: nenhum `SUPERUSER`, nenhum `BYPASSRLS`, nenhuma posse
-de tabela. É isso que faz as políticas valerem para ele.
+de tabela. É isso que faz as políticas valerem para ele. Papel criado por SQL no
+Neon também não entra em `neon_superuser` — o que vem pelo Console, API ou CLI
+entra, então crie por SQL.
 
-Depois aponte o `DATABASE_URL` do **serviço web** para esse papel, mantendo o
-papel privilegiado no que roda as migrations.
+**2. Setar `DATABASE_APP_URL` no serviço do Render.** Só isso. `DATABASE_URL`
+continua com `neondb_owner`, porque é ele que o `alembic upgrade head` do
+pre-deploy usa; o app passa a preferir a `DATABASE_APP_URL` quando ela existe
+(`app/db/engine.py`).
 
-Verificação depois da troca (deve devolver `f`, `f`):
+```
+DATABASE_URL      = postgresql://neondb_owner:...@ep-....neon.tech/neondb   # migrations
+DATABASE_APP_URL  = postgresql://bookclub_app:...@ep-....neon.tech/neondb   # app
+```
+
+Use o endpoint **pooler** na do app e o **direto** (sem `-pooler`) na de
+migration — DDL não se beneficia do pooler e algumas operações se dão mal com
+ele.
+
+**3. Verificar.** Deve devolver `f`, `f`:
 
 ```sql
 SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'bookclub_app';
 ```
 
-E o teste de fumaça que importa: fazer login, abrir um grupo e mandar uma
-mensagem. Se o login falhar com "credenciais inválidas" para uma senha certa, o
-sintoma é RLS barrando a busca por e-mail — confira se as 0025–0027 rodaram.
+Depois o teste de fumaça: login, abrir um grupo, mandar uma mensagem. Se o login
+falhar com "credenciais inválidas" para uma senha certa, o sintoma é RLS barrando
+a busca por e-mail — confira se as 0025–0027 rodaram.
+
+**Rollback:** remover a variável `DATABASE_APP_URL` e reiniciar. O app volta ao
+`DATABASE_URL` e nada mais muda.
+
+### Por que o pooler torna isto mais urgente, não menos
+
+A URL do app usa o endpoint pooler do Neon, que é PgBouncer em modo transação:
+uma conexão de servidor é reaproveitada por requisições de **usuários
+diferentes**.
+
+Duas consequências, e as duas já estão tratadas no código:
+
+- O contexto de usuário **tem** de ser transaction-local (`set_config(..., true)`).
+  Fosse de sessão, o `app.current_user_id` de um usuário vazaria para a
+  requisição seguinte na mesma conexão de servidor — troca de identidade, não
+  vazamento de leitura.
+- O defeito nº 2 acima (a GUC virando `''` depois da transação) deixa de ser
+  eventual e passa a ser o caso comum, porque a conexão de servidor é sempre
+  reusada. Sem o `nullif` da 0026, seria erro de banco em quase toda requisição
+  sem usuário no contexto.
 
 **Rollback:** voltar o `DATABASE_URL` para o papel anterior. Nenhuma migration
 precisa ser revertida; as políticas corrigidas são inertes para quem ignora RLS.

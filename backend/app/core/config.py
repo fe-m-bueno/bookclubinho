@@ -32,6 +32,18 @@ class Settings(BaseSettings):
     # SQLAlchemy async uses asyncpg.
     # Provider-injected URLs like postgresql://... are normalised in app.db.engine.
 
+    # Papel restrito para o serviço web — o que faz RLS valer.
+    #
+    # `DATABASE_URL` é o papel privilegiado: cria tabela, cria política, e no Neon
+    # (`neondb_owner`) tem BYPASSRLS, ou seja ignora RLS. É o que as migrations
+    # precisam e é o que o app **não** deveria usar.
+    #
+    # Quando esta variável estiver presente, o app conecta com ela e as políticas
+    # passam a valer para ele. Ausente, o app cai no `DATABASE_URL` e nada muda —
+    # é o estado de hoje. Ligar e desligar RLS é, então, setar e remover uma
+    # variável de ambiente. Procedimento em docs/RUNBOOK.md.
+    DATABASE_APP_URL: PostgresDsn | None = None
+
     # ── Redis / Upstash ───────────────────────────────────────────────────────
     # TCP URL — used for SSE (XREAD/BLOCK) and pub/sub
     REDIS_URL: str  # redis[s]://:<token>@host:port
