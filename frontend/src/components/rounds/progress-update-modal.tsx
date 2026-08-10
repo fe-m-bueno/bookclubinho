@@ -168,6 +168,9 @@ export function ProgressUpdateModal({
                   </span>
                 )}
               </Label>
+              {/* Sem tamanho local: o primitivo já sobe o campo para 16px no
+                  mobile e volta a 14 no desktop, e é isso que impede o iOS de
+                  dar zoom ao focar. Repetir aqui só escondia a regra. */}
               <Input
                 id="current-page"
                 type="number"
@@ -177,12 +180,10 @@ export function ProgressUpdateModal({
                 value={pageInput}
                 onChange={(e) => setPageInput(e.target.value)}
                 onBlur={() => setPageInput(String(pageValue))}
-                className="min-h-[44px] text-base"
+                className="min-h-[44px]"
               />
               {computedPagePct !== null && (
-                <p className="text-sm text-muted-foreground">
-                  {computedPagePct}% concluído
-                </p>
+                <p className="type-meta">{computedPagePct}% concluído</p>
               )}
             </div>
           </TabsContent>
@@ -199,7 +200,7 @@ export function ProgressUpdateModal({
                   min={0}
                   value={chapterInput}
                   onChange={(e) => setChapterInput(e.target.value)}
-                  className="min-h-[44px] text-base"
+                    className="min-h-[44px]"
                   placeholder="ex: 12"
                 />
               </div>
@@ -212,15 +213,13 @@ export function ProgressUpdateModal({
                   min={1}
                   value={totalChaptersInput}
                   onChange={(e) => setTotalChaptersInput(e.target.value)}
-                  className="min-h-[44px] text-base"
+                    className="min-h-[44px]"
                   placeholder="ex: 30"
                 />
               </div>
             </div>
             {chapterPct !== null && (
-              <p className="text-sm text-muted-foreground">
-                {chapterPct}% concluído
-              </p>
+              <p className="type-meta">{chapterPct}% concluído</p>
             )}
           </TabsContent>
 
@@ -255,7 +254,7 @@ export function ProgressUpdateModal({
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
             placeholder="O que achou até aqui?"
-            className="resize-none text-sm"
+            className="resize-none"
             rows={2}
           />
         </div>

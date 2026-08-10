@@ -72,11 +72,13 @@ export function VotingReveal({
             animate={{ opacity: 1, y: 0 }}
             className="text-center space-y-1"
           >
-            <p className="text-2xl font-bold">
+            {/* Acima do teto da rampa, e por isso com a serifa: `type-title`
+                é o degrau de 20px, e este anúncio é o ponto alto da tela. */}
+            <p className="font-display text-2xl font-semibold">
               {wasTiebreak ? "O destino escolheu!" : "O grupo decidiu!"}
             </p>
             {wasTiebreak && (
-              <p className="text-sm text-muted-foreground">
+              <p className="type-meta">
                 Houve empate, e o vencedor saiu no sorteio.
               </p>
             )}

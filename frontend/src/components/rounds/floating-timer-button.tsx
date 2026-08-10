@@ -150,7 +150,7 @@ export function FloatingTimerButton() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 16 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="flex flex-col gap-3 rounded-2xl bg-card border border-border shadow-warm-lg p-4 w-64"
+            className="flex flex-col gap-3 rounded-2xl bg-card border border-border shadow-warm-lg p-3 w-64"
           >
             {/* Header */}
             <div className="flex items-center gap-3">
@@ -170,8 +170,8 @@ export function FloatingTimerButton() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground">Lendo</p>
-                <p className="text-sm font-medium truncate">{displayTitle}</p>
+                <p className="type-micro">Lendo</p>
+                <p className="type-body truncate">{displayTitle}</p>
               </div>
               <Button
                 size="icon"
@@ -190,7 +190,7 @@ export function FloatingTimerButton() {
                 {formatElapsed(elapsedMs)}
               </span>
               {status === "paused" && (
-                <p className="text-xs text-muted-foreground mt-1">Pausado</p>
+                <p className="type-micro mt-1">Pausado</p>
               )}
             </div>
 
@@ -243,6 +243,9 @@ export function FloatingTimerButton() {
             {starting ? (
               <span className="h-5 w-5 z-10 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
             ) : status !== "idle" ? (
+              // Os dígitos do FAB são medida do círculo de 56px, e vêm em mono
+              // tabular para o cronômetro não pular de largura a cada segundo:
+              // é desenho de controle, não papel de texto.
               <span className="text-xs font-mono font-bold tabular-nums z-10">
                 {formatElapsed(elapsedMs)}
               </span>

@@ -30,7 +30,7 @@ export function VotingCard({
   onVote,
 }: VotingCardProps) {
   const className = cn(
-    "relative w-full rounded-xl border bg-card p-4 text-left transition-[border-color,box-shadow] shadow-warm-sm",
+    "relative w-full rounded-xl border bg-card p-3 text-left transition-[border-color,box-shadow] shadow-warm-sm",
     isSelected && !isRevealed
       ? "border-sage-400 dark:border-sage-300 ring-2 ring-sage-400/40"
       : "border-border",
@@ -62,7 +62,7 @@ export function VotingCard({
               unoptimized
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
+            <div className="type-meta flex h-full items-center justify-center">
               —
             </div>
           )}
@@ -70,13 +70,9 @@ export function VotingCard({
 
         {/* Info */}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="font-semibold text-sm leading-tight line-clamp-2">
-            {nomination.book_title}
-          </p>
+          <p className="type-body line-clamp-2">{nomination.book_title}</p>
           {nomination.book_author && (
-            <p className="text-xs text-muted-foreground line-clamp-1">
-              {nomination.book_author}
-            </p>
+            <p className="type-meta line-clamp-1">{nomination.book_author}</p>
           )}
 
           <div className="flex items-center gap-1.5 mt-1">
@@ -86,19 +82,19 @@ export function VotingCard({
                 {(nominatorName[0] ?? "?").toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-xs text-muted-foreground truncate">
-              {nominatorName}
-            </span>
+            <span className="type-micro truncate">{nominatorName}</span>
           </div>
 
           {nomination.pitch && (
-            <p className="mt-1 text-xs text-foreground/70 line-clamp-3 italic">
+            <p className="type-meta mt-1 line-clamp-3 italic">
               &ldquo;{nomination.pitch}&rdquo;
             </p>
           )}
 
           {isRevealed && (
-            <p className="mt-1 text-xs font-medium text-foreground">
+            // Depois da revelação a contagem é o resultado da tela, e não um
+            // dado de apoio: fica no degrau de meta, mas com a cor de corpo.
+            <p className="type-meta mt-1 text-foreground">
               {nomination.vote_count}{" "}
               {nomination.vote_count === 1 ? "voto" : "votos"}
             </p>
@@ -109,13 +105,13 @@ export function VotingCard({
       {/* Badges */}
       <div className="mt-3 flex flex-wrap gap-2">
         {isSelected && !isRevealed && (
-          <Badge variant="secondary" className="gap-1 text-xs">
+          <Badge variant="secondary" className="gap-1">
             <Check className="h-3 w-3" />
             Seu voto
           </Badge>
         )}
         {isWinner && isRevealed && (
-          <Badge className="gap-1 text-xs bg-sage-600 hover:bg-sage-600 text-white">
+          <Badge className="gap-1 bg-sage-600 hover:bg-sage-600 text-white">
             <Trophy className="h-3 w-3" />
             Vencedor
           </Badge>

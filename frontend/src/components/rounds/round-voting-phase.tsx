@@ -54,8 +54,8 @@ export function RoundVotingPhase({
       <RoundStatusBadge round={round} />
 
       <div className="space-y-1">
-        <h2 className="text-lg font-semibold">Escolha seu livro</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="type-title">Escolha seu livro</h2>
+        <p className="type-meta">
           Toque em um livro para votar. Você pode mudar seu voto.
         </p>
       </div>

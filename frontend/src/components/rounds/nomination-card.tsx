@@ -60,7 +60,7 @@ export function NominationCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.2 }}
-      className="flex gap-3 rounded-2xl border bg-card p-4 shadow-warm-sm"
+      className="flex gap-3 rounded-2xl border bg-card p-3 shadow-warm-sm"
     >
       {/* Cover */}
       <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -74,7 +74,7 @@ export function NominationCard({
             unoptimized
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
+          <div className="type-meta flex h-full items-center justify-center">
             —
           </div>
         )}
@@ -82,17 +82,18 @@ export function NominationCard({
 
       {/* Info */}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="font-medium font-display text-sm leading-tight line-clamp-1">
-          {nomination.book_title}
-        </p>
+        {/* Era Fraunces com corte de display num tamanho de corpo, o mesmo
+            defeito que a fatia 1 tirou da home: o título do livro é corpo, e
+            a serifa fica com o título de verdade. */}
+        <p className="type-body line-clamp-1">{nomination.book_title}</p>
         {nomination.book_author && (
-          <p className="text-xs text-muted-foreground">{nomination.book_author}</p>
+          <p className="type-meta">{nomination.book_author}</p>
         )}
-        <p className="text-xs text-muted-foreground">
-          Indicado por <span className="font-medium">{nominatorName}</span>
+        <p className="type-meta">
+          Indicado por <span className="text-foreground">{nominatorName}</span>
         </p>
         {nomination.pitch && (
-          <p className="mt-1 text-xs text-foreground/80 line-clamp-2 italic">
+          <p className="type-meta mt-1 line-clamp-2 italic">
             &ldquo;{nomination.pitch}&rdquo;
           </p>
         )}

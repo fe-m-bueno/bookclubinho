@@ -51,9 +51,7 @@ export function StepBooleanToggles({
 
   return (
     <div className="flex flex-col gap-6 py-4">
-      <h2 className="text-lg font-semibold text-center">
-        Como foi a experiência?
-      </h2>
+      <h2 className="type-title text-center">Como foi a experiência?</h2>
 
       <div className="grid grid-cols-2 gap-3">
         {TOGGLES.map((toggle) => {
@@ -78,11 +76,9 @@ export function StepBooleanToggles({
               <span className="text-2xl">
                 {isYes ? toggle.emojiYes : toggle.emojiNo}
               </span>
-              <span className="text-sm font-medium">{toggle.label}</span>
+              <span className="type-body">{toggle.label}</span>
               <span
-                className={`text-xs ${
-                  isYes ? "text-primary font-semibold" : "text-muted-foreground"
-                }`}
+                className={`type-micro ${isYes ? "text-primary" : ""}`}
               >
                 {isYes ? "Sim" : "Não"}
               </span>

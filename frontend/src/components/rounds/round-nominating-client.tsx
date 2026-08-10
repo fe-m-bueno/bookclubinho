@@ -44,7 +44,7 @@ export function RoundNominatingClient() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-        <p className="text-muted-foreground">{errorMessage(error)}</p>
+        <p className="type-meta">{errorMessage(error)}</p>
         <Button type="button" onClick={refetch}>
           Tentar novamente
         </Button>
@@ -59,13 +59,13 @@ export function RoundNominatingClient() {
           <BookOpen className="h-8 w-8 text-muted-foreground" />
         </div>
         <div className="space-y-1">
-          <p className="font-semibold text-foreground">Nenhuma rodada ativa</p>
+          <p className="type-title">Nenhuma rodada ativa</p>
           {isAdmin ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="type-meta">
               Crie uma rodada para começar as indicações.
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="type-meta">
               Aguarde o admin criar uma nova rodada.
             </p>
           )}
@@ -88,7 +88,7 @@ export function RoundNominatingClient() {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
         <RoundStatusBadge round={round} />
-        <p className="text-sm text-muted-foreground">
+        <p className="type-meta">
           As indicações estão encerradas para esta rodada.
         </p>
       </div>

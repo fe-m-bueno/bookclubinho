@@ -62,18 +62,18 @@ export function GroupProgress({
   if (showSkeleton) {
     return (
       <div className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">
-          Progresso do Grupo
-        </h2>
+        <h2 className="type-title">Progresso do Grupo</h2>
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3">
               <Skeleton className="size-8 shrink-0 rounded-full" />
+              {/* O nome está em `type-body`, que mede 22px de linha; o rótulo
+                  de progresso, em `type-micro`, mede 14. */}
               <div className="flex-1 space-y-1.5">
-                <Skeleton className="h-3 w-28 rounded" />
+                <Skeleton className="h-5 w-28 rounded" />
                 <Skeleton className="h-2 w-full rounded-full" />
               </div>
-              <Skeleton className="h-4 w-10 rounded" />
+              <Skeleton className="h-3.5 w-10 rounded" />
             </div>
           ))}
         </div>
@@ -88,12 +88,10 @@ export function GroupProgress({
   if (allZero) {
     return (
       <div className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">
-          Progresso do Grupo
-        </h2>
+        <h2 className="type-title">Progresso do Grupo</h2>
         <div className="flex flex-col items-center gap-3 py-8 text-center">
           <BookOpen className="h-10 w-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">Ninguém começou ainda</p>
+          <p className="type-meta">Ninguém começou ainda</p>
         </div>
       </div>
     );
@@ -101,9 +99,7 @@ export function GroupProgress({
 
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-semibold text-foreground">
-        Progresso do Grupo
-      </h2>
+      <h2 className="type-title">Progresso do Grupo</h2>
       <div className="space-y-4">
         {(progress ?? []).map((item, index) => {
           const isAhead =
@@ -133,21 +129,21 @@ export function GroupProgress({
                       alt={memberDisplayName(item)}
                     />
                   )}
-                  <AvatarFallback className="text-xs">
-                    {memberInitials(item)}
-                  </AvatarFallback>
+                  {/* Sem tamanho local: o primitivo já escala as iniciais pelo
+                      tamanho do círculo, e o override daqui o contrariava. */}
+                  <AvatarFallback>{memberInitials(item)}</AvatarFallback>
                 </Avatar>
 
                 {/* Name + streak + bar */}
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate leading-none">
+                    <p className="type-body truncate">
                       {memberDisplayName(item)}
                     </p>
                     {item.streak_current > 0 && (
                       <Badge
                         variant="secondary"
-                        className="text-xs py-0 px-1.5 shrink-0"
+                        className="py-0 px-1.5 shrink-0"
                       >
                         🔥 {item.streak_current}
                       </Badge>
@@ -179,12 +175,12 @@ export function GroupProgress({
                     {/* Label */}
                     <div className="shrink-0">
                       {item.is_finished ? (
-                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[--color-sage-100] text-[--color-sage-700] dark:bg-[--color-sage-900] dark:text-[--color-sage-300]">
+                        <span className="type-micro inline-flex items-center gap-1 rounded-full px-2 py-0.5 bg-[--color-sage-100] text-[--color-sage-700] dark:bg-[--color-sage-900] dark:text-[--color-sage-300]">
                           <CheckCircle2 className="size-3 shrink-0" />
                           {label}
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        <span className="type-micro whitespace-nowrap">
                           {label}
                         </span>
                       )}
@@ -206,15 +202,15 @@ export function GroupProgress({
                       className="w-full text-left"
                       aria-label="Revelar nota"
                     >
-                      <p className="text-xs text-muted-foreground italic blur-sm select-none">
+                      <p className="type-meta italic blur-sm select-none">
                         {item.note}
                       </p>
-                      <span className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                      <span className="type-micro absolute inset-0 flex items-center justify-center">
                         Toque para revelar
                       </span>
                     </button>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">
+                    <p className="type-meta italic">
                       &ldquo;{item.note}&rdquo;
                     </p>
                   )}

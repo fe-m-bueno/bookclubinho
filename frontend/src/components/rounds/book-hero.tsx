@@ -32,13 +32,9 @@ export function BookHero({ round, showPageCount = false }: BookHeroProps) {
         <h1 className="text-2xl font-bold leading-tight">
           {round.book_title}
         </h1>
-        {round.book_author && (
-          <p className="text-muted-foreground">{round.book_author}</p>
-        )}
+        {round.book_author && <p className="type-meta">{round.book_author}</p>}
         {showPageCount && round.book_page_count && (
-          <p className="text-sm text-muted-foreground">
-            {round.book_page_count} páginas
-          </p>
+          <p className="type-micro">{round.book_page_count} páginas</p>
         )}
       </div>
     </div>

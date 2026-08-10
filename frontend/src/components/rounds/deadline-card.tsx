@@ -20,16 +20,14 @@ export function DeadlineCard({ deadline }: DeadlineCardProps) {
 
   return (
     <Card className="shadow-warm-sm">
-      <CardContent className="flex items-center gap-3 py-4">
+      <CardContent className="flex items-center gap-3">
         <CalendarDays className="h-5 w-5 shrink-0 text-sage-600" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground capitalize">
-            {formattedDate}
-          </p>
+          <p className="type-body capitalize">{formattedDate}</p>
           {isPassed ? (
-            <p className="text-xs text-muted-foreground">Prazo encerrado</p>
+            <p className="type-micro">Prazo encerrado</p>
           ) : (
-            <p className="text-xs text-muted-foreground">
+            <p className="type-micro">
               sem pressa, é só uma referência :)
             </p>
           )}
