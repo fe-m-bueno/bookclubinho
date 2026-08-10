@@ -35,7 +35,7 @@ export function AllMeetingsClient() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <Calendar className="h-12 w-12 text-muted-foreground/40 mb-3" />
-        <p className="text-muted-foreground text-sm">
+        <p className="type-meta">
           Nenhum encontro agendado
         </p>
       </div>

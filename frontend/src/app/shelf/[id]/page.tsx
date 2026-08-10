@@ -92,7 +92,7 @@ export default async function PublicShelfPage({
 
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-display font-bold truncate">{shelf.group_name}</h1>
-              <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+              <div className="type-meta flex items-center gap-3 mt-1">
                 <span>
                   {bookCount} livro{bookCount !== 1 ? "s" : ""} lido
                   {bookCount !== 1 ? "s" : ""}

@@ -132,10 +132,27 @@ const AREAS_MIGRADAS = [
   "components/settings",
   "components/wrapped",
   "components/rounds",
+  "components/meetings",
+  "components/quotes",
+  "components/users",
+  "components/shelf",
+  "components/badges",
+  "components/shared",
   "app/auth",
   "app/onboarding",
   "app/settings",
+  "app/meetings",
+  "app/shelf",
+  "app/groups",
 ];
+
+/**
+ * `components/landing` fica de fora de propósito, e é a única área que fica.
+ * A tipografia de lá é escala responsiva de marketing — `text-[0.7rem]
+ * sm:text-xs` no kicker, `text-base sm:text-lg` na chamada — que muda de
+ * degrau com a largura, coisa que a rampa não faz e não deve fazer. A #282
+ * refaz aquela página inteira; entrar nela agora só criaria conflito.
+ */
 
 /**
  * O que continua em `text-sm` porque não é papel de texto, e sim medida de
@@ -321,6 +338,52 @@ describe("o primitivo Card", () => {
     // `py-6`/`px-6` no primitivo com `p-5` decidido no #275 é a inconsistência
     // se escondendo um nível abaixo de onde alguém procuraria.
     expect(CARD).not.toMatch(/\b(p|px|py)-6\b/);
+  });
+});
+
+/**
+ * Os outros primitivos que carregam papel de texto, e não medida de controle.
+ *
+ * A separação é a mesma que já valia para `Label` e `Input`: botão, campo,
+ * select, aba e avatar têm caixa própria e uma escala que responde ao
+ * componente, não ao texto — eles ficam fora da rampa de propósito. Título e
+ * descrição de diálogo, gaveta e sheet, por outro lado, são exatamente
+ * "título" e "meta", só que desenhados um nível abaixo; e o `Badge` é quem
+ * desenha o rótulo de chip do app inteiro, que a tabela do #281 nomeia como
+ * `micro`.
+ */
+describe("os primitivos de sobreposição e o Badge", () => {
+  const UI = path.resolve(__dirname, "../../components/ui");
+  const ler = (arquivo: string) =>
+    readFileSync(path.join(UI, arquivo), "utf8");
+
+  const COM_PAPEL = [
+    "dialog.tsx",
+    "alert-dialog.tsx",
+    "drawer.tsx",
+    "sheet.tsx",
+  ];
+
+  it.each(COM_PAPEL)("%s tira título e descrição da rampa", (arquivo) => {
+    const fonte = ler(arquivo);
+    expect(fonte).toContain("type-title");
+    expect(fonte).toContain("type-meta");
+    // Um `text-lg` sobrando aqui é um título de diálogo fora do degrau, e não
+    // aparece em nenhuma tela até alguém abrir aquele diálogo específico.
+    expect(fonte).not.toMatch(/\btext-(xs|sm|lg)\b/);
+  });
+
+  it("o Badge desenha o rótulo de chip no degrau micro", () => {
+    const badge = ler("badge.tsx");
+    expect(badge).toContain("type-micro");
+    expect(badge).not.toMatch(/\btext-xs\b/);
+  });
+
+  it("o Badge ghost não fica sem cor própria", () => {
+    // Sem fundo e sem cor, o ghost herdava a cor de quem o envolve. Com o
+    // papel `micro` ele passaria a puxar a cor do papel, que é apagada.
+    const ghost = ler("badge.tsx").match(/ghost:\s*"([^"]*)"/)?.[1] ?? "";
+    expect(ghost).toContain("text-foreground");
   });
 });
 

@@ -84,12 +84,12 @@ export function GenreSelector({
               <span className="text-2xl" aria-hidden="true">
                 {genre.emoji}
               </span>
-              <span className="text-sm font-medium mt-1">{genre.display_name}</span>
+              <span className="type-meta mt-1 text-foreground">{genre.display_name}</span>
             </motion.button>
           );
         })}
       </div>
-      <p className="text-sm text-muted-foreground text-center">
+      <p className="type-meta text-center">
         {selected.length} de {max} selecionados
       </p>
     </div>

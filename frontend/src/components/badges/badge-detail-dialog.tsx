@@ -110,25 +110,25 @@ export function BadgeDetailDialog({
               {badge.emoji ?? "🏅"}
             </span>
             <div className="space-y-1">
-              <DialogTitle className="text-xl">{badge.name}</DialogTitle>
+              <DialogTitle>{badge.name}</DialogTitle>
               <DialogDescription className="sr-only">
                 {badge.description ?? `Conquista: ${badge.name}`}
               </DialogDescription>
             </div>
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary">
               {categoryLabel}
             </Badge>
           </DialogHeader>
 
           <div className="space-y-4">
             {badge.description != null && (
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="type-meta text-center">
                 {badge.description}
               </p>
             )}
 
             {isEarned ? (
-              <div className="rounded-lg bg-muted/50 p-3 space-y-2 text-sm">
+              <div className="type-meta rounded-lg bg-muted/50 p-3 space-y-2">
                 {formattedDate != null && (
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-muted-foreground">Conquistado em</span>
@@ -154,7 +154,7 @@ export function BadgeDetailDialog({
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                <p className="type-micro uppercase tracking-wide">
                   Seu progresso
                 </p>
                 {showProgressSkeleton && (
@@ -165,7 +165,7 @@ export function BadgeDetailDialog({
                   </div>
                 )}
                 {!progressLoading && !showProgressSkeleton && progressError != null && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="type-meta">
                     {progressError}
                   </p>
                 )}

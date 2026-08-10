@@ -13,8 +13,8 @@ export function BadgeProgressBar({ progress }: BadgeProgressBarProps) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-medium">
+      <div className="type-body flex items-center justify-between">
+        <span>
           {name}
           {emoji != null ? ` ${emoji}` : ""}
         </span>
@@ -34,7 +34,7 @@ export function BadgeProgressBar({ progress }: BadgeProgressBarProps) {
           }
         />
       </div>
-      <p className="text-xs text-muted-foreground text-right">
+      <p className="type-micro text-right">
         {percentage}% concluído
       </p>
     </div>

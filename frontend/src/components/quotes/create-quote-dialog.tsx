@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuoteMutations } from "@/hooks/use-quotes";
 import type { QuoteResponse } from "@/lib/types/quote";
@@ -82,12 +83,9 @@ export function CreateQuoteDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="space-y-1.5">
-            <label
-              htmlFor="quote-text"
-              className="text-sm font-medium text-foreground"
-            >
-              Trecho do livro
-            </label>
+            {/* O primitivo do formulário, e não um papel da rampa: o rótulo
+                acompanha os campos em volta, não a escala de texto. */}
+            <Label htmlFor="quote-text">Trecho do livro</Label>
             <div className="relative">
               <Textarea
                 id="quote-text"
@@ -100,22 +98,19 @@ export function CreateQuoteDialog({
                 autoFocus
                 required
               />
-              <span className="absolute bottom-2 right-3 text-xs text-muted-foreground tabular-nums">
+              <span className="type-micro absolute bottom-2 right-3 tabular-nums">
                 {quoteText.length}/{MAX_QUOTE_LENGTH}
               </span>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="quote-page"
-              className="text-sm font-medium text-foreground"
-            >
+            <Label htmlFor="quote-page">
               Referência{" "}
               <span className="text-muted-foreground font-normal">
                 (opcional)
               </span>
-            </label>
+            </Label>
             <Input
               id="quote-page"
               placeholder="Página ou capítulo"

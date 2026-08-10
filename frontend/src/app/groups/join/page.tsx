@@ -59,7 +59,7 @@ function JoinGroupContent() {
         {isLoading && (
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
+            <p className="type-meta">
               Verificando convite...
             </p>
           </div>
@@ -83,7 +83,7 @@ function JoinGroupContent() {
                 </div>
               )}
               <h1 className="text-xl font-semibold">{group.name}</h1>
-              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <p className="type-meta flex items-center gap-1.5">
                 <Users className="h-4 w-4" />
                 {group.member_count} membro
                 {group.member_count !== 1 ? "s" : ""}

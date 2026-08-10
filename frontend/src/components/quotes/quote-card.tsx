@@ -59,13 +59,13 @@ export function QuoteCard({
       className="break-inside-avoid mb-4 cursor-pointer rounded-2xl border bg-card p-4 shadow-warm-sm hover:shadow-warm transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {/* Quote text */}
-      <p className="font-serif italic font-medium text-sm leading-relaxed text-foreground mb-3 line-clamp-6">
+      <p className="type-body font-serif italic mb-3 line-clamp-6">
         &ldquo;{quote.quote_text}&rdquo;
       </p>
 
       {/* Page reference */}
       {quote.page_reference && (
-        <p className="text-xs text-muted-foreground mb-2">
+        <p className="type-micro mb-2">
           {quote.page_reference}
         </p>
       )}
@@ -74,11 +74,11 @@ export function QuoteCard({
       <div className="flex items-start gap-1.5 mb-3">
         <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium truncate text-foreground">
+          <p className="type-meta truncate text-foreground">
             {quote.book_title}
           </p>
           {quote.book_author && (
-            <p className="text-xs text-muted-foreground truncate">
+            <p className="type-micro truncate">
               {quote.book_author}
             </p>
           )}
@@ -94,7 +94,7 @@ export function QuoteCard({
               {authorName[0]?.toUpperCase() ?? "?"}
             </AvatarFallback>
           </Avatar>
-          <span className="text-xs text-muted-foreground truncate">
+          <span className="type-micro truncate">
             {authorName}
           </span>
         </div>
@@ -125,7 +125,7 @@ export function QuoteCard({
                   : "text-muted-foreground"
               }`}
             />
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span className="type-micro tabular-nums">
               {optimisticCount}
             </span>
           </button>

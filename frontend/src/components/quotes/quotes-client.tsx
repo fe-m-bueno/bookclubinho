@@ -71,7 +71,7 @@ export function QuotesClient({ groupId }: QuotesClientProps) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display font-semibold text-lg text-foreground flex items-center gap-2 tracking-tight">
+        <h2 className="type-title flex items-center gap-2">
           <Quote className="h-5 w-5 text-muted-foreground" />
           Hall of Quotes
         </h2>
@@ -109,7 +109,7 @@ export function QuotesClient({ groupId }: QuotesClientProps) {
         <QuotesSkeleton />
       ) : !isLoading && error ? (
         <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-          <p className="text-muted-foreground text-sm">{errorMessage(error)}</p>
+          <p className="type-meta">{errorMessage(error)}</p>
           <Button type="button" variant="outline" size="sm" onClick={refetch}>
             Tentar novamente
           </Button>
@@ -117,7 +117,7 @@ export function QuotesClient({ groupId }: QuotesClientProps) {
       ) : quotes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
           <Quote className="h-12 w-12 text-muted-foreground/40" />
-          <p className="text-muted-foreground text-sm">
+          <p className="type-meta">
             Nenhuma quote ainda. Seja o primeiro!
           </p>
           <Button
