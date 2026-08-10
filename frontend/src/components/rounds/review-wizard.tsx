@@ -138,8 +138,10 @@ export function ReviewWizard({ roundId, onSubmitted }: ReviewWizardProps) {
           <span className="text-5xl">
             {"\uD83C\uDF89"}
           </span>
-          <h2 className="text-2xl font-bold">Review enviada!</h2>
-          <p className="text-muted-foreground max-w-xs">
+          <h2 className="font-display text-2xl font-semibold">
+            Review enviada!
+          </h2>
+          <p className="type-meta max-w-xs">
             Quando todos responderem, a revelação começa.
           </p>
         </motion.div>

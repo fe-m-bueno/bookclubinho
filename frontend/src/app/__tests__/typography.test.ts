@@ -131,6 +131,7 @@ const AREAS_MIGRADAS = [
   "components/stats",
   "components/settings",
   "components/wrapped",
+  "components/rounds",
   "app/auth",
   "app/onboarding",
   "app/settings",
@@ -166,6 +167,10 @@ const EXCECOES = new Map([
   [
     "components/wrapped/slides/slide-funniest-quote.tsx",
     "idem, as iniciais do avatar de quem escreveu a citação",
+  ],
+  [
+    "components/rounds/floating-timer-button.tsx",
+    "os dígitos do cronômetro dentro do FAB são medida do círculo de 56px, e vêm em mono tabular para o número não pular de largura a cada segundo: é desenho de controle, não papel de texto",
   ],
   [
     "components/wrapped/wrapped-summary-card.tsx",
@@ -218,6 +223,13 @@ describe("densidade", () => {
     "components/settings/privacy-settings-client.tsx",
     "components/settings/integrations-settings-client.tsx",
     "components/settings/profile-settings-client.tsx",
+    // Os cards de rodada são o caso de "card compacto": item de lista com capa
+    // ao lado, que é onde `p-3` existe. Estavam em `p-4`, e o skeleton de cada
+    // um copiava o `p-4` — a inconsistência se mantinha em par.
+    "components/rounds/nomination-card.tsx",
+    "components/rounds/voting-card.tsx",
+    "components/rounds/round-skeleton.tsx",
+    "components/rounds/voting-skeleton.tsx",
   ];
 
   it.each(MIGRADOS)("%s usa só a escala de padding decidida", (rel) => {
@@ -263,6 +275,14 @@ describe("densidade", () => {
     {
       componente: "components/settings/integrations-settings-client.tsx",
       skeleton: "components/settings/integrations-settings-skeleton.tsx",
+    },
+    {
+      componente: "components/rounds/nomination-card.tsx",
+      skeleton: "components/rounds/round-skeleton.tsx",
+    },
+    {
+      componente: "components/rounds/voting-card.tsx",
+      skeleton: "components/rounds/voting-skeleton.tsx",
     },
   ];
 

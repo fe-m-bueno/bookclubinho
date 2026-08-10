@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Drawer,
@@ -138,25 +139,21 @@ export function BookDetailDrawer({
                     unoptimized
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-muted-foreground text-xs text-center px-1">
+                  <div className="type-micro flex h-full items-center justify-center text-center px-1">
                     Sem capa
                   </div>
                 )}
               </div>
               <div className="flex-1 min-w-0 space-y-1">
-                <p className="font-semibold text-foreground line-clamp-2 leading-tight">
-                  {book.title}
-                </p>
-                <p className="text-sm text-muted-foreground">{book.author}</p>
+                <p className="type-body line-clamp-2">{book.title}</p>
+                <p className="type-meta">{book.author}</p>
                 {book.page_count && (
-                  <p className="text-xs text-muted-foreground">
-                    {book.page_count} páginas
-                  </p>
+                  <p className="type-micro">{book.page_count} páginas</p>
                 )}
 
                 {/* Genres */}
                 {loadingDetail && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="type-micro flex items-center gap-1">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Carregando detalhes...
                   </div>
@@ -166,7 +163,7 @@ export function BookDetailDrawer({
                     {detail.genres.slice(0, 3).map((genre) => (
                       <span
                         key={genre}
-                        className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                        className="type-micro rounded-full bg-muted px-2 py-0.5"
                       >
                         {genre}
                       </span>
@@ -178,20 +175,20 @@ export function BookDetailDrawer({
 
             {/* Description */}
             {detail?.description && (
-              <p className="text-sm text-muted-foreground line-clamp-3">
-                {detail.description}
-              </p>
+              <p className="type-meta line-clamp-3">{detail.description}</p>
             )}
 
             {/* Pitch */}
             <div className="space-y-1.5">
-              <label
-                htmlFor="pitch"
-                className="text-sm font-medium text-foreground"
-              >
+              {/* O primitivo `Label`, e não um papel da rampa: o campo é o
+                  mesmo dos formulários de settings, e a rampa aqui deixaria
+                  este rótulo 1px fora dos vizinhos. */}
+              <Label htmlFor="pitch">
                 Por que você indica este livro?{" "}
-                <span className="font-normal text-muted-foreground">(opcional)</span>
-              </label>
+                <span className="font-normal text-muted-foreground">
+                  (opcional)
+                </span>
+              </Label>
               <Textarea
                 id="pitch"
                 value={pitch}
@@ -203,8 +200,8 @@ export function BookDetailDrawer({
               />
               <p
                 id="pitch-count"
-                className={`text-xs text-right ${
-                  overLimit ? "text-destructive" : "text-muted-foreground"
+                className={`type-micro text-right ${
+                  overLimit ? "text-destructive" : ""
                 }`}
               >
                 {remainingChars} caracteres restantes

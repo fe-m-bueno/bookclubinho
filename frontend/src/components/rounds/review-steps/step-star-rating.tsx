@@ -29,7 +29,7 @@ export function StepStarRating({
 
   return (
     <div className="flex flex-col items-center gap-6 py-4">
-      <h2 className="text-lg font-semibold">Que nota você dá?</h2>
+      <h2 className="type-title">Que nota você dá?</h2>
 
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5].map((star) => (
@@ -58,7 +58,7 @@ export function StepStarRating({
         ))}
       </div>
 
-      <p className="text-sm text-muted-foreground h-5">
+      <p className="type-meta h-5">
         {LABELS[value]}
       </p>
 

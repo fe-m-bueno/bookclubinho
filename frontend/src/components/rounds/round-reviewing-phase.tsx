@@ -48,7 +48,9 @@ export function RoundReviewingPhase({
         <RoundStatusBadge round={round} />
         <div className="flex flex-col items-center gap-4 pt-2">
           <Skeleton className="h-[240px] w-[160px] rounded-xl" />
-          <Skeleton className="h-6 w-48" />
+          {/* O título do hero mede 29px de linha, e o autor, agora em
+              `type-meta`, mede 18. */}
+          <Skeleton className="h-7 w-48" />
           <Skeleton className="h-4 w-32" />
         </div>
       </div>
@@ -87,7 +89,7 @@ export function RoundReviewingPhase({
       {/* Toggle to see all reviews */}
       {!showAllReviews ? (
         <div className="flex flex-col items-center gap-3">
-          <p className="text-sm text-muted-foreground text-center">
+          <p className="type-meta text-center">
             Sua review foi enviada!
           </p>
           <Button
@@ -117,14 +119,14 @@ function AllReviewsSection({ roundId }: { roundId: string }) {
   if (showReviewsSkeleton) return <ReviewsListSkeleton />;
   if (error) {
     return (
-      <p className="text-sm text-muted-foreground text-center">
+      <p className="type-meta text-center">
         {errorMessage(error)}
       </p>
     );
   }
   if (!reviews || reviews.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center">
+      <p className="type-meta text-center">
         Nenhuma review ainda.
       </p>
     );

@@ -7,8 +7,8 @@ export function NominationEmptyState() {
         <BookOpen className="h-7 w-7 text-muted-foreground" />
       </div>
       <div className="space-y-1">
-        <p className="font-medium text-foreground">Nenhuma indicação ainda</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="type-title">Nenhuma indicação ainda</p>
+        <p className="type-meta">
           Busque um livro e faça a primeira indicação!
         </p>
       </div>

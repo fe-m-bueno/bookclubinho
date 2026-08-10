@@ -42,7 +42,7 @@ export function StepSummary({
 
   return (
     <div className="flex flex-col gap-5 py-4">
-      <h2 className="text-lg font-semibold text-center">Resumo da review</h2>
+      <h2 className="type-title text-center">Resumo da review</h2>
 
       {/* Stars */}
       <div className="flex justify-center gap-1">
@@ -64,7 +64,7 @@ export function StepSummary({
           {activeBools.map((b) => (
             <span
               key={b.key}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium"
+              className="type-meta inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-foreground"
             >
               {b.emoji} {b.label}
             </span>
@@ -74,33 +74,29 @@ export function StepSummary({
 
       {/* Sincere review */}
       <div className="space-y-1">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <p className="type-micro uppercase tracking-wide">
           Review sincero
         </p>
-        <p className="text-sm leading-relaxed line-clamp-4">
-          {data.sincere_review}
-        </p>
+        <p className="type-body line-clamp-4">{data.sincere_review}</p>
       </div>
 
       {/* One-liner */}
       {data.funny_oneliner && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <p className="type-micro uppercase tracking-wide">
             One-liner
           </p>
-          <p className="text-sm italic">&ldquo;{data.funny_oneliner}&rdquo;</p>
+          <p className="type-body italic">&ldquo;{data.funny_oneliner}&rdquo;</p>
         </div>
       )}
 
       {/* Extra thoughts */}
       {data.extra_thoughts && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <p className="type-micro uppercase tracking-wide">
             Extra
           </p>
-          <p className="text-sm leading-relaxed line-clamp-3">
-            {data.extra_thoughts}
-          </p>
+          <p className="type-body line-clamp-3">{data.extra_thoughts}</p>
         </div>
       )}
 

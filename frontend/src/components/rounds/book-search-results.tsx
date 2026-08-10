@@ -30,18 +30,18 @@ function BookCard({ book, onSelect }: { book: BookResult; onSelect: (b: BookResu
             unoptimized
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground text-xs text-center px-2">
+          <div className="type-micro flex h-full items-center justify-center text-center px-2">
             Sem capa
           </div>
         )}
       </div>
       <div className="mt-2 space-y-0.5">
-        <p className="text-xs font-medium leading-tight line-clamp-2 text-foreground">
-          {book.title}
-        </p>
-        <p className="text-xs text-muted-foreground truncate">{book.author}</p>
+        {/* Meta, e não corpo: a coluna tem 112px, e o título aqui é rótulo de
+            uma miniatura para escolher, não o texto que se lê. */}
+        <p className="type-meta line-clamp-2 text-foreground">{book.title}</p>
+        <p className="type-micro truncate">{book.author}</p>
         {book.page_count && (
-          <p className="text-xs text-muted-foreground">{book.page_count} pág.</p>
+          <p className="type-micro">{book.page_count} pág.</p>
         )}
       </div>
     </button>
@@ -52,8 +52,9 @@ function BookCardSkeleton() {
   return (
     <div className="shrink-0 w-28 space-y-2">
       <Skeleton className="h-40 w-28 rounded-lg" />
-      <Skeleton className="h-3 w-24" />
-      <Skeleton className="h-3 w-16" />
+      {/* Título em `type-meta` mede 18px de linha; autor em `type-micro`, 14. */}
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="h-3.5 w-16" />
     </div>
   );
 }
@@ -81,7 +82,7 @@ export function BookSearchResults({
 
   if (results.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-4">
+      <p className="type-meta text-center py-4">
         Nenhum livro encontrado. Tente outro termo.
       </p>
     );

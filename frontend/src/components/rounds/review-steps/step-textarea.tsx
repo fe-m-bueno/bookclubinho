@@ -39,8 +39,8 @@ export function StepTextarea({
   return (
     <div className="flex flex-col gap-4 py-4">
       <div className="space-y-1 text-center">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
+        <h2 className="type-title">{title}</h2>
+        <p className="type-meta">{subtitle}</p>
       </div>
 
       <div className="space-y-2">
@@ -55,7 +55,7 @@ export function StepTextarea({
           rows={rows}
           className="resize-none"
         />
-        <div className="flex justify-between text-xs text-muted-foreground">
+        <div className="type-micro flex justify-between">
           <span className={charCount < minChars && minChars > 0 ? "text-destructive" : ""}>
             {charCount < minChars && minChars > 0
               ? `Mínimo ${minChars - charCount} caracteres`

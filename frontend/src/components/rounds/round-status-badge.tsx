@@ -16,10 +16,10 @@ const STATUS_LABELS: Record<RoundStatus, string> = {
 export function RoundStatusBadge({ round }: RoundStatusBadgeProps) {
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+      <p className="type-micro uppercase tracking-wide">
         Rodada #{round.round_number}
       </p>
-      <Badge variant="secondary" className="w-fit text-sm px-3 py-1">
+      <Badge variant="secondary" className="w-fit px-3 py-1">
         {STATUS_LABELS[round.status] ?? round.status}
       </Badge>
     </div>
