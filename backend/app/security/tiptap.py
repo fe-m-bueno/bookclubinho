@@ -36,16 +36,15 @@ _ALLOWED_MARK_TYPES: frozenset[str] = frozenset(
 )
 
 
-"""Teto de aninhamento.
-
-O sanitizador é recursivo e `content_rich_json` chega do cliente como um `dict`
-qualquer — nada no schema limita a profundidade. Alguns milhares de níveis
-estouram a pilha, e um `RecursionError` no meio de um POST sai como 500.
-
-40 é folgado por dois lados: um documento do editor não passa de dez níveis
-(doc → bulletList → listItem → paragraph → text), e 40 fica muito abaixo do
-limite de recursão do CPython, que cada nível consome em mais de um frame.
-"""
+# Teto de aninhamento.
+#
+# O sanitizador é recursivo e `content_rich_json` chega do cliente como um
+# `dict` qualquer — nada no schema limita a profundidade. Alguns milhares de
+# níveis estouram a pilha, e um `RecursionError` no meio de um POST sai como 500.
+#
+# 40 é folgado por dois lados: um documento do editor não passa de dez níveis
+# (doc → bulletList → listItem → paragraph → text), e 40 fica muito abaixo do
+# limite de recursão do CPython, que cada nível consome em mais de um frame.
 _MAX_DEPTH = 40
 
 
@@ -123,10 +122,7 @@ def sanitize_tiptap_json(data: Any, *, _depth: int = 0) -> Any:
         if "attrs" in data and isinstance(data["attrs"], dict):
             sanitized["attrs"] = data["attrs"]
         if "content" in data:
-            children = [
-                sanitize_tiptap_json(child, _depth=_depth + 1)
-                for child in (data["content"] or [])
-            ]
+            children = [sanitize_tiptap_json(child, _depth=_depth + 1) for child in (data["content"] or [])]
             sanitized["content"] = [c for c in children if c is not None]
         if "marks" in data:
             safe_marks = _sanitize_marks(data["marks"])
@@ -135,10 +131,6 @@ def sanitize_tiptap_json(data: Any, *, _depth: int = 0) -> Any:
         return sanitized
 
     if isinstance(data, list):
-        return [
-            item
-            for item in (sanitize_tiptap_json(x, _depth=_depth + 1) for x in data)
-            if item is not None
-        ]
+        return [item for item in (sanitize_tiptap_json(x, _depth=_depth + 1) for x in data) if item is not None]
 
     return data
