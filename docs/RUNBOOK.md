@@ -142,18 +142,23 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
 
 ---
 
-## RLS: o app ainda conecta como superusuário
+## RLS: ligar de verdade
 
 **Estado atual: RLS não está valendo em produção.** O app conecta com um papel
 superusuário, e superusuário não avalia política — nem com `FORCE ROW LEVEL
 SECURITY`. As políticas das migrations 0005 em diante são, hoje, documentação
-executável. **Não troque o `DATABASE_URL` para um papel comum ainda** — leia até
-o fim antes de considerar.
+executável.
 
-### O que já foi corrigido (migrations 0025 e 0026)
+As migrations 0025–0027 corrigiram os cinco defeitos que impediam a troca, e o
+fluxo completo foi verificado num Postgres 16 com o app num papel sem
+`BYPASSRLS` e sem posse das tabelas: registro, login, rota autenticada, criação
+de grupo, lista de membros, chat, stats, criação/uso/revogação de token.
 
-Quatro defeitos que só apareciam sob um papel comum, todos verificados contra um
-Postgres 16 local com papel sem `BYPASSRLS`:
+O que falta é **um passo de configuração**: apontar o `DATABASE_URL` do serviço
+para um papel restrito. Enquanto isso não acontece, nada disso tem efeito — quem
+ignora RLS não enxerga política nenhuma.
+
+### Os cinco defeitos, todos verificados sob papel comum
 
 1. **Consultas que estabelecem identidade.** Login, registro, magic link, OAuth,
    refresh e resolução de Bearer leem `users`/`user_sessions`/
@@ -172,39 +177,87 @@ Postgres 16 local com papel sem `BYPASSRLS`:
    com um gancho `after_begin` que reaplica o contexto a cada transação nova
    (`app/db/engine.py` + `rls.reapply_context_on_new_transaction`).
 
-### O que ainda bloqueia a troca
+5. **Políticas recursivas** (0027). `group_members_select/update/delete`
+   perguntavam "você participa deste grupo?" lendo `group_members` de dentro da
+   política de `group_members` — `infinite recursion detected in policy`, erro
+   duro. Como 31 políticas de outras tabelas checam participação da mesma forma,
+   caíam junto: grupo, chat, rodada, review e encontro. A pergunta saiu para duas
+   funções `SECURITY DEFINER` (`app_is_group_member`, `app_is_group_admin`).
 
-**Políticas recursivas.** `group_members_select/update/delete` consultam
-`group_members` dentro da própria política. Sob RLS isso é
-`infinite recursion detected in policy for relation "group_members"` — erro
-duro, não resultado vazio. E como 31 políticas de outras tabelas checam
-participação lendo `group_members`, todas caem junto: na prática, tudo que é
-grupo, chat, rodada, review e encontro para de funcionar.
+### O `NO FORCE` em `group_members`, e por que ele não afrouxa nada
 
-A saída usual é uma função `SECURITY DEFINER` que responde "fulano é membro
-deste grupo?" sem passar por RLS. O detalhe que trava: com `FORCE ROW LEVEL
-SECURITY`, nem o dono da tabela escapa das políticas — então a função teria de
-pertencer a um papel com `BYPASSRLS` (exige superusuário para criar) ou seria
-preciso abrir mão do `FORCE` nessas tabelas. As duas opções mexem na postura de
-segurança e dependem do que o Render concede no plano em uso.
+`FORCE ROW LEVEL SECURITY` aplica as políticas **também ao dono da tabela**. Com
+ele ligado, a função `SECURITY DEFINER` continua presa e devolve `false` em
+silêncio — nega acesso a quem tem direito. Por isso a 0027 desliga o `FORCE`
+nessa tabela, e **só nessa**.
 
-### Quando for a hora, o procedimento é
+Isso não afrouxa nada para a aplicação, e o motivo é simples: **papel que não é
+dono está sujeito a RLS sempre, com ou sem `FORCE`.** Medido no ambiente de
+verificação, com o app num papel não-dono:
+
+| contexto | `group_members` | `group_messages` | `personal_access_tokens` |
+|---|---|---|---|
+| sem usuário | 0 | 0 | 0 |
+| membro do grupo | 1 | 1 | 1 |
+| usuário estranho | 0 | 0 | 0 |
+
+O único cenário que o `FORCE` cobria é o app conectando **como dono da tabela** —
+exatamente o que a separação de papéis elimina. Se um dia o app voltar a
+conectar como dono, este raciocínio deixa de valer.
+
+`BYPASSRLS` não é usado em lugar nenhum, e não precisa ser.
+
+### Migrations continuam precisando de papel privilegiado
+
+Não é escolha nossa: adicionar uma FK a `group_members` dispara validação que
+avalia política, e com `FORCE` ligado num dono comum isso falhava. Migration roda
+com o papel privilegiado (como hoje), o app roda com o restrito. É também o que
+se quer por outro motivo: `alembic upgrade head` cria políticas, e o app não deve
+poder fazer isso.
+
+### Procedimento da troca
+
+Rode como o papel privilegiado atual (o mesmo do `DATABASE_URL` de hoje):
 
 ```sql
 CREATE ROLE bookclub_app LOGIN PASSWORD '...';
 GRANT USAGE ON SCHEMA public TO bookclub_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO bookclub_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO bookclub_app;
+-- Para as tabelas que migrations futuras criarem:
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO bookclub_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO bookclub_app;
 ```
 
-Depois aponte o `DATABASE_URL` do serviço para esse papel. As migrations
-continuam rodando com o papel dono — `alembic upgrade head` precisa criar
-políticas, e o app não deve poder fazer isso.
+Note o que **não** está aí: nenhum `SUPERUSER`, nenhum `BYPASSRLS`, nenhuma posse
+de tabela. É isso que faz as políticas valerem para ele.
+
+Depois aponte o `DATABASE_URL` do **serviço web** para esse papel, mantendo o
+papel privilegiado no que roda as migrations.
+
+Verificação depois da troca (deve devolver `f`, `f`):
+
+```sql
+SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'bookclub_app';
+```
+
+E o teste de fumaça que importa: fazer login, abrir um grupo e mandar uma
+mensagem. Se o login falhar com "credenciais inválidas" para uma senha certa, o
+sintoma é RLS barrando a busca por e-mail — confira se as 0025–0027 rodaram.
 
 **Rollback:** voltar o `DATABASE_URL` para o papel anterior. Nenhuma migration
 precisa ser revertida; as políticas corrigidas são inertes para quem ignora RLS.
+O rollback é imediato e não perde dados.
+
+### Ainda não coberto
+
+O ambiente de verificação foi um Postgres local com dados de teste. O que ele não
+exercita: workers (`app/workers/`), SSE do chat, export de dados e o wrapped
+anual. Esses caminhos usam as mesmas sessões e políticas, mas não passaram pelo
+teste de fumaça — vale rodar cada um uma vez depois da troca, com o rollback à
+mão.
 
 ---
 
