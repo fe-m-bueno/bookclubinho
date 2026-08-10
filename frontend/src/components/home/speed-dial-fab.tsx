@@ -63,7 +63,7 @@ export function SpeedDialFAB({ onCreateGroup }: SpeedDialFABProps) {
                 aria-label={action.label}
               >
                 <action.icon className="h-4 w-4 shrink-0 text-foreground" />
-                <span className="whitespace-nowrap text-sm font-medium text-foreground">
+                <span className="type-meta whitespace-nowrap text-foreground">
                   {action.label}
                 </span>
               </motion.button>

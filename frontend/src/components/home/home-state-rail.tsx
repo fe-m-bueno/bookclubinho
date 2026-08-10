@@ -72,7 +72,7 @@ export function HomeStateRail({ user, meetings, badges }: HomeStateRailProps) {
             ))}
           </ul>
         ) : (
-          <p className="rounded-xl border border-dashed px-4 py-3 text-xs text-muted-foreground">
+          <p className="type-meta rounded-xl border border-dashed p-3">
             Nenhum encontro marcado
           </p>
         )}
@@ -110,7 +110,7 @@ export function HomeStateRail({ user, meetings, badges }: HomeStateRailProps) {
  */
 function RailHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-6 flex h-6 items-center text-xs font-medium tracking-wide text-muted-foreground uppercase">
+    <h2 className="type-micro mb-6 flex h-6 items-center tracking-wide uppercase">
       {children}
     </h2>
   );
@@ -126,8 +126,8 @@ function StatRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+    <div className="flex items-center justify-between gap-3 p-3">
+      <span className="type-meta flex items-center gap-2">
         {icon}
         {label}
       </span>

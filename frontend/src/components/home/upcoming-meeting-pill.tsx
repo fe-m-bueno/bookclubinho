@@ -45,14 +45,16 @@ export function UpcomingMeetingPill({ meeting }: UpcomingMeetingPillProps) {
     <button
       type="button"
       onClick={() => router.push(`/meetings/${meeting.id}`)}
-      className="w-full cursor-pointer rounded-xl border bg-card px-4 py-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="w-full cursor-pointer rounded-xl border bg-card p-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <p className="truncate text-sm font-medium">{meeting.title}</p>
+      <p className="type-body truncate font-medium">{meeting.title}</p>
 
       {/* O ícone do tipo de encontro fica inline, do tamanho do texto. Estava
           dentro de um quadrado de 36px com fundo próprio, que pesava mais que
           o título ao lado e não dizia nada que a palavra não dissesse. */}
-      <p className="mt-1 flex items-center gap-1.5 text-sm tabular-nums">
+      {/* Na cor do conteúdo, e não na de `meta`: o quando é o que se lê
+          primeiro num encontro futuro. */}
+      <p className="type-meta mt-1 flex items-center gap-1.5 tabular-nums text-foreground">
         <MeetingIcon className="size-3.5 shrink-0 text-muted-foreground" />
         {describeWhen(scheduledAt)}
       </p>
@@ -61,7 +63,7 @@ export function UpcomingMeetingPill({ meeting }: UpcomingMeetingPillProps) {
           com o título do próprio encontro. E o ponto verde de RSVP saiu — a
           home não é onde se confere presença, e um círculo colorido sem
           legenda não diz o que significa. */}
-      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+      <p className="type-micro mt-0.5 truncate">
         {meeting.group_name}
       </p>
     </button>

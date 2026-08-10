@@ -70,7 +70,7 @@ export function HomeClient() {
           <header className="mx-auto w-full max-w-2xl px-6 pt-10 pb-2">
             <div className="flex items-end justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{greeting}</p>
+                <p className="type-meta">{greeting}</p>
                 <h1 className="mt-1 text-3xl font-display font-bold tracking-tight md:text-4xl">
                   {firstName}
                 </h1>
@@ -95,7 +95,7 @@ export function HomeClient() {
       {/* Greeting — warm, personal, large */}
       <HomeHeader>
         <div>
-          <p className="text-sm text-muted-foreground">{greeting}</p>
+          <p className="type-meta">{greeting}</p>
           <h1 className="mt-1 text-3xl font-display font-bold tracking-tight md:text-4xl">
             {firstName}
           </h1>

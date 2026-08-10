@@ -77,7 +77,7 @@ export function JoinGroupDialog({ open, onOpenChange }: JoinGroupDialogProps) {
 
           {/* Validation feedback */}
           {status === "checking" && (
-            <p className="text-sm text-muted-foreground">Verificando...</p>
+            <p className="type-meta">Verificando...</p>
           )}
           {status === "valid" && group && (
             <div className="flex items-center gap-3 rounded-lg border bg-muted/50 px-3 py-2">
@@ -85,20 +85,20 @@ export function JoinGroupDialog({ open, onOpenChange }: JoinGroupDialogProps) {
                 {group.name.slice(0, 2).toUpperCase()}
               </div>
               <div>
-                <p className="text-sm font-medium">{group.name}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="type-body font-medium">{group.name}</p>
+                <p className="type-micro">
                   {group.member_count} membro{group.member_count !== 1 ? "s" : ""}
                 </p>
               </div>
             </div>
           )}
           {status === "not_found" && (
-            <p className="text-sm text-destructive">
+            <p className="type-meta text-destructive">
               Código inválido ou clube não encontrado.
             </p>
           )}
           {joinError && (
-            <p className="text-sm text-destructive">{joinError}</p>
+            <p className="type-meta text-destructive">{joinError}</p>
           )}
         </div>
 
