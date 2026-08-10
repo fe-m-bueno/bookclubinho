@@ -102,9 +102,14 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
   const round = group.current_round;
   const progress = group.my_reading_progress;
   const lastMsg = group.last_message_preview;
-  const hasCover = Boolean(
-    round?.book_title && round?.book_cover_url && !coverFailed,
-  );
+  // A capa vira um objeto em vez de um booleano: com `hasCover: boolean` o
+  // compilador não levava a checagem até o `<Image>`, e cada campo precisava de
+  // um `!` para compilar. O `!` é uma promessa não verificada — aqui ele
+  // prometia justamente o que a linha acima já sabia.
+  const cover =
+    round?.book_title && round.book_cover_url && !coverFailed
+      ? { url: round.book_cover_url, title: round.book_title }
+      : null;
   const deadline = describeDeadline(
     round?.deadline ?? null,
     undefined,
@@ -124,12 +129,12 @@ export function GroupHomeCard({ group }: GroupHomeCardProps) {
           separadas só por uma linha de 1px e uma margem, e o card lia como uma
           pilha de faixas sem começo nem fim. */}
       <div className="flex gap-4 p-5">
-        {hasCover ? (
+        {cover ? (
           <div className="relative shrink-0">
             <BookSpine className="h-[88px] w-[60px] rounded-lg">
               <Image
-                src={round!.book_cover_url!}
-                alt={round!.book_title!}
+                src={cover.url}
+                alt={cover.title}
                 fill
                 sizes="60px"
                 className="object-cover"

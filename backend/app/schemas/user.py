@@ -95,7 +95,7 @@ class UserRead(BaseModel):
     auth_provider: str
     preferred_genres: list[str]
     onboarding_completed: bool
-    email_notifications: dict
+    email_notifications: dict[str, bool]
     streak_current: int
     streak_longest: int
     streak_last_update: date | None

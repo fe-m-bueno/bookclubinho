@@ -213,6 +213,49 @@ describe("QuoteCard", () => {
     render(<QuoteCard message={msg} />);
     expect(screen.getByText("carol")).toBeInTheDocument();
   });
+
+  it("renders the book attribution from content_rich_json", () => {
+    const msg = makeMessage({
+      content_type: "quote",
+      content_text: "Some quote",
+      content_rich_json: {
+        book_title: "Dom Casmurro",
+        book_author: "Machado de Assis",
+      },
+    });
+    render(<QuoteCard message={msg} />);
+    expect(screen.getByText("Dom Casmurro")).toBeInTheDocument();
+    expect(screen.getByText("Machado de Assis")).toBeInTheDocument();
+  });
+
+  /**
+   * O `book_title as string` de antes não convertia nada: um valor não-string
+   * gravado no JSONB chegava ao JSX e o React derrubava a mensagem inteira com
+   * "Objects are not valid as a React child". Renderizar sem a atribuição é a
+   * degradação certa — a quote é o conteúdo, o nome do livro é o enfeite.
+   */
+  it("renders the quote even when the attribution is not a string", () => {
+    const msg = makeMessage({
+      content_type: "quote",
+      content_text: "Some quote",
+      content_rich_json: { book_title: { pt: "Dom Casmurro" } } as never,
+    });
+    expect(() => render(<QuoteCard message={msg} />)).not.toThrow();
+    expect(screen.getByText("Some quote")).toBeInTheDocument();
+  });
+
+  it("hides the attribution when content_rich_json is a Tiptap doc", () => {
+    const msg = makeMessage({
+      content_type: "quote",
+      content_text: "Some quote",
+      content_rich_json: {
+        type: "doc",
+        content: [{ type: "paragraph" }],
+      },
+    });
+    const { container } = render(<QuoteCard message={msg} />);
+    expect(container.querySelector(".lucide-book-open")).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

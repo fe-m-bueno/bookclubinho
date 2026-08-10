@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuthSubmit } from "@/hooks/use-auth-submit";
+import type { ProgressUpdateRequest } from "@/lib/types/round";
 
 interface ProgressUpdateModalProps {
   roundId: string;
@@ -95,7 +96,7 @@ export function ProgressUpdateModal({
   });
 
   const handleSave = () => {
-    let body: Record<string, unknown>;
+    let body: ProgressUpdateRequest;
 
     if (tab === "page") {
       body = {
@@ -123,7 +124,7 @@ export function ProgressUpdateModal({
   };
 
   const handleFinish = () => {
-    const body = bookPageCount
+    const body: ProgressUpdateRequest = bookPageCount
       ? {
           current_page: bookPageCount,
           progress_type: "finished",

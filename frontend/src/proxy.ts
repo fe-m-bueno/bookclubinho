@@ -1,13 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
+/**
+ * O que o proxy precisa saber sobre a sessão.
+ *
+ * Não é o payload inteiro do JWT — é só o recorte que decide para onde a
+ * requisição vai. Os três campos são obrigatórios aqui de propósito: um token
+ * sem `exp` numérico não tem como ser considerado válido, e um `sub` que não é
+ * string não pode virar header.
+ */
+interface SessionClaims {
+  sub: string;
+  exp: number;
+  onb: boolean;
+}
+
+/**
+ * O `sub` vira o header `x-user-id`, então precisa ser seguro como valor de
+ * header: sem CR, sem LF, sem espaço. Um `\r\n` num valor de header derruba a
+ * requisição no `headers.set` — 500 em vez de redirect — e onde não derruba é
+ * response splitting. UUID e os ids dos testes passam; qualquer coisa exótica
+ * não.
+ */
+const USER_ID_RE = /^[\w-]{1,128}$/;
+
+/**
+ * Decodifica o payload do JWT **sem verificar a assinatura**.
+ *
+ * A assinatura é conferida no backend a cada request; aqui a leitura serve só
+ * para rotear. Por isso cada campo é validado em runtime em vez de assumido: o
+ * conteúdo é literalmente um cookie que o cliente controla, e `JSON.parse`
+ * devolve `unknown` de verdade — `"123"`, `null` e `[1,2]` são JSON válido e
+ * nenhum deles é um payload.
+ */
+function decodeJwtPayload(token: string): SessionClaims | null {
   try {
     const [, payload] = token.split(".");
     if (!payload) return null;
     const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
     const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    const json = atob(padded);
-    return JSON.parse(json);
+    const parsed: unknown = JSON.parse(atob(padded));
+
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return null;
+    }
+    if (!("sub" in parsed) || typeof parsed.sub !== "string") return null;
+    if (!USER_ID_RE.test(parsed.sub)) return null;
+    if (!("exp" in parsed) || typeof parsed.exp !== "number") return null;
+
+    // `onb` ausente conta como onboarding pendente — o gate erra para o lado de
+    // mandar ao onboarding, não para o de liberar o app.
+    return {
+      sub: parsed.sub,
+      exp: parsed.exp,
+      onb: "onb" in parsed && parsed.onb === true,
+    };
   } catch {
     return null;
   }
@@ -90,33 +136,28 @@ export function proxy(request: NextRequest) {
     return noSession();
   }
 
-  const payload = decodeJwtPayload(token);
+  const claims = decodeJwtPayload(token);
 
-  if (!payload) {
+  if (!claims) {
     return noSession();
   }
 
-  const exp = payload.exp;
-  if (typeof exp === "number" && exp * 1000 < Date.now()) {
+  if (claims.exp * 1000 < Date.now()) {
     return noSession();
   }
 
-  const onboardingCompleted = payload.onb === true;
   const isOnboarding = pathname === "/onboarding" || pathname.startsWith("/onboarding/");
 
-  if (!onboardingCompleted && !isOnboarding) {
+  if (!claims.onb && !isOnboarding) {
     return redirectTo(request, "/onboarding");
   }
 
-  if (onboardingCompleted && isOnboarding) {
+  if (claims.onb && isOnboarding) {
     return redirectTo(request, "/");
   }
 
   const response = NextResponse.next();
-  const userId = payload.sub as string | undefined;
-  if (userId) {
-    response.headers.set("x-user-id", userId);
-  }
+  response.headers.set("x-user-id", claims.sub);
   return response;
 }
 

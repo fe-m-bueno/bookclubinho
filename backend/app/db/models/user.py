@@ -59,7 +59,7 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
         server_default=text("false"),
         default=False,
     )
-    email_notifications: Mapped[dict] = mapped_column(
+    email_notifications: Mapped[dict[str, bool]] = mapped_column(
         JSONB,
         nullable=False,
         server_default=text(_EMAIL_NOTIFICATIONS_SERVER_DEFAULT),

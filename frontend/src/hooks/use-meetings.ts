@@ -13,13 +13,13 @@ interface UseMeetingsOptions {
 
 export function useMeetings({ groupId, filter = "upcoming" }: UseMeetingsOptions) {
 
-  const query = useInfiniteQuery<MeetingListResponse, Error>({
+  const query = useInfiniteQuery({
     queryKey: queryKeys.meetings.list(groupId, filter),
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       params.set("filter", filter);
       params.set("limit", "20");
-      if (pageParam) params.set("cursor", pageParam as string);
+      if (pageParam) params.set("cursor", pageParam);
 
       return api.get<MeetingListResponse>(
         `/groups/${groupId}/meetings?${params.toString()}`,

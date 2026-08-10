@@ -36,11 +36,11 @@ export function useQuotes({
   // `loadingMore` separado e concatenação das páginas no `setQuotes`. O
   // useInfiniteQuery já é isso, e guarda as páginas por chave — voltar para uma
   // ordenação já vista não refaz o fetch.
-  const query = useInfiniteQuery<QuoteListResponse, Error>({
+  const query = useInfiniteQuery({
     queryKey: queryKeys.quotes.list(groupId, { sort, roundId: roundId ?? null }),
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ sort, limit: "20" });
-      if (pageParam) params.set("cursor", pageParam as string);
+      if (pageParam) params.set("cursor", pageParam);
       if (roundId) params.set("round_id", roundId);
       return api.get<QuoteListResponse>(
         `/groups/${groupId}/quotes?${params.toString()}`,

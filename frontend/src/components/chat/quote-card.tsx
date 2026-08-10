@@ -4,6 +4,7 @@ import { BookOpen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { type ChatMessage } from "@/lib/types/chat";
 import { getAuthorName, getAuthorInitials } from "@/lib/chat-utils";
+import { readQuoteAttribution } from "@/lib/types/rich-content";
 
 interface QuoteCardProps {
   message: ChatMessage;
@@ -12,10 +13,13 @@ interface QuoteCardProps {
 export function QuoteCard({ message }: QuoteCardProps) {
   const quoteText = message.content_text;
   const page = message.reference_value;
-  const bookTitle = message.content_rich_json?.book_title as string | undefined;
-  const bookAuthor = message.content_rich_json?.book_author as
-    | string
-    | undefined;
+  // O `content_rich_json` de uma quote guarda a atribuição do livro, e vem do
+  // banco: o tipo diz `string`, o JSONB guarda o que foi gravado. Ler por aqui
+  // valida em runtime — um título que não fosse string chegaria ao JSX e
+  // derrubaria a mensagem inteira.
+  const { bookTitle, bookAuthor } = readQuoteAttribution(
+    message.content_rich_json,
+  );
 
   return (
     <div className="w-full rounded-xl border border-border bg-card p-4">

@@ -5,6 +5,7 @@ import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { cn } from "@/lib/utils";
+import type { RichTextDoc } from "@/lib/types/rich-content";
 
 export interface TiptapEditorHandle {
   /** Programmatically trigger a send (used by the external send button). */
@@ -15,7 +16,7 @@ interface TiptapEditorProps {
   /** Retorna `false` (ou uma promise resolvendo `false`) para preservar o texto — envio falhou. */
   onSend: (
     text: string,
-    richJson: Record<string, unknown>,
+    richJson: RichTextDoc,
   ) => boolean | Promise<boolean> | void;
   initialContent?: string;
   disabled?: boolean;
@@ -95,8 +96,7 @@ export function TiptapEditor({
 
           if (text.length > MAX_CHARS) return true; // block send over limit
 
-          const json = ed.getJSON() as Record<string, unknown>;
-          const result = onSendRef.current(text, json);
+          const result = onSendRef.current(text, ed.getJSON());
 
           // Só limpa se o envio foi aceito — se falhar, o texto fica para o
           // usuário tentar de novo em vez de sumir junto com o erro.
@@ -156,8 +156,7 @@ export function TiptapEditor({
         if (!ed) return;
         const text = ed.state.doc.textContent.trim();
         if (!text || text.length > MAX_CHARS) return;
-        const json = ed.getJSON() as Record<string, unknown>;
-        const result = onSendRef.current(text, json);
+        const result = onSendRef.current(text, ed.getJSON());
         void Promise.resolve(result).then((ok) => {
           if (ok === false) return;
           setTimeout(() => ed.commands.clearContent(true), 0);

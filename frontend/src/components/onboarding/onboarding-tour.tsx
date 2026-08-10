@@ -77,7 +77,9 @@ function TourTooltip({
 }: TooltipRenderProps) {
   return (
     <div className="bg-card text-card-foreground rounded-xl shadow-lg border border-border p-5 max-w-xs">
-      <p className="type-body">{step.content as string}</p>
+      {/* `Step["content"]` é `ReactNode`, e o JSX renderiza ReactNode direto —
+          o `as string` de antes não convertia nada, só calava o compilador. */}
+      <p className="type-body">{step.content}</p>
 
       <div className="flex items-center justify-between mt-4 gap-2">
         <Button
