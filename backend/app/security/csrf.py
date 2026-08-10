@@ -15,6 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import JSONResponse
 
 from app.core.config import settings
+from app.core.cookies import ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE
 from app.core.security import safe_compare
 
 if TYPE_CHECKING:
@@ -42,6 +43,9 @@ _CSRF_COOKIE = "csrf_token"
 _CSRF_HEADER = "x-csrf-token"
 _TOKEN_BYTES = 32
 
+# Os cookies cuja presença significa "o browser pode ter anexado isto sozinho".
+_AUTH_COOKIES = (ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE)
+
 
 class CSRFMiddleware(BaseHTTPMiddleware):
     """Enforce the double-submit cookie pattern on mutating requests."""
@@ -53,6 +57,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             return response
 
         if request.url.path in _EXEMPT_PATHS:
+            return await call_next(request)
+
+        if _is_bearer_only(request):
             return await call_next(request)
 
         cookie_token = request.cookies.get(_CSRF_COOKIE)
@@ -67,6 +74,27 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         _ensure_csrf_cookie(request, response)
         return response
+
+
+def _is_bearer_only(request: Request) -> bool:
+    """A requisição se autentica só por ``Authorization``, sem cookie de sessão?
+
+    CSRF existe por um motivo único: o browser anexa cookie sozinho, então um
+    site hostil consegue emitir uma requisição autenticada que o usuário não
+    pediu. Nada disso vale para o header `Authorization` — nenhum browser o
+    preenche por conta própria, e o atacante teria que já conhecer o token, o
+    que o dispensaria do ataque. Exigir o header CSRF de um cliente de linha de
+    comando seria cerimônia sem ameaça correspondente.
+
+    O `and not cookie` não é detalhe. Sem ele, bastaria um `Authorization:
+    Bearer qualquer-coisa` — nem precisa ser válido, isto aqui não valida nada —
+    para desligar o CSRF de uma requisição que segue autenticada pelo cookie que
+    o browser anexou. Seria abrir exatamente o buraco que o middleware fecha.
+    """
+    header = request.headers.get("authorization", "")
+    if not header.lower().startswith("bearer "):
+        return False
+    return not any(request.cookies.get(name) for name in _AUTH_COOKIES)
 
 
 def _ensure_csrf_cookie(request: Request, response: Response) -> None:

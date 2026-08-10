@@ -28,6 +28,7 @@ from app.api.v1.endpoints.reviews import reviews_router
 from app.api.v1.endpoints.rounds import group_rounds_router, rounds_router
 from app.api.v1.endpoints.shelf import shelf_group_router, shelf_public_router
 from app.api.v1.endpoints.stats import stats_group_router, stats_user_router
+from app.api.v1.endpoints.tokens import router as tokens_router
 from app.api.v1.endpoints.users import router as users_router
 from app.api.v1.endpoints.wrapped import wrapped_group_router
 
@@ -36,6 +37,7 @@ api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health_router)
 api_router.include_router(config_router)
 api_router.include_router(auth_router, prefix="/auth")
+api_router.include_router(tokens_router, prefix="/auth/tokens")
 api_router.include_router(books_router, prefix="/books", tags=["books"])
 api_router.include_router(groups_router, prefix="/groups", tags=["groups"])
 api_router.include_router(group_rounds_router, prefix="/groups/{group_id}/rounds", tags=["rounds"])

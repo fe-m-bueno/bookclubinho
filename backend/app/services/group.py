@@ -22,6 +22,7 @@ import qrcode
 
 from app.core.config import settings
 from app.core.exceptions import ServiceError
+from app.core.rls import group_lookup
 from app.core.security import generate_group_code
 from app.db.models.group import Group, GroupMember, GroupRole
 from app.db.models.message import GroupMessage
@@ -42,10 +43,16 @@ class GroupError(ServiceError):
 
 
 async def validate_group_code(db: AsyncSession, code: str) -> Group:
-    """Busca grupo pelo invite_code. Raise GroupError(404) se nao encontrar."""
-    result = await db.execute(
-        select(Group).where(Group.invite_code == code.upper()).options(selectinload(Group.members))
-    )
+    """Busca grupo pelo invite_code. Raise GroupError(404) se nao encontrar.
+
+    Entrar num clube é, por definição, ler um grupo do qual ainda não se
+    participa — daí a porta da 0028. Quem prova o direito de ver este grupo é
+    conhecer o código, não uma linha de participação.
+    """
+    async with group_lookup(db):
+        result = await db.execute(
+            select(Group).where(Group.invite_code == code.upper()).options(selectinload(Group.members))
+        )
     group = result.scalar_one_or_none()
     if group is None:
         raise GroupError("Clube não encontrado.", status_code=404)
@@ -161,7 +168,12 @@ async def _generate_unique_code(db: AsyncSession, max_retries: int = _MAX_CODE_R
     """Generate an invite code that doesn't collide with existing ones."""
     for _ in range(max_retries):
         code = generate_group_code()
-        result = await db.execute(select(Group.id).where(Group.invite_code == code))
+        # Colisão tem de ser detectada contra *todos* os grupos, inclusive os de
+        # outras pessoas — se a política escondesse os alheios, todo código
+        # pareceria livre e a unicidade cairia no constraint do banco, virando
+        # erro 500 em vez de nova tentativa.
+        async with group_lookup(db):
+            result = await db.execute(select(Group.id).where(Group.invite_code == code))
         if result.scalar_one_or_none() is None:
             return code
     raise GroupError("Falha ao gerar código único. Tente novamente.", status_code=500)

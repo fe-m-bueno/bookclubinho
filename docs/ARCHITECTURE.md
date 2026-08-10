@@ -64,7 +64,7 @@ Request → SecurityHeaders → CORS → CSRF → BodySizeLimit → RLS → Rout
 | CORS | `main.py` — origins explícitos, sem wildcard |
 | CSRF | `app/security/csrf.py` — double-submit cookie + HMAC |
 | Body size limit | `app/security/body_limit.py` — 1MB padrão, 16MB em uploads |
-| Row Level Security | Toda tabela com RLS habilitado + políticas por `auth.uid()` |
+| Row Level Security | Toda tabela com RLS habilitado + políticas por `app.current_user_id`. **Não aplicado hoje** — o app conecta como superusuário, que ignora RLS. Ver abaixo. |
 | Rate limiting | `slowapi` + Upstash Redis — por IP e por endpoint |
 | Brute force | `app/services/auth.py` — Redis counter, lockout em 10 falhas, delay progressivo |
 | Flood protection | `app/services/chat.py` — max 10 msgs/min/usuário/grupo + dedup 30s |
@@ -79,6 +79,23 @@ Request → SecurityHeaders → CORS → CSRF → BodySizeLimit → RLS → Rout
 | Timing attacks | `hmac.compare_digest()` para tokens, bcrypt para senhas |
 | Email enumeration | Todas as respostas de auth retornam mensagem idêntica |
 | Audit log | `app/services/audit.py` — imutável, fire-and-forget, RLS read-own |
+
+### RLS: escrito, correto, e ainda não aplicado
+
+O app conecta com um papel superusuário, e superusuário **não avalia política** —
+nem com `FORCE ROW LEVEL SECURITY`. Então as 86 políticas do schema hoje não
+barram nada: a aplicação é o guarda único.
+
+Isso não é aspiracional nem quebrado — é um passo de configuração pendente. As
+migrations 0025–0027 corrigiram os cinco defeitos que impediam a troca, e o fluxo
+completo foi verificado com o app num papel sem `BYPASSRLS` e sem posse das
+tabelas. Falta apontar o `DATABASE_URL` do serviço web para esse papel,
+mantendo o privilegiado nas migrations. Procedimento, verificação e rollback em
+`docs/RUNBOOK.md`.
+
+**Ao escrever endpoint, escope a query na aplicação.** Não presuma que o banco
+filtra por usuário, porque hoje ele não filtra. `membership.resolve` e os
+`GroupMemberDep`/`GroupAdminDep` são o que de fato protege.
 
 ---
 
@@ -125,6 +142,35 @@ Magic Link:
   1. POST /auth/magic-link → gera token assinado → email via Resend
   2. GET /auth/magic-link/verify?token=... → valida → set cookies
 ```
+
+### Personal access tokens (clientes que não são browser)
+
+Cookie httpOnly + CSRF é a resposta certa para o browser, e só para ele: as duas
+peças existem porque o browser anexa cookie sozinho. Uma CLI ou um agente não
+têm esse problema, então usam `Authorization: Bearer <token>`.
+
+```
+POST   /api/v1/auth/tokens       cria — devolve o segredo uma única vez
+GET    /api/v1/auth/tokens       lista (só prefixo, nunca o segredo)
+DELETE /api/v1/auth/tokens/{id}  revoga
+
+curl -H "Authorization: Bearer bcp_xxx" $API/users/me
+```
+
+Quatro decisões que valem mais que o código:
+
+- **Só o hash vai para o banco** (SHA-256, não bcrypt — o token são 256 bits que
+  nós sorteamos, não há o que adivinhar; ver `core/security.py`).
+- **Gerenciar tokens exige sessão de browser.** Um PAT não cria nem revoga PATs,
+  senão um token vazado vira permanente e expulsa o dono — `deps.SessionOnlyUser`.
+- **CSRF é dispensado só quando não há cookie de sessão junto.** Com cookie
+  presente a validação continua valendo, senão um `Authorization` inventado
+  desligaria o CSRF de uma requisição autenticada por cookie.
+- **O cookie vence o Bearer** quando os dois vêm na mesma requisição.
+
+O contexto RLS deste caminho é aplicado na dependência, não no `RLSMiddleware`:
+o middleware roda antes de existir sessão de banco, e resolver token opaco exige
+um SELECT. Ver `deps._resolve_bearer_user_id` e o comentário da migration 0024.
 
 ---
 

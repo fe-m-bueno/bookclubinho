@@ -88,6 +88,31 @@ def with_savepoints(db: AsyncMock) -> AsyncMock:
     return db
 
 
+def with_rls_hatches(db: AsyncMock, resultados: list[Any]) -> AsyncMock:
+    """Serve `resultados` em ordem, ignorando os `set_config` das portas de RLS.
+
+    As portas (`rls.group_lookup`, `rls.auth_lookup`) emitem `set_config` pela
+    própria sessão, então um dublê com `side_effect=[a, b]` esgota a sequência
+    nos comandos da porta em vez das queries que o teste quis dublar. Filtrar
+    aqui mantém o teste falando das queries que importam.
+
+    Publica `db.consultas_reais` — quantas queries de verdade passaram, sem os
+    `set_config`. Use isso em vez de `execute.call_count` quando o teste conta
+    round-trips, senão a contagem passa a incluir os comandos das portas.
+    """
+    fila = list(resultados)
+    db.consultas_reais = 0
+
+    async def _execute(statement: object, *_args: object, **_kwargs: object) -> object:
+        if "set_config" in str(statement):
+            return MagicMock()
+        db.consultas_reais += 1
+        return fila.pop(0)
+
+    db.execute = AsyncMock(side_effect=_execute)
+    return db
+
+
 def mock_db_returning(value: object) -> AsyncMock:
     """AsyncSession mock cujo execute() retorna scalar_one_or_none = value."""
     result = MagicMock()

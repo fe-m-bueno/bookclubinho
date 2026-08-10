@@ -14,7 +14,7 @@ from app.db.models.group import GroupRole
 from app.schemas.group import GroupJoinRequest
 from app.services.group import GroupError
 from app.services.membership import MembershipError
-from tests.conftest import RecordingAfterCommit, make_user, mock_db_returning
+from tests.conftest import RecordingAfterCommit, make_user, mock_db_returning, with_rls_hatches
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -324,7 +324,7 @@ class TestCreateGroup:
         no_collision_result = MagicMock()
         no_collision_result.scalar_one_or_none.return_value = None
 
-        mock_db.execute = AsyncMock(side_effect=[collision_result, collision_result, no_collision_result])
+        with_rls_hatches(mock_db, [collision_result, collision_result, no_collision_result])
 
         group = await create_group(after_commit=RecordingAfterCommit(), db=mock_db, user=user, name="Retry Clube")
         assert group.name == "Retry Clube"
@@ -1197,7 +1197,7 @@ class TestRegenerateInviteCode:
         group_result.scalar_one_or_none.return_value = group
         no_collision = MagicMock()
         no_collision.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(side_effect=[group_result, no_collision])
+        with_rls_hatches(mock_db, [group_result, no_collision])
 
         with patch(
             "app.services.group._upload_qr_code",
@@ -1226,7 +1226,7 @@ class TestRegenerateInviteCode:
         no_collision = MagicMock()
         no_collision.scalar_one_or_none.return_value = None
 
-        mock_db.execute = AsyncMock(side_effect=[group_result, collision, collision, no_collision])
+        with_rls_hatches(mock_db, [group_result, collision, collision, no_collision])
 
         with patch(
             "app.services.group._upload_qr_code",
@@ -1236,7 +1236,8 @@ class TestRegenerateInviteCode:
             code, qr_url = await regenerate_invite_code(db=mock_db, group_id=group_id)
 
         assert len(code) == 8
-        assert mock_db.execute.call_count == 4  # 1 group + 2 collisions + 1 success
+        # Queries reais, sem os `set_config` das portas de RLS.
+        assert mock_db.consultas_reais == 4  # 1 group + 2 collisions + 1 success
 
     @pytest.mark.asyncio
     async def test_regenerate_exhausts_retries(self) -> None:
@@ -1251,7 +1252,7 @@ class TestRegenerateInviteCode:
         collision = MagicMock()
         collision.scalar_one_or_none.return_value = uuid.uuid4()
 
-        mock_db.execute = AsyncMock(side_effect=[group_result] + [collision] * 5)
+        with_rls_hatches(mock_db, [group_result] + [collision] * 5)
 
         with pytest.raises(GroupError, match="código único") as exc_info:
             await regenerate_invite_code(db=mock_db, group_id=group_id)
