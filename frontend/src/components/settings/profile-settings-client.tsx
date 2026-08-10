@@ -9,6 +9,7 @@ import { ptBR } from "date-fns/locale";
 import { Lock } from "lucide-react";
 import { toast } from "sonner";
 
+import { Label } from "@/components/ui/label";
 import { useSkeletonState } from "@/hooks/use-skeleton-state";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { USERNAME_REGEX } from "@/hooks/use-username-check";
@@ -193,7 +194,7 @@ function ProfileForm({ user }: { user: UserMe }) {
 
       {/* Card 2: Profile info */}
       <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-5">
-        <h2 className="font-semibold text-base">Informações do perfil</h2>
+        <h2 className="type-title">Informações do perfil</h2>
 
         <FormField label="Nome" htmlFor="display_name" error={errors.display_name?.message}>
           <Input
@@ -222,16 +223,19 @@ function ProfileForm({ user }: { user: UserMe }) {
               maxLength={100}
               {...register("status_text")}
             />
-            <span className="absolute bottom-2 right-3 text-xs text-muted-foreground">
+            <span className="type-micro absolute bottom-2 right-3">
               {statusText.length}/100
             </span>
           </div>
         </FormField>
 
         <div className="space-y-2">
-          <span className="text-sm font-medium leading-none">Gêneros favoritos</span>
+          {/* O primitivo `Label`, e não um papel da rampa: os campos acima
+              tiram o rótulo dele, e 15px aqui deixaria este 1px fora dos
+              vizinhos — o defeito que a rampa existe para tirar. */}
+          <Label>Gêneros favoritos</Label>
           {errors.preferred_genres && (
-            <p className="text-sm text-destructive">{errors.preferred_genres.message}</p>
+            <p className="type-meta text-destructive">{errors.preferred_genres.message}</p>
           )}
           <GenreSelector
             selected={selectedGenres}
@@ -250,7 +254,7 @@ function ProfileForm({ user }: { user: UserMe }) {
             <SelectContent>
               {TIMEZONES.map((group) => (
                 <div key={group.label}>
-                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  <div className="type-micro px-2 py-1 font-semibold uppercase tracking-wide">
                     {group.label}
                   </div>
                   {group.options.map((tz) => (
@@ -267,19 +271,19 @@ function ProfileForm({ user }: { user: UserMe }) {
 
       {/* Card 3: Account info (read-only) */}
       <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
-        <h2 className="font-semibold text-base">Informações da conta</h2>
-        <div className="flex items-center gap-2 text-sm">
+        <h2 className="type-title">Informações da conta</h2>
+        <div className="type-body flex items-center gap-2">
           <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground">E-mail:</span>
           <span className="font-medium">{user.email}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm">
+        <div className="type-body flex items-center gap-2">
           <span className="text-muted-foreground">Método de login:</span>
           <Badge variant="secondary">
             {AUTH_PROVIDER_LABELS[user.auth_provider] ?? user.auth_provider}
           </Badge>
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="type-meta">
           Membro desde{" "}
           <span className="text-foreground font-medium">
             {format(new Date(user.created_at), "MMMM 'de' yyyy", { locale: ptBR })}
@@ -289,7 +293,7 @@ function ProfileForm({ user }: { user: UserMe }) {
 
       {/* Card 4: Stats (read-only) */}
       <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
-        <h2 className="font-semibold text-base">Estatísticas</h2>
+        <h2 className="type-title">Estatísticas</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
             label="Tempo de leitura"
@@ -317,8 +321,8 @@ function ProfileForm({ user }: { user: UserMe }) {
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-muted/50 rounded-xl p-3 flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="font-semibold text-sm">{value}</span>
+      <span className="type-micro">{label}</span>
+      <span className="type-body font-semibold">{value}</span>
     </div>
   );
 }

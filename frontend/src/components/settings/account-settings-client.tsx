@@ -47,8 +47,8 @@ function ChangePasswordCard({ authProvider }: { authProvider: string }) {
   if (authProvider !== "local") {
     return (
       <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
-        <h2 className="font-semibold text-base">Alterar senha</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="type-title">Alterar senha</h2>
+        <p className="type-meta">
           Sua conta usa{" "}
           <span className="font-medium text-foreground">
             {authProvider === "google" ? "Google" : "Magic Link"}
@@ -83,7 +83,7 @@ function ChangePasswordCard({ authProvider }: { authProvider: string }) {
 
   return (
     <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-5">
-      <h2 className="font-semibold text-base">Alterar senha</h2>
+      <h2 className="type-title">Alterar senha</h2>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <FormField label="Senha atual" htmlFor="current_password" error={errors.current_password?.message}>
           <PasswordInput id="current_password" autoComplete="current-password" {...register("current_password")} />
@@ -150,13 +150,13 @@ function ChangeEmailCard({
 
   return (
     <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-4">
-      <h2 className="font-semibold text-base">E-mail</h2>
+      <h2 className="type-title">E-mail</h2>
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{currentEmail}</span>
+        <span className="type-meta">{currentEmail}</span>
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="text-sm font-medium text-primary flex items-center gap-1"
+          className="type-meta text-primary flex items-center gap-1"
         >
           Alterar e-mail
           <ChevronDown
@@ -224,12 +224,12 @@ function ChangeEmailCard({
 function AuthProviderCard({ authProvider }: { authProvider: string }) {
   return (
     <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
-      <h2 className="font-semibold text-base">Método de login</h2>
+      <h2 className="type-title">Método de login</h2>
       <div className="flex items-center gap-2">
         <Badge variant="secondary">
           {AUTH_PROVIDER_LABELS[authProvider] ?? authProvider}
         </Badge>
-        <span className="text-sm text-muted-foreground">
+        <span className="type-meta">
           {authProvider === "local" && "Login via e-mail e senha"}
           {authProvider === "google" && "Login via conta Google"}
           {authProvider === "magic_link" && "Login via magic link no e-mail"}

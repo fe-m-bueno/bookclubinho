@@ -71,8 +71,8 @@ function DataExportCard() {
 
   return (
     <div className="bg-card rounded-2xl shadow-warm-sm p-5 space-y-3">
-      <h2 className="font-semibold text-base">Exportar meus dados</h2>
-      <p className="text-sm text-muted-foreground">
+      <h2 className="type-title">Exportar meus dados</h2>
+      <p className="type-meta">
         Receba um arquivo com todos os seus dados: perfil, grupos, progresso,
         reviews e badges.
       </p>
@@ -157,10 +157,10 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
   return (
     <>
       <div className="border border-destructive/30 bg-destructive/5 rounded-2xl p-5 space-y-3">
-        <h2 className="font-semibold text-base text-destructive">
+        <h2 className="type-title text-destructive">
           Excluir minha conta
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="type-meta">
           Esta ação é permanente e não pode ser desfeita.
         </p>
         <Button
@@ -181,7 +181,7 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
                   Leia o que se perde antes de continuar. Não há como desfazer.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-3 text-sm">
+              <div className="type-body space-y-3">
                 <p className="text-muted-foreground">
                   Ao excluir sua conta:
                 </p>
@@ -218,7 +218,7 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
+                <p className="type-meta">
                   Digite{" "}
                   <span className="font-mono font-bold text-foreground">
                     EXCLUIR
@@ -263,13 +263,13 @@ function DeleteAccountCard({ authProvider }: { authProvider: string }) {
                 <DialogTitle>Confirmar senha</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
+                <p className="type-meta">
                   Digite sua senha atual para confirmar a exclusão da conta.
                 </p>
                 <div className="space-y-1.5">
                   <label
                     htmlFor="delete-password"
-                    className="text-sm font-medium"
+                    className="type-body"
                   >
                     Senha atual
                   </label>

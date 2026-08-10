@@ -41,7 +41,7 @@ export function SlideTopRated({ data }: SlideTopRatedProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-6 w-full max-w-sm mx-auto text-center">
       <motion.p
-        className="text-sm font-semibold text-foreground/60 uppercase tracking-widest"
+        className="type-meta font-semibold text-foreground/60 uppercase tracking-widest"
         initial={shouldReduce ? {} : { opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.3 }}
@@ -92,7 +92,7 @@ export function SlideTopRated({ data }: SlideTopRatedProps) {
       >
         <h2 className="text-2xl font-display font-bold text-foreground leading-tight">{book.title}</h2>
         {book.author && (
-          <p className="text-base text-foreground/60">{book.author}</p>
+          <p className="type-body text-foreground/60">{book.author}</p>
         )}
         <div className="flex flex-col items-center gap-1 mt-2">
           <StarRating rating={book.avg_rating} />

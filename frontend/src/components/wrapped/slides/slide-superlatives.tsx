@@ -33,7 +33,7 @@ export function SlideSuperlatives({ data }: SlideSuperlativesProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.3 }}
       >
-        <p className="text-sm font-semibold text-foreground/60 uppercase tracking-widest">
+        <p className="type-meta font-semibold text-foreground/60 uppercase tracking-widest">
           Superlativo do ano
         </p>
       </motion.div>
@@ -70,16 +70,16 @@ export function SlideSuperlatives({ data }: SlideSuperlativesProps) {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-foreground truncate">
+                <p className="type-body font-semibold text-foreground truncate">
                   {displayName}
                 </p>
-                <p className="text-xs text-foreground/60 truncate">{s.title}</p>
+                <p className="type-micro text-foreground/60 truncate">{s.title}</p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-xs font-bold text-foreground/80 tabular-nums">
+                <p className="type-micro font-bold text-foreground/80 tabular-nums">
                   {s.stat_value}
                 </p>
-                <p className="text-xs text-foreground/50">{s.stat_label}</p>
+                <p className="type-micro text-foreground/50">{s.stat_label}</p>
               </div>
             </motion.div>
           );

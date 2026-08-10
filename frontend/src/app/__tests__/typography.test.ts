@@ -128,8 +128,12 @@ const AREAS_MIGRADAS = [
   "components/home",
   "components/groups",
   "components/chat",
+  "components/stats",
+  "components/settings",
+  "components/wrapped",
   "app/auth",
   "app/onboarding",
+  "app/settings",
 ];
 
 /**
@@ -151,6 +155,22 @@ const EXCECOES = new Map([
     "components/groups/group-members-section.tsx",
     "idem, as iniciais do avatar da lista de membros",
   ],
+  [
+    "components/stats/member-leaderboard.tsx",
+    "idem, as iniciais do avatar do ranking",
+  ],
+  [
+    "components/wrapped/slides/slide-superlatives.tsx",
+    "idem, as iniciais do avatar do superlativo",
+  ],
+  [
+    "components/wrapped/slides/slide-funniest-quote.tsx",
+    "idem, as iniciais do avatar de quem escreveu a citação",
+  ],
+  [
+    "components/wrapped/wrapped-summary-card.tsx",
+    "não é superfície de UI: é a arte de compartilhamento, desenhada fora da tela num quadro fixo de 540x960 e exportada como imagem. O texto ali herda cor do gradiente por opacidade, e os papéis da rampa trazem cor de token — aplicá-los trocaria a arte por outra",
+  ],
 ]);
 
 describe("densidade", () => {
@@ -169,7 +189,18 @@ describe("densidade", () => {
    * separado, sem nada obrigando a escolher igual. `px-4` continua valendo
    * dentro de controle — botão tem largura própria e não é superfície.
    */
-  const PERMITIDOS = new Set(["p-5", "p-3", "px-5", "py-3", "px-4"]);
+  const PERMITIDOS = new Set([
+    "p-5",
+    "p-3",
+    "px-5",
+    "py-5",
+    "py-3",
+    // Medida de controle, não de superfície: botão, chip e item de menu têm
+    // caixa própria e não são o que a regra de densidade governa.
+    "px-4",
+    "px-2",
+    "py-1",
+  ]);
 
   const MIGRADOS = [
     "components/home/group-home-card.tsx",
@@ -177,6 +208,16 @@ describe("densidade", () => {
     "components/home/home-state-rail.tsx",
     "components/home/upcoming-meeting-pill.tsx",
     "components/home/recent-badge-card.tsx",
+    // O primitivo era o último de fora, e é ele que decide o padding de todo
+    // card de stats, de rodada, dos wizards e das telas de auth: `py-6` no
+    // Card com `px-6` nos slots, contra o `p-5` decidido no #275. Enquanto
+    // ficou de fora, "um padding de card" valia só para quem não usava Card.
+    "components/ui/card.tsx",
+    "components/settings/account-settings-client.tsx",
+    "components/settings/notifications-settings-client.tsx",
+    "components/settings/privacy-settings-client.tsx",
+    "components/settings/integrations-settings-client.tsx",
+    "components/settings/profile-settings-client.tsx",
   ];
 
   it.each(MIGRADOS)("%s usa só a escala de padding decidida", (rel) => {
@@ -193,6 +234,36 @@ describe("densidade", () => {
       componente: "components/home/group-home-card.tsx",
       skeleton: "components/home/home-skeleton.tsx",
     },
+    // O par que o #275 mediu: 16px de salto entre a tela e o que o skeleton
+    // reservava para ela.
+    {
+      componente: "components/stats/stats-client.tsx",
+      skeleton: "components/stats/stats-skeleton.tsx",
+    },
+    {
+      componente: "components/settings/profile-settings-client.tsx",
+      skeleton: "components/settings/profile-settings-skeleton.tsx",
+    },
+    {
+      componente: "components/settings/account-settings-client.tsx",
+      skeleton: "components/settings/account-settings-skeleton.tsx",
+    },
+    {
+      componente: "components/settings/notifications-settings-client.tsx",
+      skeleton: "components/settings/notifications-settings-skeleton.tsx",
+    },
+    {
+      componente: "components/settings/sessions-settings-client.tsx",
+      skeleton: "components/settings/sessions-settings-skeleton.tsx",
+    },
+    {
+      componente: "components/settings/privacy-settings-client.tsx",
+      skeleton: "components/settings/privacy-settings-skeleton.tsx",
+    },
+    {
+      componente: "components/settings/integrations-settings-client.tsx",
+      skeleton: "components/settings/integrations-settings-skeleton.tsx",
+    },
   ];
 
   it.each(PARES)(
@@ -205,6 +276,32 @@ describe("densidade", () => {
       }
     },
   );
+});
+
+/**
+ * O primitivo é o único componente cuja tipografia chega a sete áreas de uma
+ * vez: stats, rodadas, os dois wizards e as três telas de auth montam card com
+ * ele. Enquanto `CardTitle` não tinha tamanho, herdava os 16px do documento e
+ * saía em Fraunces — corte de display num tamanho de corpo, o mesmo defeito que
+ * a fatia 1 tirou do card da home.
+ */
+describe("o primitivo Card", () => {
+  const CARD = readFileSync(
+    path.resolve(__dirname, "../../components/ui/card.tsx"),
+    "utf8",
+  );
+
+  it("tira título e descrição da rampa, não de tamanhos soltos", () => {
+    expect(CARD).toContain("type-title");
+    expect(CARD).toContain("type-meta");
+    expect(CARD).not.toMatch(/\btext-(xs|sm|base|lg)\b/);
+  });
+
+  it("não deixa sobrar o padding de antes da escala", () => {
+    // `py-6`/`px-6` no primitivo com `p-5` decidido no #275 é a inconsistência
+    // se escondendo um nível abaixo de onde alguém procuraria.
+    expect(CARD).not.toMatch(/\b(p|px|py)-6\b/);
+  });
 });
 
 describe("áreas já migradas", () => {

@@ -56,8 +56,8 @@ export function WrappedClient({ groupId, year }: WrappedClientProps) {
         <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-4 p-8 text-center">
           <CloseButton onClick={() => router.push(`/groups/${groupId}`)} />
           <p className="text-2xl">📚</p>
-          <h2 className="text-xl font-semibold">Nenhum livro finalizado em {year}</h2>
-          <p className="text-muted-foreground">
+          <h2 className="type-title">Nenhum livro finalizado em {year}</h2>
+          <p className="type-body text-muted-foreground">
             O grupo ainda não terminou nenhum livro este ano.
           </p>
         </div>
@@ -71,15 +71,15 @@ export function WrappedClient({ groupId, year }: WrappedClientProps) {
       <CloseButton onClick={() => router.push(`/groups/${groupId}`)} />
       <div className="text-5xl">✨</div>
       <h1 className="text-3xl font-bold">Wrapped {year}</h1>
-      <p className="text-muted-foreground max-w-sm">
+      <p className="type-body text-muted-foreground max-w-sm">
         Reviva os melhores momentos do clube do livro em {year}.
       </p>
       {generateError && (
-        <p className="text-destructive text-sm">{generateError}</p>
+        <p className="type-meta text-destructive">{generateError}</p>
       )}
       {error && (
         <>
-          <p className="text-destructive text-sm">{errorMessage(error)}</p>
+          <p className="type-meta text-destructive">{errorMessage(error)}</p>
           <Button variant="ghost" size="sm" onClick={refetch}>
             Tentar novamente
           </Button>

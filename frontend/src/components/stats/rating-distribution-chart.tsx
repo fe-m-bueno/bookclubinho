@@ -38,10 +38,10 @@ export function RatingDistributionChart({ data }: RatingDistributionChartProps) 
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Distribuição de avaliações</CardTitle>
+          <CardTitle>Distribuição de avaliações</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
+          <p className="type-meta text-center py-8">
             Nenhuma avaliação ainda.
           </p>
         </CardContent>
@@ -52,7 +52,7 @@ export function RatingDistributionChart({ data }: RatingDistributionChartProps) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Distribuição de avaliações</CardTitle>
+        <CardTitle>Distribuição de avaliações</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={200}>

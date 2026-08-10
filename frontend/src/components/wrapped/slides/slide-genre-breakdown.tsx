@@ -36,7 +36,7 @@ export function SlideGenreBreakdown({ data }: SlideGenreBreakdownProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.3 }}
       >
-        <p className="text-sm font-semibold text-foreground/60 uppercase tracking-widest">
+        <p className="type-meta font-semibold text-foreground/60 uppercase tracking-widest">
           Gêneros do ano
         </p>
       </motion.div>
@@ -52,10 +52,10 @@ export function SlideGenreBreakdown({ data }: SlideGenreBreakdownProps) {
           return (
             <motion.div key={genre.genre} variants={variants.item} className="space-y-1.5">
               <div className="flex justify-between items-baseline">
-                <span className="text-sm font-semibold text-foreground">
+                <span className="type-body font-semibold text-foreground">
                   {genre.genre}
                 </span>
-                <span className="text-sm font-bold text-foreground/70 tabular-nums">
+                <span className="type-body font-bold text-foreground/70 tabular-nums">
                   {genre.percentage.toFixed(0)}%
                 </span>
               </div>
@@ -74,7 +74,7 @@ export function SlideGenreBreakdown({ data }: SlideGenreBreakdownProps) {
                   }
                 />
               </div>
-              <p className="text-xs text-foreground/50">
+              <p className="type-micro text-foreground/50">
                 {genre.count} {genre.count === 1 ? "livro" : "livros"}
               </p>
             </motion.div>

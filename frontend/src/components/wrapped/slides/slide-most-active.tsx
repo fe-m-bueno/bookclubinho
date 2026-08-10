@@ -26,7 +26,7 @@ export function SlideMostActive({ data }: SlideMostActiveProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-8 w-full max-w-sm mx-auto text-center">
       <motion.p
-        className="text-sm font-semibold text-foreground/60 uppercase tracking-widest"
+        className="type-meta font-semibold text-foreground/60 uppercase tracking-widest"
         initial={shouldReduce ? {} : { opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.3 }}
@@ -72,7 +72,7 @@ export function SlideMostActive({ data }: SlideMostActiveProps) {
 
         <div className="space-y-1">
           <h2 className="text-3xl font-display font-black text-foreground">{displayName}</h2>
-          <p className="text-base text-foreground/60">@{member.username}</p>
+          <p className="type-body text-foreground/60">@{member.username}</p>
         </div>
       </motion.div>
 
@@ -82,7 +82,7 @@ export function SlideMostActive({ data }: SlideMostActiveProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.4, delay: 0.5 }}
       >
-        <p className="text-foreground/80 text-base">
+        <p className="type-body text-foreground/80">
           O leitor mais dedicado do grupo em {data.year}
         </p>
       </motion.div>
