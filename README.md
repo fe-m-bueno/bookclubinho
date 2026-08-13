@@ -1,23 +1,23 @@
 # Bookclubinho
 
-Uma plataforma colaborativa para gerenciar grupos de leitura, permitindo criar clubes, votar em livros, acompanhar progresso de leitura, discutir e compartilhar experiências de forma integrada e engajante.
+A collaborative platform for running reading groups: create clubs, vote on books, track reading progress, discuss, and share the experience in one place.
 
-[Documentação completa](./docs) · [Setup rápido](./GETTING_STARTED.md) · [Deploy](./DEPLOY.md) · [Arquitetura](./docs/ARCHITECTURE.md) · [Runbook de produção](./docs/RUNBOOK.md)
+[Full documentation](./docs) · [Quick setup](./GETTING_STARTED.md) · [Deploy](./DEPLOY.md) · [Architecture](./docs/ARCHITECTURE.md) · [Production runbook](./docs/RUNBOOK.md)
 
 ---
 
-## Visão Geral
+## Overview
 
-Bookclubinho é uma webapp full-stack que torna a experiência de clube do livro digital. Os usuários podem:
+Bookclubinho is a full-stack web app that makes the book club experience digital. Users can:
 
-- **Criar ou ingressar em grupos** de leitura com até 8 membros
-- **Indicar e votar em livros** (integração com Hardcover API para catálogo)
-- **Acompanhar progresso** de leitura com streak de dias consecutivos
-- **Chat em tempo real** com estilo iMessage — mensagens, reações emoji, citações
-- **Escrever reviews** após finalizar livros (rating de estrelas + características)
-- **Agendar encontros** do clube com RSVP dos membros
-- **Desbloquear badges** por milestones (leitura, atividade, comunidade)
-- **Visualizar Wrapped anual** com estatísticas personalizadas
+- **Create or join reading groups** of up to 8 members
+- **Nominate and vote on books** (with a Hardcover API integration for the catalog)
+- **Track reading progress**, with a consecutive-day streak
+- **Chat in real time**, iMessage-style — messages, emoji reactions, quotes
+- **Write reviews** after finishing a book (star rating + characteristics)
+- **Schedule club meetings** with member RSVPs
+- **Unlock badges** for milestones (reading, activity, community)
+- **View an annual Wrapped** with personalized statistics
 
 ---
 
@@ -25,49 +25,49 @@ Bookclubinho é uma webapp full-stack que torna a experiência de clube do livro
 
 ### Frontend
 
-- **Framework:** Next.js 16+ com App Router
-- **Linguagem:** TypeScript strict mode
+- **Framework:** Next.js 16+ with the App Router
+- **Language:** TypeScript strict mode
 - **Styling:** Tailwind CSS + shadcn/ui (new-york)
-- **Animações:** Framer Motion
-- **Estado:** Zustand
+- **Animation:** Framer Motion
+- **State:** Zustand
 - **HTTP:** React Query (TanStack Query)
-- **Editor Rich Text:** Tiptap
+- **Rich text editor:** Tiptap
 - **Deploy:** Vercel
 
 ### Backend
 
-- **Framework:** FastAPI com Python 3.12+
+- **Framework:** FastAPI with Python 3.12+
 - **Validation:** Pydantic v2
 - **Database:** SQLAlchemy 2.0 async + asyncpg
 - **Migrations:** Alembic
 - **Auth:** httpOnly cookies + JWT HS256 + OAuth2 Google + magic link
-- **Cache & Realtime:** Upstash Redis (HTTP para cache, TCP para SSE)
-- **Rate Limiting:** slowapi + Redis
-- **Logs estruturados:** structlog
+- **Cache & realtime:** Upstash Redis (HTTP for cache, TCP for SSE)
+- **Rate limiting:** slowapi + Redis
+- **Structured logs:** structlog
 - **Deploy:** Render
 
-### Infraestrutura
+### Infrastructure
 
 - **Database:** PostgreSQL (Render)
-- **Cache & Realtime:** Upstash Redis (TCP + HTTP)
+- **Cache & realtime:** Upstash Redis (TCP + HTTP)
 - **Storage:** Cloudflare R2 (avatars, media, exports)
-- **Email transacional:** Resend
-- **Livros:** Hardcover GraphQL API
-- **Observabilidade:** Sentry (erros + performance)
+- **Transactional email:** Resend
+- **Books:** Hardcover GraphQL API
+- **Observability:** Sentry (errors + performance)
 - **DNS/CDN:** Cloudflare
 
-### Desenvolvimento Local
+### Local Development
 
-Docker Compose para:
-- PostgreSQL 16 (porta 5432)
-- Redis 7 (porta 6379)
-- MinIO (storage local S3-compatível, porta 9000)
+Docker Compose provides:
+- PostgreSQL 16 (port 5432)
+- Redis 7 (port 6379)
+- MinIO (local S3-compatible storage, port 9000)
 
-Frontend e backend rodam **nativamente no host** (não em Docker) para hot reload.
+The frontend and backend run **natively on the host** (not in Docker) for hot reload.
 
 ---
 
-## Pré-requisitos
+## Prerequisites
 
 - **Node.js** 18+ (npm/yarn/pnpm)
 - **Python** 3.12+
@@ -76,9 +76,9 @@ Frontend e backend rodam **nativamente no host** (não em Docker) para hot reloa
 
 ---
 
-## Iniciando Rápido
+## Quick Start
 
-### 1. Clone e instale dependências
+### 1. Clone and Install the Dependencies
 
 ```bash
 git clone <repo-url>
@@ -95,7 +95,7 @@ pip install -r requirements.txt
 cd ..
 ```
 
-### 2. Configure variáveis de ambiente
+### 2. Configure the Environment Variables
 
 **Frontend** (`.env.local`):
 ```env
@@ -106,25 +106,25 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ```env
 DATABASE_URL=postgresql+asyncpg://bookclub:bookclub@localhost:5432/bookclub
 REDIS_URL=redis://localhost:6379
-JWT_SECRET=seu-super-secreto-dev-key
+JWT_SECRET=your-super-secret-dev-key
 ENVIRONMENT=dev
 ```
 
-Para detalhes completos, veja [GETTING_STARTED.md](./GETTING_STARTED.md).
+For the full details, see [GETTING_STARTED.md](./GETTING_STARTED.md).
 
-### 3. Inicie infraestrutura
+### 3. Start the Infrastructure
 
 ```bash
 make up
 ```
 
-### 4. Aplique migrations
+### 4. Apply the Migrations
 
 ```bash
 make migrate
 ```
 
-### 5. Inicie os serviços (em terminais separados)
+### 5. Start the Services (in separate terminals)
 
 ```bash
 # Terminal 1
@@ -136,77 +136,77 @@ cd frontend
 npm run dev
 ```
 
-Abra `http://localhost:3000` no navegador.
+Open `http://localhost:3000` in your browser.
 
 ---
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 bookclubinho/
 ├── frontend/                 # Next.js 16+ app
 │   ├── src/
-│   │   ├── app/             # App Router pages e layouts
-│   │   ├── components/      # Componentes reutilizáveis
-│   │   ├── lib/             # Helpers, clientes HTTP, utilitários
+│   │   ├── app/             # App Router pages and layouts
+│   │   ├── components/      # Reusable components
+│   │   ├── lib/             # Helpers, HTTP clients, utilities
 │   │   └── stores/          # Zustand stores
 │   ├── package.json
 │   └── next.config.ts
 │
 ├── backend/                  # FastAPI Python
 │   ├── app/
-│   │   ├── api/             # Routers da API
-│   │   ├── core/            # Config, segurança, dependências
-│   │   ├── db/              # Models SQLAlchemy, engine, seeds
+│   │   ├── api/             # API routers
+│   │   ├── core/            # Config, security, dependencies
+│   │   ├── db/              # SQLAlchemy models, engine, seeds
 │   │   ├── schemas/         # Pydantic schemas (request/response)
-│   │   ├── services/        # Lógica de negócio + APIs externas
+│   │   ├── services/        # Business logic + external APIs
 │   │   ├── workers/         # Background tasks, notifications
-│   │   ├── security/        # Sanitization, CSRF, rate limit
-│   │   └── storage/         # Helpers R2/S3
+│   │   ├── security/        # Sanitization, CSRF, rate limiting
+│   │   └── storage/         # R2/S3 helpers
 │   ├── alembic/             # Database migrations
-│   ├── main.py              # Entry point FastAPI
+│   ├── main.py              # FastAPI entry point
 │   ├── pyproject.toml
 │   └── requirements.txt
 │
-├── infra/                    # Infraestrutura local
+├── infra/                    # Local infrastructure
 │   ├── docker-compose.yml
 │   └── .env.example
 │
-├── docs/                     # Documentação
-│   ├── ARCHITECTURE.md       # Visão geral da arquitetura
-│   ├── RUNBOOK.md            # Procedimentos operacionais
-│   └── SETUP.md              # Setup detalhado
+├── docs/                     # Documentation
+│   ├── ARCHITECTURE.md       # Architecture overview
+│   ├── RUNBOOK.md            # Operational procedures
+│   └── SETUP.md              # Detailed setup
 │
-├── .claude/                  # Subagents especializados
+├── .claude/                  # Specialized subagents
 │   ├── agents/
 │   └── contexts/
 │
-├── Makefile                  # Atalhos de desenvolvimento
-├── CLAUDE.md                 # Instruções para Claude Code
-├── GETTING_STARTED.md        # Setup local passo a passo
-└── README.md                 # Este arquivo
+├── Makefile                  # Development shortcuts
+├── CLAUDE.md                 # Instructions for Claude Code
+├── GETTING_STARTED.md        # Step-by-step local setup
+└── README.md                 # This file
 ```
 
 ---
 
-## Comandos de Desenvolvimento
+## Development Commands
 
-### Infraestrutura
+### Infrastructure
 
 ```bash
-make up              # Iniciar PostgreSQL, Redis, MinIO
-make down            # Parar containers (dados preservados)
-make reset           # Destruir tudo e recrear do zero
-make logs            # Ver logs em tempo real
+make up              # Start PostgreSQL, Redis, MinIO
+make down            # Stop the containers (data preserved)
+make reset           # Destroy everything and recreate from scratch
+make logs            # Watch the logs live
 ```
 
 ### Database
 
 ```bash
-make migrate         # Aplicar migrations (alembic upgrade head)
-make migration msg="descrição"  # Criar nova migration
-make migrate-down    # Reverter última migration
-make seed            # Popular com dados de teste
+make migrate         # Apply the migrations (alembic upgrade head)
+make migration msg="description"  # Create a new migration
+make migrate-down    # Revert the last migration
+make seed            # Populate with test data
 ```
 
 ### Frontend
@@ -214,10 +214,10 @@ make seed            # Popular com dados de teste
 ```bash
 cd frontend
 npm run dev          # Development server (port 3000)
-npm run build        # Build para produção
+npm run build        # Production build
 npm run lint         # ESLint check
-npm test             # Rodar testes (Vitest)
-npm run test:e2e     # Testes E2E (Playwright)
+npm test             # Run the tests (Vitest)
+npm run test:e2e     # E2E tests (Playwright)
 ```
 
 ### Backend
@@ -225,126 +225,126 @@ npm run test:e2e     # Testes E2E (Playwright)
 ```bash
 cd backend
 uvicorn main:app --reload --host 0.0.0.0 --port 8000  # Dev server
-python -m pytest                          # Rodar testes
+python -m pytest                          # Run the tests
 ruff check . && ruff format .             # Lint + format
 ```
 
 ---
 
-## Arquitetura
+## Architecture
 
-### Segurança
+### Security
 
-- **RLS (Row Level Security)** habilitado em todas as tabelas
-- **CSRF** via double-submit cookie
-- **Rate limiting** com Upstash Redis
+- **RLS (Row Level Security)** enabled on every table
+- **CSRF** via a double-submit cookie
+- **Rate limiting** with Upstash Redis
 - **Auth:** httpOnly cookies + JWT HS256
-- **Input sanitization:** bleach.clean() no backend
-- **File uploads:** validação magic bytes + re-encode + EXIF strip
-- **PII masking:** Sentry + structlog com scrubbers
+- **Input sanitization:** bleach.clean() on the backend
+- **File uploads:** magic-byte validation + re-encode + EXIF strip
+- **PII masking:** Sentry + structlog with scrubbers
 
-Ver [ARCHITECTURE.md](./docs/ARCHITECTURE.md) para detalhes completos.
+See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the full details.
 
 ### Realtime
 
-- SSE (Server-Sent Events) via Redis Streams (TCP Upstash)
-- Sem WebSockets — SSE é suficiente para o caso de uso
+- SSE (Server-Sent Events) via Redis Streams (Upstash TCP)
+- No WebSockets — SSE is enough for this use case
 
-### Autenticação
+### Authentication
 
 ```
 httpOnly cookies (access + refresh) + JWT HS256
 + OAuth2 Google
-+ Magic link (email passwordless)
++ Magic link (passwordless email)
 ```
 
 ### Storage
 
-- **Público:** avatars, imagens de grupos → Cloudflare R2 via CDN
-- **Privado:** media, exports → R2 com presigned URLs (1h expiry)
+- **Public:** avatars, group images → Cloudflare R2 via CDN
+- **Private:** media, exports → R2 with presigned URLs (1h expiry)
 
 ---
 
-## Modelo de Dados
+## Data Model
 
-Principais entidades:
+The main entities:
 
-- **User** — conta, perfil, streak, stats
-- **Group** — clube (max 8 membros, invite_code)
-- **Round** — rodada de votação/leitura (5 states: nominating → voting → reading → reviewing → finished)
-- **RoundNomination** — indicação de livro
-- **RoundVote** — voto em livro
-- **ReadingProgress** — snapshots imutáveis de progresso
+- **User** — account, profile, streak, stats
+- **Group** — a club (max 8 members, invite_code)
+- **Round** — a voting/reading round (5 states: nominating → voting → reading → reviewing → finished)
+- **RoundNomination** — a book nomination
+- **RoundVote** — a vote for a book
+- **ReadingProgress** — immutable progress snapshots
 - **GroupMessage** — chat (text/image/gif/quote/chapter_marker/spoiler)
-- **BookReview** — review pós-livro (rating + características)
-- **Meeting** — encontro do clube
-- **Badge + UserBadge** — conquistas desbloqueadas
-- **AuditLog** — log imutável de segurança
+- **BookReview** — a post-book review (rating + characteristics)
+- **Meeting** — a club meeting
+- **Badge + UserBadge** — unlocked achievements
+- **AuditLog** — an immutable security log
 
-Ver [ARCHITECTURE.md](./docs/ARCHITECTURE.md) para diagrama completo.
+See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the full diagram.
 
 ---
 
-## Convenções de Código
+## Code Conventions
 
 ### Python
 
-- **Lint/Format:** ruff (zero compromissos)
-- **Type hints:** obrigatório em tudo
-- **Async por padrão**
-- **Snake_case** para variáveis e funções
-- **SQLAlchemy ORM only** — zero SQL raw (exceto com `text()` validado)
+- **Lint/Format:** ruff (no compromises)
+- **Type hints:** required everywhere
+- **Async by default**
+- **snake_case** for variables and functions
+- **SQLAlchemy ORM only** — no raw SQL (except validated `text()`)
 - **Dependency injection:** FastAPI `Depends()`
-- **Logs:** structlog com PII scrubber
+- **Logs:** structlog with a PII scrubber
 
 ### TypeScript
 
-- **Strict mode** obrigatório
-- **PascalCase** para componentes
-- **camelCase** para funções e variáveis
-- **kebab-case** para arquivos e rotas
-- **Server Components** por padrão
-- **Tailwind only** — zero CSS custom
+- **Strict mode** required
+- **PascalCase** for components
+- **camelCase** for functions and variables
+- **kebab-case** for files and routes
+- **Server Components** by default
+- **Tailwind only** — no custom CSS
 
-### Segurança Não-Negociável
+### Non-Negotiable Security
 
-- ✅ RLS habilitado em toda tabela
-- ✅ Sem stack traces em respostas públicas
-- ✅ Sem secrets no frontend (só `NEXT_PUBLIC_*`)
-- ✅ Sem `dangerouslySetInnerHTML` sem DOMPurify
-- ✅ Sem tokens em localStorage
-- ✅ Sanitization via bleach.clean() e Tiptap allowlist
-- ✅ File upload: validação magic bytes + Pillow re-encode + EXIF strip
-- ✅ Auth responses: sempre idênticas (sem email enumeration)
+- ✅ RLS enabled on every table
+- ✅ No stack traces in public responses
+- ✅ No secrets in the frontend (only `NEXT_PUBLIC_*`)
+- ✅ No `dangerouslySetInnerHTML` without DOMPurify
+- ✅ No tokens in localStorage
+- ✅ Sanitization via bleach.clean() and a Tiptap allowlist
+- ✅ File upload: magic-byte validation + Pillow re-encode + EXIF strip
+- ✅ Auth responses: always identical (no email enumeration)
 
 ---
 
-## Padrões de API
+## API Conventions
 
-- Todas as rotas sob `/api/v1/*`
-- Auth via **httpOnly cookies** (nunca Authorization header)
-- Paginação: **cursor-based** (nunca offset)
-- Erro padrão: `{"detail": "mensagem"}`
+- All routes live under `/api/v1/*`
+- Auth via **httpOnly cookies** (never an Authorization header)
+- Pagination: **cursor-based** (never offset)
+- Standard error shape: `{"detail": "message"}`
 - Realtime: SSE via Redis Streams (TCP)
 - Rate limiting: slowapi + Upstash Redis
 
 ---
 
-## Contribuindo
+## Contributing
 
-1. **Crie uma branch descritiva:**
+1. **Create a descriptive branch:**
    ```bash
-   git checkout -b feat/descricao-da-feature
-   # ou
-   git checkout -b fix/descricao-do-bug
+   git checkout -b feat/feature-description
+   # or
+   git checkout -b fix/bug-description
    ```
 
-2. **Siga as convenções:**
-   - Leia [CLAUDE.md](./CLAUDE.md) para instruções de código
-   - Commits atômicos com mensagens em português
-   - Testes unitários para novas features
+2. **Follow the conventions:**
+   - Read [CLAUDE.md](./CLAUDE.md) for code instructions
+   - Atomic commits, with messages written in Portuguese
+   - Unit tests for new features
 
-3. **Teste localmente:**
+3. **Test locally:**
    ```bash
    # Frontend
    npm run lint
@@ -354,28 +354,28 @@ Ver [ARCHITECTURE.md](./docs/ARCHITECTURE.md) para diagrama completo.
    ruff check . && python -m pytest
    ```
 
-4. **Abra um Pull Request:**
-   - Título e descrição em português
-   - Referencie issues relacionadas
-   - Aguarde code review
+4. **Open a Pull Request:**
+   - Title and description written in Portuguese
+   - Reference any related issues
+   - Wait for code review
 
-5. **Merge para master:**
-   - Deploy automático em Vercel + Render
-   - Migrations rodam antes do servidor iniciar
+5. **Merge to master:**
+   - Automatic deploy to Vercel + Render
+   - Migrations run before the server starts
 
 ---
 
 ## Troubleshooting
 
-### Erro de conexão com banco
+### Database Connection Error
 
 ```bash
 docker compose -f infra/docker-compose.yml ps
-# Se não estiver rodando:
+# If it isn't running:
 make up
 ```
 
-### Porta já em uso
+### Port Already in Use
 
 ```bash
 # Next.js
@@ -392,60 +392,60 @@ cd backend
 pip install -r requirements.txt
 ```
 
-### Redis não conecta
+### Redis Won't Connect
 
-Verifique `REDIS_URL` no `.env` (deve apontar para Redis local em dev):
+Check `REDIS_URL` in `.env` (it should point at the local Redis in dev):
 ```env
 REDIS_URL=redis://localhost:6379
 ```
 
-### SSE não funciona
+### SSE Doesn't Work
 
-Certifique-se de estar usando a **conexão TCP** do Upstash (não HTTP):
+Make sure you are using Upstash's **TCP connection** (not HTTP):
 ```env
-# Correto
+# Correct
 REDIS_URL=redis://localhost:6379
 
-# Errado (isso é a API HTTP)
+# Wrong (that's the HTTP API)
 REDIS_URL=https://...
 ```
 
-Para mais, veja [GETTING_STARTED.md](./GETTING_STARTED.md).
+For more, see [GETTING_STARTED.md](./GETTING_STARTED.md).
 
 ---
 
-## Monitoramento em Produção
+## Production Monitoring
 
-- **Sentry:** erros + performance tracing (DSN separados para backend/frontend)
-- **Render:** logs de aplicação, deploys e métricas do backend/worker
-- **Runbook:** procedimentos de credenciais e incidentes em [docs/RUNBOOK.md](./docs/RUNBOOK.md)
+- **Sentry:** errors + performance tracing (separate DSNs for backend/frontend)
+- **Render:** application logs, deploys, and backend/worker metrics
+- **Runbook:** credential and incident procedures in [docs/RUNBOOK.md](./docs/RUNBOOK.md)
 
 ---
 
 ## Roadmap
 
-- [ ] Integração com Goodreads (importar shelf)
-- [ ] Notificações push web
-- [ ] Dark mode melhorado
-- [ ] Mobile app nativa (React Native)
-- [ ] Clubes privados (invite-only)
-- [ ] Estatísticas por autor/gênero
+- [ ] Goodreads integration (import a shelf)
+- [ ] Web push notifications
+- [ ] Improved dark mode
+- [ ] Native mobile app (React Native)
+- [ ] Private clubs (invite-only)
+- [ ] Statistics by author/genre
 
 ---
 
-## Licença
+## License
 
-Propriedade privada. Uso restrito à equipe autorizada.
-
----
-
-## Suporte
-
-- **Dúvidas de setup?** Leia [GETTING_STARTED.md](./GETTING_STARTED.md)
-- **Deploy quebrou?** Veja [docs/RUNBOOK.md](./docs/RUNBOOK.md)
-- **Arquitetura?** Consulte [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
-- **Instruções de código?** [CLAUDE.md](./CLAUDE.md)
+Private property. Use restricted to the authorized team.
 
 ---
 
-**Última atualização:** 2026-03-24
+## Support
+
+- **Setup questions?** Read [GETTING_STARTED.md](./GETTING_STARTED.md)
+- **Deploy broken?** See [docs/RUNBOOK.md](./docs/RUNBOOK.md)
+- **Architecture?** Check [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- **Code instructions?** [CLAUDE.md](./CLAUDE.md)
+
+---
+
+**Last updated:** 2026-03-24

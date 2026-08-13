@@ -1,68 +1,73 @@
-# Contexto do domínio
+# Domain context
 
-Glossário do bookclubinho. Cada termo é definido como o código o usa — quando um
-nome aqui e um nome no código discordam, um dos dois está errado e vale arrumar.
+The bookclubinho glossary. Every term is defined as the code uses it — when a
+name here and a name in the code disagree, one of the two is wrong and worth
+fixing.
 
-Criado sob demanda: entradas nascem quando um termo precisa ser resolvido de
-verdade, não como inventário antecipado. Decisões que vale não re-litigar vão
-para `docs/adr/`.
+Created on demand: entries appear when a term genuinely needs to be resolved,
+not as an up-front inventory. Decisions worth not re-litigating go into
+`docs/adr/`.
 
 ---
 
 ## Membership
 
-O fato de um usuário pertencer a um **Group**, e com qual **role** (`admin` ou
-`member`). É a pergunta de autorização mais frequente do app: praticamente toda
-rota de clube começa respondendo ela.
+The fact that a user belongs to a **Group**, and with which **role** (`admin` or
+`member`). It is the app's most frequent authorization question: practically
+every club route starts by answering it.
 
-Membership tem três propriedades que o código trata como inseparáveis:
+Membership has three properties the code treats as inseparable:
 
-1. **Existe uma linha de `GroupMember`** ligando usuário e clube.
-2. **O clube está ativo** (`Group.is_active`). Clube soft-deleted não tem
-   membros para efeito de acesso, embora as linhas de `GroupMember` continuem na
-   tabela — `soft_delete_group` só vira a flag.
-3. **A role satisfaz o que a operação exige**, quando ela exige algo.
+1. **A `GroupMember` row exists** linking the user and the club.
+2. **The club is active** (`Group.is_active`). A soft-deleted club has no
+   members for access purposes, even though the `GroupMember` rows remain in the
+   table — `soft_delete_group` only flips the flag.
+3. **The role satisfies what the operation requires**, when it requires
+   anything.
 
-Não pertencer e o clube não existir são **indistinguíveis de fora**: os dois dão
-404, nunca 403, para que a resposta não revele que o clube existe. O 403 só
-aparece depois que o pertencimento já foi estabelecido, quando a role não basta —
-aí não há mais nada a esconder.
+Not belonging and the club not existing are **indistinguishable from the
+outside**: both return 404, never 403, so the response never reveals that the
+club exists. The 403 only appears once membership has been established and the
+role is insufficient — at that point there is nothing left to hide.
 
-`app/services/membership.py` é o único lugar que responde a pergunta.
-`app/core/deps.py` a expõe como dependency do FastAPI para rotas com `group_id`
-no path; os services chamam `resolve` direto. Os dois são adapters do mesmo seam.
+`app/services/membership.py` is the only place that answers the question.
+`app/core/deps.py` exposes it as a FastAPI dependency for routes with `group_id`
+in the path; the services call `resolve` directly. Both are adapters over the
+same seam.
 
-**Não confundir com:**
+**Don't confuse it with:**
 
-- **estar no clube** no sentido de contagem — o limite de 8 membros olha
-  `len(group.members)`, sem passar por membership.
-- **autoria** — ser autor de uma mensagem é outra coisa. As duas são necessárias:
-  editar uma mensagem exige membership *e* autoria.
+- **being in the club** in the counting sense — the 8-member limit looks at
+  `len(group.members)`, without going through membership.
+- **authorship** — being a message's author is a different thing. Both are
+  required: editing a message needs membership *and* authorship.
 
-Ver: [[Group]], [[GroupMember]] no modelo de domínio do `CLAUDE.md`.
+See: [[Group]], [[GroupMember]] in the domain model in `CLAUDE.md`.
 
 ---
 
-## Terminar o livro
+## Finishing the book
 
-Um leitor terminou o livro quando existe um snapshot de **ReadingProgress** com
-`progress_type = "finished"` para ele naquela rodada. É um fato por leitor, não
-por rodada — cada um termina no seu tempo.
+A reader has finished the book when a **ReadingProgress** snapshot exists with
+`progress_type = "finished"` for them in that round. It is a per-reader fact,
+not a per-round one — everyone finishes at their own pace.
 
-Há **dois caminhos** para isso acontecer, e ambos contam igual:
+There are **two paths** to this happening, and both count equally:
 
-1. registrar progresso em 100% (pelo timer ou pelo formulário de página);
-2. **submeter a review** — enviar review é, por si, dizer que terminou.
+1. recording progress at 100% (via the timer or the page form);
+2. **submitting the review** — sending a review is, in itself, saying you
+   finished.
 
-Terminar tem consequências, e elas são inseparáveis do fato: o streak do dia
-sobe, os eventos de SSE saem para o clube, e os badges de `book_finished`
-(`first_blood`, `speed_reader`, `bookworm`, `variety`) são reavaliados. Por isso
-ninguém escreve `ReadingProgress` na mão — os dois caminhos atravessam
-`app/services/reading_progress.py`, que é dono do fato e das consequências.
+Finishing has consequences, and they are inseparable from the fact: the day's
+streak goes up, the SSE events go out to the club, and the `book_finished`
+badges (`first_blood`, `speed_reader`, `bookworm`, `variety`) are re-evaluated.
+That is why nobody writes `ReadingProgress` by hand — both paths go through
+`app/services/reading_progress.py`, which owns both the fact and its
+consequences.
 
-**Não confundir com encerrar a rodada.** Encerrar é ação de admin, muda o status
-da **Round** para `finished`, e exige que exista pelo menos uma review. Um leitor
-pode ter terminado o livro numa rodada que ainda está aberta; e a rodada pode ser
-encerrada com membros que nunca terminaram.
+**Don't confuse it with closing the round.** Closing is an admin action, moves
+the **Round**'s status to `finished`, and requires at least one review to exist.
+A reader can have finished the book in a round that is still open; and a round
+can be closed with members who never finished.
 
-Ver: [[Round]], [[ReadingProgress]] no modelo de domínio do `CLAUDE.md`.
+See: [[Round]], [[ReadingProgress]] in the domain model in `CLAUDE.md`.

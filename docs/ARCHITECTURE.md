@@ -1,14 +1,14 @@
 # ARCHITECTURE — Bookclubinho
 
-Visão geral da arquitetura do sistema, camadas de segurança e decisões de design.
+An overview of the system architecture, security layers, and design decisions.
 
 ---
 
-## Stack de Produção
+## Production Stack
 
 ```
                     ┌─────────────────────┐
-  Usuário ─────────▶│  Vercel (Next.js)   │
+  User ────────────▶│  Vercel (Next.js)   │
                     │  App Router + RSC   │
                     └──────────┬──────────┘
                                │ /api/v1/* (rewrite)
@@ -34,72 +34,73 @@ Visão geral da arquitetura do sistema, camadas de segurança e decisões de des
                     └─────────────────────┘
 ```
 
-Serviços externos: **Resend** (email transacional), **Hardcover** (API de livros GraphQL), **Sentry** (erros + performance).
+External services: **Resend** (transactional email), **Hardcover** (GraphQL books API), **Sentry** (errors + performance).
 
 ---
 
-## Camadas de Segurança
+## Security Layers
 
 ### Frontend (Next.js / Vercel)
 
-| Controle | Implementação |
+| Control | Implementation |
 |---|---|
-| Content Security Policy | `next.config.ts` — Report-Only durante validação |
-| Security Headers | X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy |
-| Sentry PII scrubbing | `sentry.client.config.ts` — strip email, token params, form inputs |
-| ESLint no-danger | `eslint.config.mjs` — bloqueia `dangerouslySetInnerHTML` |
-| Sem secrets no bundle | Apenas `NEXT_PUBLIC_*` expostos ao cliente |
+| Content Security Policy | `next.config.ts` — Report-Only during validation |
+| Security headers | X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy |
+| Sentry PII scrubbing | `sentry.client.config.ts` — strips email, token params, form inputs |
+| ESLint no-danger | `eslint.config.mjs` — blocks `dangerouslySetInnerHTML` |
+| No secrets in the bundle | Only `NEXT_PUBLIC_*` is exposed to the client |
 
 ### Backend (FastAPI / Render)
 
-Middleware chain (ordem de execução — LIFO no Starlette):
+Middleware chain (execution order — LIFO in Starlette):
 
 ```
 Request → SecurityHeaders → CORS → CSRF → BodySizeLimit → RLS → Route Handler
 ```
 
-| Controle | Implementação |
+| Control | Implementation |
 |---|---|
-| Security Headers | `app/security/headers.py` — HSTS em prod, sem X-XSS-Protection |
-| CORS | `main.py` — origins explícitos, sem wildcard |
+| Security headers | `app/security/headers.py` — HSTS in prod, no X-XSS-Protection |
+| CORS | `main.py` — explicit origins, no wildcard |
 | CSRF | `app/security/csrf.py` — double-submit cookie + HMAC |
-| Body size limit | `app/security/body_limit.py` — 1MB padrão, 16MB em uploads |
-| Row Level Security | Toda tabela com RLS habilitado + políticas por `app.current_user_id`. **Não aplicado hoje** — o app conecta como superusuário, que ignora RLS. Ver abaixo. |
-| Rate limiting | `slowapi` + Upstash Redis — por IP e por endpoint |
-| Brute force | `app/services/auth.py` — Redis counter, lockout em 10 falhas, delay progressivo |
-| Flood protection | `app/services/chat.py` — max 10 msgs/min/usuário/grupo + dedup 30s |
-| Input sanitization | `bleach.clean()` em todos os inputs de texto |
-| Tiptap sanitization | `app/security/tiptap.py` — allowlist de nodes/marks, bloqueia javascript: URIs |
-| File upload security | Magic bytes + Pillow re-encode WebP + strip EXIF |
-| Structured logging + PII | `structlog` com `_pii_filter_processor` — máscara emails, redact tokens |
-| Sentry PII scrubbing | `main.py` `_sentry_before_send` — strip cookies, auth header, email |
-| SQL injection | SQLAlchemy ORM apenas; `text()` apenas com validação UUID explícita |
-| JWT | HS256 + blacklist Redis + session tracking + rotation |
-| Cookies | httpOnly, secure, sameSite=lax, max_age explícito |
-| Timing attacks | `hmac.compare_digest()` para tokens, bcrypt para senhas |
-| Email enumeration | Todas as respostas de auth retornam mensagem idêntica |
-| Audit log | `app/services/audit.py` — imutável, fire-and-forget, RLS read-own |
+| Body size limit | `app/security/body_limit.py` — 1MB by default, 16MB on uploads |
+| Row Level Security | Every table has RLS enabled with policies keyed on `app.current_user_id`. **Not enforced today** — the app connects as a superuser, which bypasses RLS. See below. |
+| Rate limiting | `slowapi` + Upstash Redis — per IP and per endpoint |
+| Brute force | `app/services/auth.py` — Redis counter, lockout after 10 failures, progressive delay |
+| Flood protection | `app/services/chat.py` — max 10 msgs/min/user/group + 30s dedup |
+| Input sanitization | `bleach.clean()` on every text input |
+| Tiptap sanitization | `app/security/tiptap.py` — node/mark allowlist, blocks javascript: URIs |
+| File upload security | Magic bytes + Pillow re-encode to WebP + EXIF strip |
+| Structured logging + PII | `structlog` with `_pii_filter_processor` — masks emails, redacts tokens |
+| Sentry PII scrubbing | `main.py` `_sentry_before_send` — strips cookies, auth header, email |
+| SQL injection | SQLAlchemy ORM only; `text()` only with explicit UUID validation |
+| JWT | HS256 + Redis blacklist + session tracking + rotation |
+| Cookies | httpOnly, secure, sameSite=lax, explicit max_age |
+| Timing attacks | `hmac.compare_digest()` for tokens, bcrypt for passwords |
+| Email enumeration | Every auth response returns an identical message |
+| Audit log | `app/services/audit.py` — immutable, fire-and-forget, RLS read-own |
 
-### RLS: escrito, correto, e ainda não aplicado
+### RLS: written, correct, and not yet enforced
 
-O app conecta com um papel superusuário, e superusuário **não avalia política** —
-nem com `FORCE ROW LEVEL SECURITY`. Então as 86 políticas do schema hoje não
-barram nada: a aplicação é o guarda único.
+The app connects with a superuser role, and a superuser **does not evaluate
+policies** — not even with `FORCE ROW LEVEL SECURITY`. So the schema's 86
+policies block nothing today: the application is the only guard.
 
-Isso não é aspiracional nem quebrado — é um passo de configuração pendente. As
-migrations 0025–0027 corrigiram os cinco defeitos que impediam a troca, e o fluxo
-completo foi verificado com o app num papel sem `BYPASSRLS` e sem posse das
-tabelas. Falta apontar o `DATABASE_URL` do serviço web para esse papel,
-mantendo o privilegiado nas migrations. Procedimento, verificação e rollback em
-`docs/RUNBOOK.md`.
+This is neither aspirational nor broken — it is a pending configuration step.
+Migrations 0025–0027 fixed the five defects that prevented the switch, and the
+full flow was verified with the app running as a role without `BYPASSRLS` and
+without ownership of the tables. What remains is pointing the web service's
+`DATABASE_URL` at that role, keeping the privileged one for migrations.
+Procedure, verification, and rollback are in `docs/RUNBOOK.md`.
 
-**Ao escrever endpoint, escope a query na aplicação.** Não presuma que o banco
-filtra por usuário, porque hoje ele não filtra. `membership.resolve` e os
-`GroupMemberDep`/`GroupAdminDep` são o que de fato protege.
+**When writing an endpoint, scope the query in the application.** Do not assume
+the database filters by user, because right now it doesn't. `membership.resolve`
+and the `GroupMemberDep`/`GroupAdminDep` dependencies are what actually protect
+you.
 
 ---
 
-## Modelo de Acesso ao Storage (R2)
+## Storage Access Model (R2)
 
 ```
 Bucket: bookclubinho
@@ -109,14 +110,15 @@ Bucket: bookclubinho
 └── exports/           ← PRIVATE (presigned GET, 1h expiry)
 ```
 
-**Bucket policy:** permite `s3:GetObject` apenas em `avatars/*` e `groups/*`.
+**Bucket policy:** allows `s3:GetObject` only on `avatars/*` and `groups/*`.
 
-`get_public_url(path)` detecta o prefixo automaticamente e retorna URL pública ou presigned.
+`get_public_url(path)` detects the prefix automatically and returns either a public or a presigned URL.
 
-**URL de prefixo privado é apresentação, não dado.** O que se persiste é a chave do objeto —
-`group_messages.media_key` guarda `media/{group_id}/{uuid}.webp`, e a URL é resolvida a cada
-serialização. Guardar a presigned URL fazia a imagem do chat quebrar uma hora depois. O cliente
-devolve a chave do upload no POST da mensagem, e o backend valida que ela pertence ao grupo.
+**A private-prefix URL is presentation, not data.** What gets persisted is the
+object key — `group_messages.media_key` stores `media/{group_id}/{uuid}.webp`,
+and the URL is resolved on every serialization. Storing the presigned URL made
+chat images break an hour later. The client returns the upload's key in the
+message POST, and the backend validates that it belongs to the group.
 
 ---
 
@@ -131,58 +133,61 @@ devolve a chave do upload no POST da mensagem, e o backend valida que ela perten
 │         │   refresh_token (7d)      │  refresh_token│
 └─────────┘                           └─────────────┘
 
-Refresh automático: POST /auth/refresh com refresh cookie
-Logout: DELETE /auth/logout — blacklist JWT no Redis + clear cookies
+Automatic refresh: POST /auth/refresh with the refresh cookie
+Logout: DELETE /auth/logout — blacklists the JWT in Redis + clears cookies
 
 Google OAuth:
-  1. GET /auth/google → redirect para Google
-  2. GET /auth/google/callback → troca code por tokens → set cookies
+  1. GET /auth/google → redirect to Google
+  2. GET /auth/google/callback → exchange code for tokens → set cookies
 
 Magic Link:
-  1. POST /auth/magic-link → gera token assinado → email via Resend
-  2. GET /auth/magic-link/verify?token=... → valida → set cookies
+  1. POST /auth/magic-link → generate a signed token → email via Resend
+  2. GET /auth/magic-link/verify?token=... → validate → set cookies
 ```
 
-### Personal access tokens (clientes que não são browser)
+### Personal access tokens (non-browser clients)
 
-Cookie httpOnly + CSRF é a resposta certa para o browser, e só para ele: as duas
-peças existem porque o browser anexa cookie sozinho. Uma CLI ou um agente não
-têm esse problema, então usam `Authorization: Bearer <token>`.
+An httpOnly cookie plus CSRF is the right answer for the browser, and only for
+it: both pieces exist because the browser attaches the cookie on its own. A CLI
+or an agent does not have that problem, so they use
+`Authorization: Bearer <token>`.
 
 ```
-POST   /api/v1/auth/tokens       cria — devolve o segredo uma única vez
-GET    /api/v1/auth/tokens       lista (só prefixo, nunca o segredo)
-DELETE /api/v1/auth/tokens/{id}  revoga
+POST   /api/v1/auth/tokens       create — returns the secret exactly once
+GET    /api/v1/auth/tokens       list (prefix only, never the secret)
+DELETE /api/v1/auth/tokens/{id}  revoke
 
 curl -H "Authorization: Bearer bcp_xxx" $API/users/me
 ```
 
-Quatro decisões que valem mais que o código:
+Four decisions that matter more than the code:
 
-- **Só o hash vai para o banco** (SHA-256, não bcrypt — o token são 256 bits que
-  nós sorteamos, não há o que adivinhar; ver `core/security.py`).
-- **Gerenciar tokens exige sessão de browser.** Um PAT não cria nem revoga PATs,
-  senão um token vazado vira permanente e expulsa o dono — `deps.SessionOnlyUser`.
-- **CSRF é dispensado só quando não há cookie de sessão junto.** Com cookie
-  presente a validação continua valendo, senão um `Authorization` inventado
-  desligaria o CSRF de uma requisição autenticada por cookie.
-- **O cookie vence o Bearer** quando os dois vêm na mesma requisição.
+- **Only the hash goes to the database** (SHA-256, not bcrypt — the token is 256
+  bits we drew ourselves, so there is nothing to guess; see `core/security.py`).
+- **Managing tokens requires a browser session.** A PAT can neither create nor
+  revoke PATs; otherwise a leaked token would become permanent and lock the
+  owner out — `deps.SessionOnlyUser`.
+- **CSRF is waived only when no session cookie is present.** With a cookie
+  present, validation still applies; otherwise a made-up `Authorization` header
+  would disable CSRF on a cookie-authenticated request.
+- **The cookie beats the Bearer** when both arrive on the same request.
 
-O contexto RLS deste caminho é aplicado na dependência, não no `RLSMiddleware`:
-o middleware roda antes de existir sessão de banco, e resolver token opaco exige
-um SELECT. Ver `deps._resolve_bearer_user_id` e o comentário da migration 0024.
+This path's RLS context is applied in the dependency, not in `RLSMiddleware`:
+the middleware runs before a database session exists, and resolving an opaque
+token requires a SELECT. See `deps._resolve_bearer_user_id` and the comment on
+migration 0024.
 
 ---
 
-## Modelo de Dados — Relacionamentos Principais
+## Data Model — Main Relationships
 
 ```
 User
- ├── UserSession (1:N) — sessões ativas com device tracking
- ├── GroupMember (1:N) — memberships em grupos
- ├── ReadingProgress (1:N) — snapshots imutáveis
- ├── UserBadge (1:N) — conquistas
- └── AuditLog (1:N) — eventos de segurança
+ ├── UserSession (1:N) — active sessions with device tracking
+ ├── GroupMember (1:N) — group memberships
+ ├── ReadingProgress (1:N) — immutable snapshots
+ ├── UserBadge (1:N) — achievements
+ └── AuditLog (1:N) — security events
 
 Group
  ├── GroupMember (1:N)
@@ -203,12 +208,12 @@ Group
 Realtime via Redis Streams (Upstash TCP):
 
 ```
-Producer: backend escreve eventos em bookclub:group:{group_id}
+Producer: the backend writes events to bookclub:group:{group_id}
 Consumer: GET /api/v1/groups/{id}/stream — XREAD BLOCK 0
-Frontend: EventSource → atualiza UI via React Query invalidation
+Frontend: EventSource → updates the UI via React Query invalidation
 ```
 
-Não usa WebSockets — SSE é suficiente para o caso de uso (unidirecional server→client).
+It does not use WebSockets — SSE is enough for this use case (unidirectional server→client).
 
 ---
 
@@ -223,7 +228,7 @@ Push/PR → GitHub Actions
   ├── frontend-lint (eslint + tsc)
   └── frontend-audit (npm audit --audit-level=high)
 
-Deploy automático:
+Automatic deploy:
   ├── Backend + worker + Postgres → Render Blueprint
   └── Frontend → Vercel (push to master)
 ```
