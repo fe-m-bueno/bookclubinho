@@ -1,22 +1,22 @@
-# E2E contra backend e Postgres reais
+# E2E against a real backend and Postgres
 
-Estes testes existem porque os de unidade mockam o `db` inteiro, e três bugs
-passaram por baixo deles:
+These tests exist because the unit tests mock out the entire `db`, and three bugs
+slipped underneath them:
 
-- **#215** — a resposta saía antes do commit, então as BackgroundTasks rodavam
-  antes e o badge checker, com sessão própria, não via as linhas novas. Quase
-  nenhum badge era concedido, em silêncio.
-- **#212** — `register` devolvia 500 quando o envio de email falhava, depois de
-  já ter commitado a conta.
-- **#214** — `_user_display` era recursão infinita: cinco emails de notificação
-  nunca saíam.
+- **#215** — the response went out before the commit, so the BackgroundTasks ran
+  first and the badge checker, with its own session, never saw the new rows.
+  Almost no badges were granted, silently.
+- **#212** — `register` returned a 500 when the email send failed, after it had
+  already committed the account.
+- **#214** — `_user_display` was infinite recursion: five notification emails
+  never went out.
 
-Nenhum deles é alcançável sem banco de verdade.
+None of them is reachable without a real database.
 
-## Rodando
+## Running
 
-Sobe a infra local (o `infra/docker-compose.yml` tem as mesmas imagens; com
-podman sem provider de compose, direto):
+Start the local infrastructure (`infra/docker-compose.yml` has the same images;
+with podman and no compose provider, run them directly):
 
 ```bash
 podman run -d --name bookclub-pg \
@@ -25,7 +25,7 @@ podman run -d --name bookclub-pg \
 podman run -d --name bookclub-redis -p 6379:6379 docker.io/library/redis:7-alpine
 ```
 
-Um `.env` apontando para eles — copie o seu e troque duas linhas:
+A `.env` pointing at them — copy yours and change two lines:
 
 ```
 DATABASE_URL=postgresql://bookclub:bookclub@localhost:5432/bookclub
@@ -34,10 +34,10 @@ ALLOWED_ORIGINS=http://localhost:3000
 ENVIRONMENT=dev
 ```
 
-`ENVIRONMENT=dev` importa: `cookies.py` deriva `secure` de `DEBUG`, e com
-`secure=True` os cookies de auth são descartados sobre `http://localhost`.
+`ENVIRONMENT=dev` matters: `cookies.py` derives `secure` from `DEBUG`, and with
+`secure=True` the auth cookies are dropped over `http://localhost`.
 
-Migrations e servidor:
+Migrations and the server:
 
 ```bash
 set -a && source .env.e2e && set +a
@@ -45,7 +45,7 @@ alembic upgrade head
 uvicorn main:app --port 8010
 ```
 
-E então:
+And then:
 
 ```bash
 E2E_API_URL=http://localhost:8010/api/v1 \
@@ -53,22 +53,23 @@ E2E_DSN=postgresql://bookclub:bookclub@localhost:5432/bookclub \
   python tests/e2e/round_lifecycle.py
 ```
 
-Saída esperada: `30 passaram, 0 falharam`.
+Expected output: `30 passaram, 0 falharam`.
 
-## Duas coisas que vão te morder
+## Two things that will bite you
 
-**Rate limit.** Vários endpoints são `30/minute` ou menos, por IP. Rodar o script
-em sequência esgota o limite e os 429 aparecem como falhas confusas. Entre
-corridas: `podman exec bookclub-redis redis-cli FLUSHALL`.
+**Rate limiting.** Several endpoints are `30/minute` or less, per IP. Running the
+script back to back exhausts the limit, and the 429s show up as confusing
+failures. Between runs: `podman exec bookclub-redis redis-cli FLUSHALL`.
 
-**Usuários são semeados direto no banco**, com `email_verified=true`, em vez de
-passar por `POST /auth/register`. Dois motivos: o Resend recusa domínios de teste,
-e o register devolve 500 quando o email falha (#212). Quando a #212 for corrigida,
-vale trocar por registro de verdade — o caminho passaria a ser coberto.
+**Users are seeded straight into the database**, with `email_verified=true`,
+instead of going through `POST /auth/register`. Two reasons: Resend rejects test
+domains, and register returns a 500 when the email fails (#212). Once #212 is
+fixed, it is worth switching to real registration — that path would then be
+covered.
 
-## Estado do banco
+## Database state
 
-O script não limpa depois de si. Para uma corrida limpa:
+The script does not clean up after itself. For a clean run:
 
 ```bash
 podman exec bookclub-pg psql -U bookclub -d bookclub -c "
@@ -77,27 +78,27 @@ TRUNCATE user_badges, reading_progress, book_reviews, round_votes,
          groups, users CASCADE;"
 ```
 
-Nunca aponte isto para o banco de produção.
+Never point this at the production database.
 
 ## media_key_backfill.py
 
-Verifica o backfill da migration 0023. Precisa de um banco **descartável** —
-escreve em `group_messages` e o nome do DSN tem que conter `_mig` (ou
-`E2E_ALLOW_ANY_DB=1`, se você souber o que está fazendo).
+Verifies migration 0023's backfill. It needs a **disposable** database — it
+writes to `group_messages`, and the DSN's name has to contain `_mig` (or
+`E2E_ALLOW_ANY_DB=1`, if you know what you're doing).
 
-Duas passagens, porque o estado a conferir é o que a migration deixou:
+Two passes, because the state to check is the one the migration left behind:
 
 ```bash
 export PGPASSWORD=bookclub
 createdb -h 127.0.0.1 -U bookclub bookclub_mig
 D=postgresql://bookclub:bookclub@localhost:5432/bookclub_mig
 
-alembic upgrade 0022                                    # schema anterior
-E2E_DSN=$D python tests/e2e/media_key_backfill.py       # planta os 4 casos
-alembic upgrade head                                    # roda o backfill
+alembic upgrade 0022                                    # the previous schema
+E2E_DSN=$D python tests/e2e/media_key_backfill.py       # plants the 4 cases
+alembic upgrade head                                    # runs the backfill
 VERIFICAR=1 E2E_DSN=$D python tests/e2e/media_key_backfill.py
 ```
 
-Saída esperada: `8 passaram, 0 falharam`. Com o backfill original (padrão
-`'media/[^?]+'`, sem o `group_id`), dá `4 passaram, 4 falharam` — é o que o
-script existe para pegar.
+Expected output: `8 passaram, 0 falharam`. With the original backfill (the
+`'media/[^?]+'` pattern, without the `group_id`), you get
+`4 passaram, 4 falharam` — which is what the script exists to catch.

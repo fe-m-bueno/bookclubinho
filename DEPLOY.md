@@ -1,174 +1,174 @@
-# DEPLOY — Bookclubinho em Vercel + Render
+# DEPLOY — Bookclubinho on Vercel + Render
 
-Guia completo para colocar o projeto em produção com:
+A complete guide to putting the project into production with:
 
-- frontend no **Vercel**
-- backend + worker + Postgres no **Render**
-- Redis no **Upstash**
-- storage no **Cloudflare R2**
-- email no **Resend**
-- OAuth no **Google Cloud**
+- the frontend on **Vercel**
+- the backend + worker + Postgres on **Render**
+- Redis on **Upstash**
+- storage on **Cloudflare R2**
+- email on **Resend**
+- OAuth on **Google Cloud**
 
-Este guia assume o primeiro deploy usando os domínios padrão dos provedores:
+This guide assumes a first deploy using the providers' default domains:
 
-- frontend: `https://<projeto>.vercel.app`
-- backend: `https://<servico>.onrender.com`
+- frontend: `https://<project>.vercel.app`
+- backend: `https://<service>.onrender.com`
 
-Custom domain pode ser configurado depois, sem bloquear o primeiro deploy.
+A custom domain can be set up later, without blocking the first deploy.
 
 ---
 
-## 1. Contas Necessárias
+## 1. Accounts You Need
 
-Crie ou confirme acesso às contas abaixo:
+Create or confirm access to the accounts below:
 
 1. **GitHub**
-   - O repositório precisa estar acessível para Vercel e Render.
+   - The repository has to be accessible to Vercel and Render.
 2. **Vercel**
-   - Usado para o projeto Next.js em `frontend/`.
+   - Used for the Next.js project in `frontend/`.
 3. **Render**
-   - Usado para API FastAPI, worker e Postgres.
+   - Used for the FastAPI API, the worker, and Postgres.
 4. **Upstash**
-   - Usado para Redis TCP + REST.
+   - Used for Redis TCP + REST.
 5. **Cloudflare**
-   - Usado para R2.
+   - Used for R2.
 6. **Resend**
-   - Usado para e-mails transacionais.
+   - Used for transactional email.
 7. **Google Cloud**
-   - Usado para OAuth Google.
+   - Used for Google OAuth.
 8. **Hardcover**
-   - Usado para busca e metadados de livros.
-9. **Sentry** (opcional, mas recomendado)
-   - Usado para erros e tracing.
+   - Used for book search and metadata.
+9. **Sentry** (optional, but recommended)
+   - Used for errors and tracing.
 
 ---
 
-## 2. Ordem Recomendada
+## 2. Recommended Order
 
-Siga esta ordem:
+Follow this order:
 
-1. Preparar credenciais dos provedores externos.
-2. Definir o nome do projeto no Vercel que será usado no primeiro deploy.
-3. Criar o backend no Render com o `render.yaml`, usando a URL planejada do Vercel em `APP_URL` e `ALLOWED_ORIGINS`.
-4. Obter a URL pública do backend no Render.
-5. Criar o frontend no Vercel apontando para `frontend/`.
-6. Registrar URLs definitivas no Google, Resend e demais provedores.
-7. Rodar checklist de validação final.
+1. Prepare the external providers' credentials.
+2. Decide the Vercel project name that the first deploy will use.
+3. Create the backend on Render with `render.yaml`, using the planned Vercel URL in `APP_URL` and `ALLOWED_ORIGINS`.
+4. Get the backend's public URL on Render.
+5. Create the frontend on Vercel, pointing at `frontend/`.
+6. Register the final URLs with Google, Resend, and the other providers.
+7. Run the final validation checklist.
 
-Não comece pelo Google OAuth. O callback depende da URL final do frontend no Vercel.
+Don't start with Google OAuth. The callback depends on the frontend's final URL on Vercel.
 
 ---
 
-## 3. Preparar Credenciais Externas
+## 3. Preparing the External Credentials
 
 ### Upstash
 
-1. Crie um database Redis no painel do Upstash.
-2. Copie estes valores:
+1. Create a Redis database in the Upstash dashboard.
+2. Copy these values:
    - `REDIS_URL`
    - `UPSTASH_REDIS_REST_URL`
    - `UPSTASH_REDIS_REST_TOKEN`
-3. Em produção, `REDIS_URL` deve ser a URL TCP/TLS (`redis://` ou `rediss://`), não a REST URL.
+3. In production, `REDIS_URL` must be the TCP/TLS URL (`redis://` or `rediss://`), not the REST URL.
 
 ### Cloudflare R2
 
-1. No Cloudflare, abra **R2**.
-2. Crie o bucket público usado pelo app.
-   - Valor recomendado: `bookclub-public`
-3. Gere um par de credenciais de API do R2.
-4. Copie:
+1. In Cloudflare, open **R2**.
+2. Create the public bucket the app uses.
+   - Recommended value: `bookclub-public`
+3. Generate an R2 API credential pair.
+4. Copy:
    - `S3_ENDPOINT`
    - `S3_ACCESS_KEY`
    - `S3_SECRET_KEY`
    - `S3_BUCKET_NAME`
-5. Defina o hostname público dos assets:
-   - Se usar domínio customizado do bucket, use esse host em `S3_PUBLIC_URL`
-   - Se usar o hostname padrão do R2, use a URL pública correspondente e extraia o host para o Vercel
+5. Set the assets' public hostname:
+   - If you use a custom bucket domain, use that host in `S3_PUBLIC_URL`
+   - If you use R2's default hostname, use the corresponding public URL and extract the host for Vercel
 
-Exemplo:
+Example:
 
-- `S3_PUBLIC_URL=https://pub.seudominio.com`
-- `NEXT_PUBLIC_R2_PUBLIC_HOSTNAME=pub.seudominio.com`
+- `S3_PUBLIC_URL=https://pub.yourdomain.com`
+- `NEXT_PUBLIC_R2_PUBLIC_HOSTNAME=pub.yourdomain.com`
 
 ### Resend
 
-1. Crie a conta.
-2. Verifique o domínio remetente no painel da Resend.
-3. Gere uma API key.
-4. Copie:
+1. Create the account.
+2. Verify the sender domain in the Resend dashboard.
+3. Generate an API key.
+4. Copy:
    - `RESEND_API_KEY`
    - `RESEND_FROM_EMAIL`
 
-Exemplo:
+Example:
 
-- `RESEND_FROM_EMAIL=noreply@seudominio.com`
+- `RESEND_FROM_EMAIL=noreply@yourdomain.com`
 
 ### Google Cloud OAuth
 
-1. Crie um projeto no Google Cloud.
-2. Ative a API necessária para OAuth.
-3. Vá em **APIs & Services > Credentials**.
-4. Crie um **OAuth Client ID** do tipo Web application.
-5. Deixe a edição final dos callbacks para depois que o Vercel estiver criado.
-6. Guarde:
+1. Create a project in Google Cloud.
+2. Enable the API needed for OAuth.
+3. Go to **APIs & Services > Credentials**.
+4. Create an **OAuth Client ID** of type Web application.
+5. Leave the final callback editing for after Vercel is set up.
+6. Save:
    - `GOOGLE_CLIENT_ID`
    - `GOOGLE_CLIENT_SECRET`
 
 ### Hardcover
 
-1. Acesse sua conta no Hardcover.
-2. Gere o token da API GraphQL.
-3. Guarde:
+1. Open your Hardcover account.
+2. Generate the GraphQL API token.
+3. Save:
    - `HARDCOVER_API_TOKEN`
 
-### Sentry (opcional)
+### Sentry (optional)
 
-1. Crie dois projetos, ou um projeto com DSNs separados conforme sua organização:
+1. Create two projects, or one project with separate DSNs, depending on your organization:
    - frontend
    - backend
-2. Copie:
-   - `SENTRY_DSN` para o backend
-   - `NEXT_PUBLIC_SENTRY_DSN` para o frontend
-3. Se quiser upload de source maps no Vercel, gere também:
+2. Copy:
+   - `SENTRY_DSN` for the backend
+   - `NEXT_PUBLIC_SENTRY_DSN` for the frontend
+3. If you want source map uploads on Vercel, also generate:
    - `SENTRY_AUTH_TOKEN`
 
 ---
 
-## 4. Deploy do Backend no Render
+## 4. Deploying the Backend on Render
 
-O repositório já inclui [`render.yaml`](/home/felipebueno/Development/bookclubinho/render.yaml). Ele define:
+The repository already includes [`render.yaml`](/home/felipebueno/Development/bookclubinho/render.yaml). It defines:
 
 - `bookclub-postgres`
 - `bookclub-api`
 - `bookclub-worker`
 
-### 4.1 Criar conta e conectar o GitHub
+### 4.1 Create an Account and Connect GitHub
 
-1. Entre no Render.
-2. Conecte sua conta do GitHub.
-3. Garanta que o Render tenha acesso ao repositório.
+1. Sign in to Render.
+2. Connect your GitHub account.
+3. Make sure Render has access to the repository.
 
-### 4.2 Criar os serviços pelo Blueprint
+### 4.2 Create the Services via the Blueprint
 
-1. No Render, clique em **New > Blueprint**.
-2. Selecione este repositório.
-3. O Render deve detectar o arquivo `render.yaml`.
-4. Revise os recursos que serão criados:
+1. In Render, click **New > Blueprint**.
+2. Select this repository.
+3. Render should detect the `render.yaml` file.
+4. Review the resources it will create:
    - Postgres
    - Web service
    - Worker
-5. Confirme a criação.
+5. Confirm the creation.
 
-### 4.3 Preencher variáveis do backend
+### 4.3 Fill In the Backend Variables
 
-Durante a criação do Blueprint, o Render vai pedir os valores marcados com `sync: false`.
+While the Blueprint is being created, Render will ask for the values marked `sync: false`.
 
-Preencha no serviço `bookclub-api`:
+Fill these in on the `bookclub-api` service:
 
 - `APP_URL`
-  - Use a URL do Vercel, por exemplo `https://bookclubinho.vercel.app`
+  - Use the Vercel URL, for example `https://bookclubinho.vercel.app`
 - `ALLOWED_ORIGINS`
-  - Use a mesma URL do Vercel, sem barra final
+  - Use the same Vercel URL, without a trailing slash
 - `REDIS_URL`
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
@@ -181,150 +181,150 @@ Preencha no serviço `bookclub-api`:
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
 - `HARDCOVER_API_TOKEN`
-- `SENTRY_DSN` opcional
+- `SENTRY_DSN` (optional)
 
-Valores já definidos no `render.yaml`:
+Values already set in `render.yaml`:
 
-- `DATABASE_URL` vem do Postgres do Render
+- `DATABASE_URL` comes from Render's Postgres
 - `ENVIRONMENT=prod`
 - `S3_BUCKET_NAME=bookclub-public`
 - `HARDCOVER_API_URL=https://api.hardcover.app/v1/graphql`
 - `WEB_CONCURRENCY=1`
-- `JWT_SECRET` é gerado automaticamente
+- `JWT_SECRET` is generated automatically
 
-O worker herda os segredos principais do serviço web por `fromService`, então você não precisa duplicar o cadastro.
+The worker inherits the main secrets from the web service via `fromService`, so you don't have to enter them twice.
 
-### 4.4 Esperar o primeiro deploy
+### 4.4 Wait for the First Deploy
 
-1. Aguarde o Postgres ficar pronto.
-2. Aguarde o deploy do `bookclub-api`.
-3. Aguarde o deploy do `bookclub-worker`.
-4. Abra a URL pública do backend no Render.
+1. Wait for Postgres to be ready.
+2. Wait for the `bookclub-api` deploy.
+3. Wait for the `bookclub-worker` deploy.
+4. Open the backend's public URL on Render.
 
-Valide:
+Validate:
 
 ```text
-https://<seu-backend>.onrender.com/api/v1/health
+https://<your-backend>.onrender.com/api/v1/health
 ```
 
-O esperado é HTTP `200`.
+You should get HTTP `200`.
 
-### 4.5 Obter a URL pública do backend
+### 4.5 Get the Backend's Public URL
 
-Copie a URL pública do serviço `bookclub-api`.
+Copy the public URL of the `bookclub-api` service.
 
-Exemplo:
+Example:
 
 ```text
 https://bookclub-api.onrender.com
 ```
 
-Ela será usada no Vercel como `NEXT_PUBLIC_API_URL`.
+It will be used on Vercel as `NEXT_PUBLIC_API_URL`.
 
 ---
 
-## 5. Deploy do Frontend no Vercel
+## 5. Deploying the Frontend on Vercel
 
-### 5.1 Criar conta e conectar o GitHub
+### 5.1 Create an Account and Connect GitHub
 
-1. Entre no Vercel.
-2. Conecte sua conta do GitHub.
-3. Importe este repositório.
+1. Sign in to Vercel.
+2. Connect your GitHub account.
+3. Import this repository.
 
-### 5.2 Configuração do projeto
+### 5.2 Project Configuration
 
-Na criação do projeto:
+While creating the project:
 
-1. Escolha o repositório correto.
-2. Configure o **Root Directory** como:
+1. Choose the right repository.
+2. Set the **Root Directory** to:
 
 ```text
 frontend
 ```
 
-3. Mantenha os comandos padrão do Next.js, salvo se o Vercel sugerir algo diferente.
+3. Keep Next.js's default commands, unless Vercel suggests otherwise.
 
-### 5.3 Variáveis de ambiente do Vercel
+### 5.3 Vercel Environment Variables
 
-Cadastre em **Project Settings > Environment Variables**:
+Register these under **Project Settings > Environment Variables**:
 
 - `NEXT_PUBLIC_API_URL`
-  - Valor: URL pública do backend Render
-  - Exemplo: `https://bookclub-api.onrender.com`
+  - Value: the Render backend's public URL
+  - Example: `https://bookclub-api.onrender.com`
 - `NEXT_PUBLIC_R2_PUBLIC_HOSTNAME`
-  - Valor: hostname público do bucket/CDN, sem protocolo
-  - Exemplo: `pub.seudominio.com`
+  - Value: the bucket/CDN's public hostname, without a protocol
+  - Example: `pub.yourdomain.com`
 - `NEXT_PUBLIC_SENTRY_DSN`
-  - Opcional
+  - Optional
 - `SENTRY_AUTH_TOKEN`
-  - Opcional, apenas se quiser upload de source maps
+  - Optional, only if you want source map uploads
 
-Depois salve e faça o deploy.
+Then save and deploy.
 
-### 5.4 Obter a URL pública do frontend
+### 5.4 Get the Frontend's Public URL
 
-Após o primeiro deploy, copie a URL pública do Vercel.
+After the first deploy, copy the public Vercel URL.
 
-Exemplo:
+Example:
 
 ```text
 https://bookclubinho.vercel.app
 ```
 
-Essa URL é a origem pública principal do app. Os fluxos de autenticação no navegador usam esse domínio.
+That URL is the app's main public origin. The browser authentication flows use that domain.
 
 ---
 
-## 6. Registrar URLs nos Provedores
+## 6. Registering the URLs with the Providers
 
-Depois que Render e Vercel estiverem no ar, volte aos provedores externos e finalize o cadastro.
+Once Render and Vercel are live, go back to the external providers and finish the setup.
 
 ### Google Cloud
 
-No OAuth Client do Google:
+In Google's OAuth Client:
 
-1. Adicione em **Authorized JavaScript origins**:
-
-```text
-https://<seu-frontend>.vercel.app
-```
-
-2. Adicione em **Authorized redirect URIs**:
+1. Add under **Authorized JavaScript origins**:
 
 ```text
-https://<seu-frontend>.vercel.app/api/v1/auth/google/callback
+https://<your-frontend>.vercel.app
 ```
 
-Importante:
+2. Add under **Authorized redirect URIs**:
 
-- o callback usa o domínio do **frontend**
-- isso é intencional para que cookies e redirects permaneçam same-origin via Vercel rewrite
+```text
+https://<your-frontend>.vercel.app/api/v1/auth/google/callback
+```
+
+Important:
+
+- the callback uses the **frontend's** domain
+- this is intentional, so that cookies and redirects stay same-origin via the Vercel rewrite
 
 ### Resend
 
-1. Confirme que o domínio remetente está verificado.
-2. Confirme que `RESEND_FROM_EMAIL` pertence a esse domínio.
+1. Confirm that the sender domain is verified.
+2. Confirm that `RESEND_FROM_EMAIL` belongs to that domain.
 
 ### Cloudflare R2
 
-1. Confirme que o bucket existe.
-2. Confirme que a URL pública configurada em `S3_PUBLIC_URL` abre os assets públicos.
-3. Confirme que o hostname cadastrado no Vercel (`NEXT_PUBLIC_R2_PUBLIC_HOSTNAME`) corresponde à mesma origem pública.
+1. Confirm that the bucket exists.
+2. Confirm that the public URL configured in `S3_PUBLIC_URL` serves the public assets.
+3. Confirm that the hostname registered on Vercel (`NEXT_PUBLIC_R2_PUBLIC_HOSTNAME`) matches that same public origin.
 
 ### Upstash
 
-1. Confirme que a URL TCP foi usada em `REDIS_URL`.
-2. Confirme que a REST URL/token foram usados em:
+1. Confirm that the TCP URL was used for `REDIS_URL`.
+2. Confirm that the REST URL/token were used for:
    - `UPSTASH_REDIS_REST_URL`
    - `UPSTASH_REDIS_REST_TOKEN`
 
 ---
 
-## 7. Conferência das Variáveis por Plataforma
+## 7. Variable Checklist by Platform
 
 ### Render `bookclub-api`
 
-Obrigatórias:
+Required:
 
 - `DATABASE_URL` via Render Postgres
 - `ENVIRONMENT=prod`
@@ -346,14 +346,14 @@ Obrigatórias:
 - `HARDCOVER_API_URL=https://api.hardcover.app/v1/graphql`
 - `HARDCOVER_API_TOKEN`
 
-Opcionais:
+Optional:
 
 - `SENTRY_DSN`
 - `WEB_CONCURRENCY=1`
 
 ### Render `bookclub-worker`
 
-Herda do `bookclub-api`:
+Inherited from `bookclub-api`:
 
 - `APP_URL`
 - `REDIS_URL`
@@ -366,102 +366,102 @@ Herda do `bookclub-api`:
 - `HARDCOVER_*`
 - `SENTRY_DSN`
 
-Além disso:
+Plus:
 
 - `DATABASE_URL` via Render Postgres
 - `ENVIRONMENT=prod`
 
 ### Vercel
 
-Obrigatórias:
+Required:
 
 - `NEXT_PUBLIC_API_URL=https://<backend>.onrender.com`
-- `NEXT_PUBLIC_R2_PUBLIC_HOSTNAME=<host-publico-do-r2>`
+- `NEXT_PUBLIC_R2_PUBLIC_HOSTNAME=<r2-public-host>`
 
-Opcionais:
+Optional:
 
 - `NEXT_PUBLIC_SENTRY_DSN`
 - `SENTRY_AUTH_TOKEN`
 
 ---
 
-## 8. Smoke Test de Produção
+## 8. Production Smoke Test
 
-Faça estes testes nesta ordem.
+Run these tests in this order.
 
-### Infra
+### Infrastructure
 
 1. Backend health:
    - `GET https://<backend>.onrender.com/api/v1/health`
-2. Verifique logs do `bookclub-api` no Render.
-3. Verifique logs do `bookclub-worker` no Render.
+2. Check the `bookclub-api` logs on Render.
+3. Check the `bookclub-worker` logs on Render.
 
 ### Auth
 
-1. Abrir `https://<frontend>.vercel.app`
-2. Criar conta
-3. Fazer login com e-mail e senha
-4. Fazer logout
-5. Solicitar magic link
-6. Testar login com Google
+1. Open `https://<frontend>.vercel.app`
+2. Create an account
+3. Log in with email and password
+4. Log out
+5. Request a magic link
+6. Test login with Google
 
 ### Worker
 
-1. Confirmar no health que `notification_worker` aparece
-2. Confirmar que emails de teste saem pela Resend
+1. Confirm that `notification_worker` shows up in the health check
+2. Confirm that test emails go out through Resend
 
-### Upload e assets
+### Uploads and Assets
 
-1. Subir avatar
-2. Confirmar que a imagem abre pela origem pública do R2
-3. Confirmar que o frontend não bloqueia a imagem por CSP
+1. Upload an avatar
+2. Confirm that the image loads from R2's public origin
+3. Confirm that the frontend doesn't block the image via CSP
 
-### Chat e realtime
+### Chat and Realtime
 
-1. Abrir um grupo em duas sessões
-2. Enviar mensagem
-3. Confirmar atualização em tempo real
-4. Confirmar que não há erro de EventSource/cookies no navegador
+1. Open a group in two sessions
+2. Send a message
+3. Confirm the realtime update
+4. Confirm there is no EventSource/cookie error in the browser
 
 ---
 
-## 9. Onde Configurar Cada Coisa
+## 9. Where to Configure Each Thing
 
 ### Render
 
-- `Blueprint`: cria backend, worker e Postgres
+- `Blueprint`: creates the backend, worker, and Postgres
 - `Environment`: backend secrets
-- `Logs`: investigar falhas de startup, migration e worker
-- `Postgres > Backups`: restore e manutenção
+- `Logs`: investigate startup, migration, and worker failures
+- `Postgres > Backups`: restore and maintenance
 
 ### Vercel
 
 - `Project > Settings > General`
   - `Root Directory = frontend`
 - `Project > Settings > Environment Variables`
-  - variáveis do Next.js
+  - Next.js variables
 - `Project > Domains`
-  - custom domain, se quiser adicionar depois
+  - custom domain, if you want to add one later
 
 ### Google Cloud
 
 - `APIs & Services > Credentials`
-  - client OAuth
-  - origins e redirect URIs
+  - the OAuth client
+  - origins and redirect URIs
 
 ### Resend
 
 - `Domains`
-  - verificação do domínio remetente
+  - sender domain verification
 - `API Keys`
-  - geração e rotação da chave
+  - key generation and rotation
 
 ### Cloudflare
 
 - `R2`
   - bucket
   - API tokens
-  - domínio público opcional
+  - optional public domain
 
 ### Upstash
 
@@ -471,59 +471,59 @@ Faça estes testes nesta ordem.
 
 ---
 
-## 10. Custom Domain Depois do Primeiro Deploy
+## 10. A Custom Domain After the First Deploy
 
-Se quiser domínio próprio depois:
+If you want your own domain later:
 
-1. Adicione o domínio no Vercel.
-2. Atualize DNS no seu provedor.
-3. Quando o domínio estiver ativo, atualize:
-   - `APP_URL` no Render
-   - `ALLOWED_ORIGINS` no Render
-   - Google OAuth origins/redirect URIs
-   - `RESEND_FROM_EMAIL` se trocar o domínio remetente
-4. Faça novo deploy.
+1. Add the domain in Vercel.
+2. Update DNS at your provider.
+3. Once the domain is live, update:
+   - `APP_URL` on Render
+   - `ALLOWED_ORIGINS` on Render
+   - the Google OAuth origins/redirect URIs
+   - `RESEND_FROM_EMAIL`, if you change the sender domain
+4. Deploy again.
 
-Se também quiser domínio próprio para o backend:
+If you also want your own domain for the backend:
 
-1. Adicione o domínio no Render.
-2. Atualize `NEXT_PUBLIC_API_URL` no Vercel.
-3. Faça novo deploy do frontend.
+1. Add the domain in Render.
+2. Update `NEXT_PUBLIC_API_URL` on Vercel.
+3. Deploy the frontend again.
 
-Isso não é necessário para o primeiro deploy funcional.
+None of this is required for a working first deploy.
 
 ---
 
-## 11. Troubleshooting Rápido
+## 11. Quick Troubleshooting
 
-### `/api/v1/health` retorna 503
+### `/api/v1/health` returns 503
 
-Verifique no Render:
+Check on Render:
 
 - `DATABASE_URL`
 - `REDIS_URL`
 - `S3_*`
-- logs do `bookclub-api`
+- the `bookclub-api` logs
 
-### Google OAuth volta com erro
+### Google OAuth comes back with an error
 
-Quase sempre é um destes:
+It is almost always one of these:
 
-- `APP_URL` incorreta no Render
-- redirect URI incorreta no Google Cloud
-- `ALLOWED_ORIGINS` diferente da URL do Vercel
+- the wrong `APP_URL` on Render
+- the wrong redirect URI in Google Cloud
+- `ALLOWED_ORIGINS` differing from the Vercel URL
 
-### Login funciona, mas chat em tempo real não
+### Login works, but realtime chat doesn't
 
-Verifique:
+Check:
 
-- `REDIS_URL` TCP correta
-- worker ativo
-- logs do backend para EventSource/SSE
+- that `REDIS_URL` is the correct TCP URL
+- that the worker is running
+- the backend logs for EventSource/SSE
 
-### Upload falha ou imagem não abre
+### Uploads fail or the image won't load
 
-Verifique:
+Check:
 
 - `S3_ENDPOINT`
 - `S3_ACCESS_KEY`
@@ -533,7 +533,7 @@ Verifique:
 
 ---
 
-## 12. Arquivos do Repositório Relacionados ao Deploy
+## 12. Deploy-Related Files in the Repository
 
 - [`render.yaml`](/home/felipebueno/Development/bookclubinho/render.yaml)
 - [`backend/Dockerfile`](/home/felipebueno/Development/bookclubinho/backend/Dockerfile)
@@ -541,4 +541,4 @@ Verifique:
 - [`frontend/next.config.ts`](/home/felipebueno/Development/bookclubinho/frontend/next.config.ts)
 - [`docs/RUNBOOK.md`](/home/felipebueno/Development/bookclubinho/docs/RUNBOOK.md)
 
-Se este guia estiver desatualizado, ajuste primeiro o código e o `render.yaml`, depois atualize este documento.
+If this guide is out of date, fix the code and `render.yaml` first, then update this document.

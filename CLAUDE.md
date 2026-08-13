@@ -2,24 +2,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> Leia este arquivo antes de qualquer coisa. Fonte da verdade do projeto para agentes de código.
+> Read this file before anything else. It is the project's source of truth for coding agents.
 
 ---
 
-## Workflow do Agente (Obrigatório)
+## Agent Workflow (Mandatory)
 
-- **Nova Branch:** Sempre inicie uma tarefa criando uma nova branch descritiva.
-- **Git Best Practices:** Siga as melhores práticas de Git (mensagens de commit claras, commits atômicos).
-- **Push & PR:** Ao finalizar, realize o push da branch e crie um Pull Request (não coloque menção ao claude code no PR nem na commit message).
-- **Co-autoria:** **NUNCA** se adicione como co-autor do projeto no GitHub.
-- **Testes Unitários:** Sempre crie ou atualize testes unitários ao final de cada solicitação.
-- **Correção de Bugs:** Ao receber um pedido para resolver um bug, **primeiro escreva um teste que reproduza e falhe por causa do bug**, depois implemente a correção até o teste passar.
+- **New branch:** Always start a task by creating a new, descriptive branch.
+- **Git best practices:** Follow Git best practices (clear commit messages, atomic commits).
+- **Push & PR:** When you're done, push the branch and open a Pull Request (do not mention Claude Code in the PR or in the commit message).
+- **Co-authorship:** **NEVER** add yourself as a co-author of the project on GitHub.
+- **Unit tests:** Always create or update unit tests at the end of every request.
+- **Bug fixes:** When asked to fix a bug, **first write a test that reproduces it and fails because of it**, then implement the fix until the test passes.
 
 ---
 
-## O que é esse projeto
+## What this project is
 
-Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover API), chat estilo iMessage, tracking de leitura com streaks, reviews pós-livro, encontros, badges e wrapped anual.
+A book club web app: reading groups with book voting (Hardcover API), iMessage-style chat, reading tracking with streaks, post-book reviews, meetings, badges, and an annual wrapped.
 
 **Codename:** `bookclub`
 
@@ -31,20 +31,20 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
 
 **Backend (Render):** FastAPI Python 3.12+, Pydantic v2, SQLAlchemy 2.0 async + asyncpg, Alembic
 
-**Infra:** PostgreSQL no Render, Upstash Redis (HTTP para cache, TCP para SSE), Cloudflare R2 (storage), Resend (email), Hardcover GraphQL (livros)
+**Infra:** PostgreSQL on Render, Upstash Redis (HTTP for cache, TCP for SSE), Cloudflare R2 (storage), Resend (email), Hardcover GraphQL (books)
 
 **Auth:** httpOnly cookies + JWT HS256 + OAuth2 Google + magic link
 
-**Dev local:** Docker Compose só para postgres + redis + minio. App roda fora do Docker.
+**Local dev:** Docker Compose only for postgres + redis + minio. The app runs outside Docker.
 
 ---
 
-## Estrutura do Monorepo
+## Monorepo Structure
 
 ```
 /frontend          → Next.js — Vercel
-  /src/app         → App Router pages e layouts
-  /src/components  → Componentes
+  /src/app         → App Router pages and layouts
+  /src/components  → Components
   /src/lib         → Helpers, clients, utils
   /src/stores      → Zustand stores
 /backend           → FastAPI — Render
@@ -52,121 +52,121 @@ Webapp de clube do livro: grupos de leitura com votação de livros (Hardcover A
   /app/core        → config, security, deps
   /app/db          → engine, models, migrations
   /app/schemas     → Pydantic schemas
-  /app/services    → lógica de negócio + APIs externas
-  /app/workers     → notification worker etc
-  /app/storage     → helpers R2/S3
+  /app/services    → business logic + external APIs
+  /app/workers     → notification worker, etc.
+  /app/storage     → R2/S3 helpers
   /app/security    → sanitizer, rate limit
   /alembic         → migrations
 /infra             → docker-compose.yml, .env.example
 /docs              → ARCHITECTURE.md, SETUP.md, RUNBOOK.md
-/.claude/agents/   → Subagents especializados
+/.claude/agents/   → Specialized subagents
 ```
 
 ---
 
-## Modelo de Domínio
+## Domain Model
 
-- **User** — conta, perfil, streak, stats
-- **Group** — clube com invite_code, max 8 membros
-- **GroupMember** — relação user↔group (role: admin/member)
-- **Round** — rodada: `nominating → voting → reading → reviewing → finished`
-- **RoundNomination** — indicação de livro (max 3/rodada por usuário)
-- **RoundVote** — 1 voto por usuário por rodada
-- **ReadingProgress** — snapshot imutável (page/chapter/percentage/finished)
-- **ReadingSession** — sessão do timer de leitura
-- **GroupMessage** — mensagem do chat (text/image/gif/quote/chapter_marker/spoiler)
+- **User** — account, profile, streak, stats
+- **Group** — a club with an invite_code, max 8 members
+- **GroupMember** — the user↔group relation (role: admin/member)
+- **Round** — a round: `nominating → voting → reading → reviewing → finished`
+- **RoundNomination** — a book nomination (max 3 per round per user)
+- **RoundVote** — 1 vote per user per round
+- **ReadingProgress** — an immutable snapshot (page/chapter/percentage/finished)
+- **ReadingSession** — a reading timer session
+- **GroupMessage** — a chat message (text/image/gif/quote/chapter_marker/spoiler)
 - **MessageReaction** — emoji reactions
-- **Meeting** — encontro do clube com RSVPs
-- **BookReview** — estrelas + booleans (chorou? amou? etc) + textos
-- **Badge + UserBadge** — conquistas
-- **HallOfQuote** — quotes notáveis do grupo
-- **AuditLog** — log de segurança de todos os eventos
+- **Meeting** — a club meeting with RSVPs
+- **BookReview** — stars + booleans (did you cry? did you love it? etc.) + text
+- **Badge + UserBadge** — achievements
+- **HallOfQuote** — the group's notable quotes
+- **AuditLog** — a security log of every event
 
 ---
 
-## Convenções de Código
+## Code Conventions
 
-**Python:** ruff para lint/format, type hints em tudo, async por padrão, snake_case, só SQLAlchemy ORM (zero SQL raw), `Depends()` para injeção de dependências, structlog para logs.
+**Python:** ruff for lint/format, type hints everywhere, async by default, snake_case, SQLAlchemy ORM only (no raw SQL), `Depends()` for dependency injection, structlog for logs.
 
-**TypeScript:** strict mode, preferir Server Components, Tailwind only (zero CSS custom), camelCase para vars/funções, PascalCase para componentes, kebab-case para arquivos/rotas.
+**TypeScript:** strict mode, prefer Server Components, Tailwind only (no custom CSS), camelCase for vars/functions, PascalCase for components, kebab-case for files/routes.
 
-**Composição React:** Pages devem ser finas — orquestram componentes, não contêm lógica. Extrair formulários, seções e blocos visuais em componentes reutilizáveis (`src/components/`). Hooks customizados para lógica de estado/fetch. Sempre consultar as skills `vercel-composition-patterns`, `vercel-react-best-practices`, `next-best-practices`, `web-design-guidelines` e `frontend-design` ao criar ou modificar código frontend.
+**React composition:** Pages should be thin — they orchestrate components, they don't hold logic. Extract forms, sections, and visual blocks into reusable components (`src/components/`). Custom hooks for state/fetch logic. Always consult the `vercel-composition-patterns`, `vercel-react-best-practices`, `next-best-practices`, `web-design-guidelines`, and `frontend-design` skills when creating or modifying frontend code.
 
 ---
 
-## Padrões de API
+## API Conventions
 
-- Todas as rotas sob `/api/v1/`
-- Auth via httpOnly cookies — nunca Authorization header
-- Paginação cursor-based — nunca offset
-- Erro padrão: `{"detail": "mensagem"}` — nunca stack traces ou info interna
-- SSE para realtime via Redis Streams — não WebSockets
+- All routes under `/api/v1/`
+- Auth via httpOnly cookies — never an Authorization header
+- Cursor-based pagination — never offset
+- Standard error shape: `{"detail": "message"}` — never stack traces or internal info
+- SSE for realtime via Redis Streams — not WebSockets
 - Rate limiting via slowapi + Upstash Redis
 
 ---
 
-## Design Visual
+## Visual Design
 
-**A fonte da verdade da paleta é `frontend/src/app/globals.css`.** Este arquivo descreve o que está lá; ao divergirem, o código ganha e esta seção é que se corrige.
+**The palette's source of truth is `frontend/src/app/globals.css`.** This file describes what's there; when they diverge, the code wins and this section is what gets corrected.
 
-- **Superfícies:** creme quente no light (`oklch(0.96 0.028 78)`), carvão quente no dark (`oklch(0.17 0.018 75)`). É carvão quente, **não marrom** — marrom cheio compete com as capas de livro, que são o conteúdo.
-- **Acento:** sage green (`oklch(0.52 0.08 152)` / `oklch(0.68 0.07 152)` no dark). Fora da rampa neutra.
-- **Croma tem dois níveis:** superfícies carregam o calor porque são 100% da tela; texto sobe menos da metade do mesmo caminho. Croma alto em corpo de texto lê como filtro sépia e cansa em leitura longa. Teto de texto: `0.04`.
-- **Shades via oklch, sempre.** Zero hex de 6 dígitos em componente — o lint e `src/app/__tests__/palette.test.ts` cobrem isso.
-- **Escala `brand-*`** é a rampa quente de celebração (wrapped, badges), mais cromática que as superfícies comuns. Não usar como superfície de UI cotidiana.
-- Dark mode via next-themes + cookie (sem flash). O cookie é lido no servidor; o cliente usa `localStorage` com a mesma chave.
-- Animações: Framer Motion 150-300ms, respeitar `prefers-reduced-motion`
-- Touch targets mínimo 44px, mobile-first sempre
+- **Surfaces:** warm cream in light (`oklch(0.96 0.028 78)`), warm charcoal in dark (`oklch(0.17 0.018 75)`). It is warm charcoal, **not brown** — full brown competes with the book covers, which are the content.
+- **Accent:** sage green (`oklch(0.52 0.08 152)` / `oklch(0.68 0.07 152)` in dark). Off the neutral ramp.
+- **Chroma has two levels:** surfaces carry the warmth because they are 100% of the screen; text goes less than halfway down the same path. High chroma in body text reads as a sepia filter and tires the eye over a long read. Text ceiling: `0.04`.
+- **Shades via oklch, always.** No 6-digit hex in a component — the lint and `src/app/__tests__/palette.test.ts` cover this.
+- **The `brand-*` scale** is the warm celebration ramp (wrapped, badges), more chromatic than the ordinary surfaces. Don't use it as an everyday UI surface.
+- Dark mode via next-themes + a cookie (no flash). The cookie is read on the server; the client uses `localStorage` with the same key.
+- Animations: Framer Motion 150-300ms, respect `prefers-reduced-motion`
+- Touch targets at least 44px, mobile-first always
 
-**Armadilha:** o bloco `em-emoji-picker` no `globals.css` duplica tokens como triplets RGB — o Web Component não aceita `var()`. Mudar um token citado ali exige recalcular o triplet; o teste de paleta é o que avisa.
-
----
-
-## Segurança — Regras Não-Negociáveis
-
-- **ROW LEVEL SECURITY (RLS) É OBRIGATÓRIO SEMPRE** — toda tabela no PostgreSQL deve ter RLS habilitado com políticas explícitas. Nunca desabilitar.
-  - **Mas hoje ele não está sendo aplicado, e você não pode contar com ele.** O app conecta com um papel superusuário, e superusuário ignora RLS — inclusive com `FORCE ROW LEVEL SECURITY`. As políticas existem e estão corretas; o portão só fecha quando o `DATABASE_URL` do serviço apontar para um papel restrito (sem `SUPERUSER`, sem `BYPASSRLS`, sem posse das tabelas). Procedimento em `docs/RUNBOOK.md`.
-  - Consequência prática ao escrever endpoint: **escope toda query na aplicação** como se RLS não existisse, porque agora não existe. Use `GroupMemberDep`/`GroupAdminDep` e `membership.resolve` em vez de assumir que o banco filtra.
-- NUNCA expor stack traces, tabelas, paths internos em respostas
-- NUNCA SE COLOQUE COMO CO-AUTOR DO PROJETO NO GITHUB
-- NUNCA secrets no frontend — só `NEXT_PUBLIC_*`
-- NUNCA SQL raw na aplicação — só ORM
-- NUNCA `dangerouslySetInnerHTML` sem DOMPurify (lint bloqueia PR)
-- NUNCA tokens em localStorage/sessionStorage — só httpOnly cookies
-- Todo input do usuário: sanitizar via `bleach.clean()` no backend
-- Upload: validar magic bytes (não MIME header), re-encodar via Pillow, strip EXIF
-- Respostas de auth sempre idênticas independente do erro (email enumeration)
-- CSRF via double-submit cookie em todos os endpoints mutantes
-- Comparações de tokens via `hmac.compare_digest()` — não `==`
+**Trap:** the `em-emoji-picker` block in `globals.css` duplicates tokens as RGB triplets — the Web Component does not accept `var()`. Changing a token referenced there requires recomputing the triplet; the palette test is what warns you.
 
 ---
 
-## Armadilhas Comuns
+## Security — Non-Negotiable Rules
 
-- **N+1 queries:** usar `selectinload`/`joinedload` — nunca iterar sobre relacionamentos lazy
-- **Loading states:** todo fetch precisa de skeleton — sem exceção
-- **Mobile:** testar em 375px — se parece bom no desktop, não é suficiente
-- **SSE + Upstash:** usar conexão TCP (`REDIS_URL`) para `XREAD/BLOCK` — não HTTP API
-- **Migrations:** `alembic upgrade head` roda antes do servidor — está no Docker `CMD` usado pelo Render
-- **R2 público vs privado:** avatars/groups = público; media/exports = privado via presigned URLs
-- **Streak timezone:** calcular 'hoje' pelo timezone do usuário, não UTC
-- **Reviews spoiler:** `GET /rounds/{id}/reviews` exige que o usuário tenha submetido a própria review
+- **ROW LEVEL SECURITY (RLS) IS ALWAYS MANDATORY** — every table in PostgreSQL must have RLS enabled with explicit policies. Never disable it.
+  - **But today it is not being enforced, and you cannot rely on it.** The app connects with a superuser role, and a superuser bypasses RLS — even with `FORCE ROW LEVEL SECURITY`. The policies exist and are correct; the gate only closes when the service's `DATABASE_URL` points at a restricted role (no `SUPERUSER`, no `BYPASSRLS`, not owning the tables). The procedure is in `docs/RUNBOOK.md`.
+  - The practical consequence when writing an endpoint: **scope every query in the application** as if RLS did not exist, because right now it doesn't. Use `GroupMemberDep`/`GroupAdminDep` and `membership.resolve` instead of assuming the database filters.
+- NEVER expose stack traces, table names, or internal paths in responses
+- NEVER ADD YOURSELF AS A CO-AUTHOR OF THE PROJECT ON GITHUB
+- NEVER put secrets in the frontend — only `NEXT_PUBLIC_*`
+- NEVER use raw SQL in the application — ORM only
+- NEVER use `dangerouslySetInnerHTML` without DOMPurify (the lint blocks the PR)
+- NEVER put tokens in localStorage/sessionStorage — httpOnly cookies only
+- All user input: sanitize via `bleach.clean()` on the backend
+- Uploads: validate magic bytes (not the MIME header), re-encode via Pillow, strip EXIF
+- Auth responses always identical regardless of the error (email enumeration)
+- CSRF via a double-submit cookie on every mutating endpoint
+- Token comparisons via `hmac.compare_digest()` — not `==`
+
+---
+
+## Common Traps
+
+- **N+1 queries:** use `selectinload`/`joinedload` — never iterate over lazy relationships
+- **Loading states:** every fetch needs a skeleton — no exceptions
+- **Mobile:** test at 375px — looking good on desktop is not enough
+- **SSE + Upstash:** use the TCP connection (`REDIS_URL`) for `XREAD/BLOCK` — not the HTTP API
+- **Migrations:** `alembic upgrade head` runs before the server — it's in the Docker `CMD` that Render uses
+- **R2 public vs. private:** avatars/groups = public; media/exports = private via presigned URLs
+- **Streak timezone:** compute 'today' in the user's timezone, not UTC
+- **Review spoilers:** `GET /rounds/{id}/reviews` requires that the user has submitted their own review
 
 ---
 
 ## Subagents (`/.claude/agents/`)
 
-- `db-architect` — acionar antes de qualquer migration ou query complexa
-- `security-reviewer` — todo PR com auth, upload ou input de usuário
-- `api-reviewer` — PRs com novos endpoints FastAPI
-- `frontend-reviewer` — PRs com componentes React
-- `ux-reviewer` — PRs que tocam páginas ou layouts
-- `test-writer` — após implementar features
-- `doc-writer` — após mudanças de arquitetura
+- `db-architect` — invoke before any migration or complex query
+- `security-reviewer` — every PR touching auth, uploads, or user input
+- `api-reviewer` — PRs with new FastAPI endpoints
+- `frontend-reviewer` — PRs with React components
+- `ux-reviewer` — PRs that touch pages or layouts
+- `test-writer` — after implementing features
+- `doc-writer` — after architecture changes
 
 ---
 
-## MCPs Configurados
+## Configured MCPs
 
 postgres · filesystem · github · memory · context7 · exa
 
@@ -176,18 +176,18 @@ postgres · filesystem · github · memory · context7 · exa
 
 ### Issue tracker
 
-Issues vivem no GitHub Issues de `fe-m-bueno/bookclubinho`, via `gh` CLI. Ver `docs/agents/issue-tracker.md`.
+Issues live in the GitHub Issues of `fe-m-bueno/bookclubinho`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-Vocabulário padrão de cinco papéis (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). Ver `docs/agents/triage-labels.md`.
+A standard five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Single-context — `CONTEXT.md` + `docs/adr/` na raiz. Ver `docs/agents/domain.md`.
+Single-context — `CONTEXT.md` + `docs/adr/` at the root. See `docs/agents/domain.md`.
 
 ---
 
-> Dúvidas de arquitetura → `/docs/ARCHITECTURE.md`
-> Deploy quebrou → `/docs/RUNBOOK.md`
-> Setup do zero → `/docs/SETUP.md`
+> Architecture questions → `/docs/ARCHITECTURE.md`
+> Deploy broken → `/docs/RUNBOOK.md`
+> Setup from scratch → `/docs/SETUP.md`

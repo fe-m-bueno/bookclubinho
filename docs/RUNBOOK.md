@@ -1,92 +1,92 @@
 # RUNBOOK — Bookclubinho
 
-Procedimentos operacionais para rotação de credenciais, resposta a incidentes e recuperação.
+Operational procedures for credential rotation, incident response, and recovery.
 
 ---
 
-## Rotação de Credenciais
+## Credential Rotation
 
 ### JWT_SECRET
 
-**Quando rotacionar:** a cada 90 dias, ou imediatamente após suspeita de vazamento.
+**When to rotate:** every 90 days, or immediately after a suspected leak.
 
-**Impacto:** todos os tokens de acesso e refresh ativos são invalidados. Usuários precisarão fazer login novamente.
+**Impact:** every active access and refresh token is invalidated. Users will have to log in again.
 
-**Passos:**
-1. Gere um novo segredo: `openssl rand -hex 64`
-2. No Render, atualize a variável `JWT_SECRET` no serviço `bookclub-api`.
-3. Confirme que o worker `bookclub-worker` está herdando o mesmo valor via `fromService`.
-3. Faça o deploy do backend.
-4. Invalide todas as sessões ativas via SQL:
+**Steps:**
+1. Generate a new secret: `openssl rand -hex 64`
+2. In Render, update the `JWT_SECRET` variable on the `bookclub-api` service.
+3. Confirm that the `bookclub-worker` worker inherits the same value via `fromService`.
+3. Deploy the backend.
+4. Invalidate every active session via SQL:
    ```sql
    DELETE FROM user_sessions;
    ```
-5. Monitore o Sentry por erros de autenticação nos 15 minutos seguintes.
+5. Watch Sentry for authentication errors over the following 15 minutes.
 
 ---
 
 ### S3 / Cloudflare R2 (Access Key + Secret)
 
-**Quando rotacionar:** a cada 90 dias, ou após offboarding de desenvolvedor com acesso.
+**When to rotate:** every 90 days, or after offboarding a developer with access.
 
-**Passos:**
-1. No painel Cloudflare R2, crie um novo par de chaves de API.
-2. Atualize `S3_ACCESS_KEY` e `S3_SECRET_KEY` no Render.
-3. Faça o deploy.
-4. Verifique uploads de avatar em staging.
-5. Revogue as chaves antigas no painel Cloudflare.
+**Steps:**
+1. In the Cloudflare R2 dashboard, create a new API key pair.
+2. Update `S3_ACCESS_KEY` and `S3_SECRET_KEY` in Render.
+3. Deploy.
+4. Verify avatar uploads in staging.
+5. Revoke the old keys in the Cloudflare dashboard.
 
 ---
 
 ### Resend API Key
 
-**Quando rotacionar:** a cada 90 dias, ou após suspeita de uso indevido.
+**When to rotate:** every 90 days, or after suspected misuse.
 
-**Passos:**
-1. No painel Resend, crie uma nova API key com os mesmos escopos.
-2. Atualize `RESEND_API_KEY` no Render.
-3. Faça o deploy.
-4. Envie um email de teste via `/api/v1/auth/magic-link`.
-5. Revogue a chave antiga no painel Resend.
+**Steps:**
+1. In the Resend dashboard, create a new API key with the same scopes.
+2. Update `RESEND_API_KEY` in Render.
+3. Deploy.
+4. Send a test email via `/api/v1/auth/magic-link`.
+5. Revoke the old key in the Resend dashboard.
 
 ---
 
 ### Google OAuth (Client Secret)
 
-**Quando rotacionar:** após suspeita de comprometimento, ou requerimento do Google.
+**When to rotate:** after a suspected compromise, or when Google requires it.
 
-**Passos:**
-1. No Google Cloud Console, gere um novo Client Secret para o OAuth App.
-2. Atualize `GOOGLE_CLIENT_SECRET` no Render e confirme que `APP_URL`/`ALLOWED_ORIGINS` permanecem apontando para o domínio do Vercel.
-3. Faça o deploy de backend e frontend.
-4. Teste o fluxo OAuth completo em staging.
-5. Revogue o secret antigo no Google Cloud Console.
+**Steps:**
+1. In the Google Cloud Console, generate a new Client Secret for the OAuth App.
+2. Update `GOOGLE_CLIENT_SECRET` in Render and confirm that `APP_URL`/`ALLOWED_ORIGINS` still point at the Vercel domain.
+3. Deploy the backend and the frontend.
+4. Test the full OAuth flow in staging.
+5. Revoke the old secret in the Google Cloud Console.
 
 ---
 
 ### Sentry DSN
 
-**Quando rotacionar:** após suspeita de uso não autorizado ou offboarding.
+**When to rotate:** after suspected unauthorized use, or after offboarding.
 
-**Passos:**
-1. No painel Sentry, crie um novo DSN para o projeto.
-2. Atualize `SENTRY_DSN` (backend) no Render e `NEXT_PUBLIC_SENTRY_DSN` (frontend) no Vercel.
-3. Faça o deploy.
-4. Force um erro de teste para confirmar que os eventos chegam ao Sentry.
-5. Revogue o DSN antigo no Sentry.
+**Steps:**
+1. In the Sentry dashboard, create a new DSN for the project.
+2. Update `SENTRY_DSN` (backend) in Render and `NEXT_PUBLIC_SENTRY_DSN` (frontend) in Vercel.
+3. Deploy.
+4. Force a test error to confirm the events reach Sentry.
+5. Revoke the old DSN in Sentry.
 
 ---
 
-## Procedimentos de Incidente
+## Incident Procedures
 
-### Suspeita de Conta Comprometida
+### Suspected Compromised Account
 
-1. Revogar todas as sessões do usuário:
+1. Revoke all of the user's sessions:
    ```sql
    DELETE FROM user_sessions WHERE user_id = '<user_id>';
    ```
-2. Forçar reset de senha via magic link.
-3. Verificar `audit_log` para atividade suspeita:
+2. Force a password reset via magic link.
+3. Check `audit_log` for suspicious activity:
    ```sql
    SELECT action, ip_hash, user_agent, created_at
    FROM audit_log
@@ -95,24 +95,24 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
    LIMIT 50;
    ```
 
-### Brute Force em Andamento
+### Brute Force in Progress
 
-1. Verificar Redis:
+1. Check Redis:
    ```
    redis-cli keys "login_fail:*" | head -20
    redis-cli keys "login_lock:*" | head -20
    ```
-2. Se ataque massivo, aumentar `_LOGIN_MAX_FAILS` via feature flag (atualizar código + deploy).
-3. Bloquear IP no nível do Render ou Cloudflare.
+2. If the attack is large-scale, raise `_LOGIN_MAX_FAILS` via a feature flag (code change + deploy).
+3. Block the IP at the Render or Cloudflare level.
 
-### Spam / Flood no Chat
+### Chat Spam / Flooding
 
-1. Verificar Redis para chaves de flood:
+1. Check Redis for flood keys:
    ```
    redis-cli keys "chat_flood:*" | head -20
    ```
-2. Banir usuário via admin (revogar membership + blacklist Redis).
-3. Revisar `message_reports` para padrões de abuso:
+2. Ban the user via admin (revoke membership + Redis blacklist).
+3. Review `message_reports` for abuse patterns:
    ```sql
    SELECT reported_user_id, count(*) as report_count
    FROM message_reports
@@ -121,136 +121,137 @@ Procedimentos operacionais para rotação de credenciais, resposta a incidentes 
    ORDER BY report_count DESC;
    ```
 
-### Vazamento de Secrets
+### Secret Leak
 
-1. Rotacionar imediatamente a credencial afetada (ver seções acima).
-2. Auditar logs de acesso do Render, Vercel e Cloudflare para uso indevido.
-3. Notificar usuários afetados se dados foram expostos (obrigação LGPD).
-4. Revogar todos os tokens de usuário como medida de precaução.
-
----
-
-## Recuperação de Banco de Dados
-
-### Restore de Backup (Neon)
-
-1. Acesse o painel do Neon → o projeto → Branches / Restore.
-2. Selecione o ponto de restauração (Neon faz point-in-time por branch).
-3. Restaure para uma **branch nova** primeiro, para validar sem tocar na atual.
-4. Atualize `DATABASE_URL` (e `DATABASE_APP_URL`, se estiver em uso) para apontar
-   ao endpoint da branch restaurada.
-5. Execute `alembic upgrade head` para garantir que migrations estão sincronizadas.
-6. Se `DATABASE_APP_URL` estiver em uso, o papel `bookclub_app` precisa existir na
-   branch restaurada com os mesmos `GRANT`s — papel e privilégio acompanham a
-   branch, mas confira antes de apontar o serviço para lá.
+1. Immediately rotate the affected credential (see the sections above).
+2. Audit the Render, Vercel, and Cloudflare access logs for misuse.
+3. Notify affected users if data was exposed (an LGPD obligation).
+4. Revoke every user token as a precaution.
 
 ---
 
-## RLS: ligar de verdade
+## Database Recovery
 
-**Estado atual: RLS não está valendo em produção.** O app conecta com um papel
-superusuário, e superusuário não avalia política — nem com `FORCE ROW LEVEL
-SECURITY`. As políticas das migrations 0005 em diante são, hoje, documentação
-executável.
+### Restoring a Backup (Neon)
 
-As migrations 0025–0027 corrigiram os cinco defeitos que impediam a troca, e o
-fluxo completo foi verificado num Postgres 16 com o app num papel sem
-`BYPASSRLS` e sem posse das tabelas: registro, login, rota autenticada, criação
-de grupo, lista de membros, chat, stats, criação/uso/revogação de token.
+1. Open the Neon dashboard → the project → Branches / Restore.
+2. Select the restore point (Neon does point-in-time per branch).
+3. Restore to a **new branch** first, to validate without touching the current one.
+4. Update `DATABASE_URL` (and `DATABASE_APP_URL`, if it is in use) to point at the
+   restored branch's endpoint.
+5. Run `alembic upgrade head` to make sure the migrations are in sync.
+6. If `DATABASE_APP_URL` is in use, the `bookclub_app` role has to exist on the
+   restored branch with the same `GRANT`s — the role and its privileges follow the
+   branch, but check before pointing the service at it.
 
-O que falta é **um passo de configuração**: apontar o `DATABASE_URL` do serviço
-para um papel restrito. Enquanto isso não acontece, nada disso tem efeito — quem
-ignora RLS não enxerga política nenhuma.
+---
 
-### Os cinco defeitos, todos verificados sob papel comum
+## RLS: turning it on for real
 
-1. **Consultas que estabelecem identidade.** Login, registro, magic link, OAuth,
-   refresh e resolução de Bearer leem `users`/`user_sessions`/
-   `personal_access_tokens` antes de haver `app.current_user_id`. Sem porta, o
-   login responde "credenciais inválidas" para todo mundo. Porta nomeada:
+**Current state: RLS is not in effect in production.** The app connects with a
+superuser role, and a superuser does not evaluate policies — not even with
+`FORCE ROW LEVEL SECURITY`. The policies from migration 0005 onward are, today,
+executable documentation.
+
+Migrations 0025–0027 fixed the five defects that prevented the switch, and the
+full flow was verified on a Postgres 16 with the app running as a role without
+`BYPASSRLS` and without ownership of the tables: registration, login, an
+authenticated route, group creation, member list, chat, stats, and token
+creation/use/revocation.
+
+What remains is **a configuration step**: pointing the service's `DATABASE_URL`
+at a restricted role. Until that happens, none of this has any effect — whoever
+bypasses RLS sees no policy at all.
+
+### The five defects, all verified under an ordinary role
+
+1. **Queries that establish identity.** Login, registration, magic link, OAuth,
+   refresh, and Bearer resolution read `users`/`user_sessions`/
+   `personal_access_tokens` before `app.current_user_id` exists. Without a gate,
+   login answers "invalid credentials" for everyone. The named gate:
    `app.auth_lookup` (0025).
-2. **`current_setting` vira `''`, não NULL.** Depois que um `set_config(...,
-   true)` termina, a GUC passa a valer string vazia. Numa conexão de pool,
-   `''::uuid` **levanta erro** e aborta a transação. Eram 63 políticas em 20
-   tabelas; a 0026 reescreveu todas com `nullif(...)`.
-3. **`INSERT ... RETURNING` é checado pela política de SELECT**, não pela de
-   INSERT. Todo `login_failed` e `register` sumia do `audit_log` em silêncio,
-   porque `log_event` engole o próprio erro (0025).
-4. **Commit no meio da requisição zerava o contexto.** `set_config(..., true)`
-   morre no commit, e `register_user` commita antes do `log_event`. Corrigido
-   com um gancho `after_begin` que reaplica o contexto a cada transação nova
+2. **`current_setting` becomes `''`, not NULL.** Once a `set_config(..., true)`
+   ends, the GUC holds an empty string. On a pooled connection, `''::uuid`
+   **raises an error** and aborts the transaction. There were 63 policies across
+   20 tables; 0026 rewrote them all with `nullif(...)`.
+3. **`INSERT ... RETURNING` is checked against the SELECT policy**, not the
+   INSERT one. Every `login_failed` and `register` disappeared from `audit_log`
+   silently, because `log_event` swallows its own error (0025).
+4. **A commit mid-request cleared the context.** `set_config(..., true)` dies at
+   commit, and `register_user` commits before `log_event`. Fixed with an
+   `after_begin` hook that reapplies the context on every new transaction
    (`app/db/engine.py` + `rls.reapply_context_on_new_transaction`).
 
-6. **`groups` era legível por qualquer autenticado** (0028). `groups_select` dizia
-   `is_active AND current_setting('app.current_user_id') != ''` — ou seja,
-   qualquer usuário logado lia **qualquer** grupo ativo. E RLS filtra linha, não
-   coluna, então isso incluía o `invite_code`, que é a credencial de entrada.
-   Era a única tabela em que ligar RLS não somava nada. Medido na branch de
-   validação: antes, um usuário sem vínculo lia os 3 grupos; depois, 0.
+6. **`groups` was readable by any authenticated user** (0028). `groups_select`
+   said `is_active AND current_setting('app.current_user_id') != ''` — meaning
+   any logged-in user could read **any** active group. And RLS filters rows, not
+   columns, so that included `invite_code`, which is the credential for joining.
+   It was the only table where turning RLS on added nothing. Measured on the
+   validation branch: before, an unaffiliated user read all 3 groups; after, 0.
 
-5. **Políticas recursivas** (0027). `group_members_select/update/delete`
-   perguntavam "você participa deste grupo?" lendo `group_members` de dentro da
-   política de `group_members` — `infinite recursion detected in policy`, erro
-   duro. Como 31 políticas de outras tabelas checam participação da mesma forma,
-   caíam junto: grupo, chat, rodada, review e encontro. A pergunta saiu para duas
-   funções `SECURITY DEFINER` (`app_is_group_member`, `app_is_group_admin`).
+5. **Recursive policies** (0027). `group_members_select/update/delete` asked "are
+   you in this group?" by reading `group_members` from inside the `group_members`
+   policy — `infinite recursion detected in policy`, a hard error. Since 31
+   policies on other tables check membership the same way, they went down with
+   it: group, chat, round, review, and meeting. The question was moved out into
+   two `SECURITY DEFINER` functions (`app_is_group_member`, `app_is_group_admin`).
 
-### O `NO FORCE` em `group_members`, e por que ele não afrouxa nada
+### The `NO FORCE` on `group_members`, and why it loosens nothing
 
-`FORCE ROW LEVEL SECURITY` aplica as políticas **também ao dono da tabela**. Com
-ele ligado, a função `SECURITY DEFINER` continua presa e devolve `false` em
-silêncio — nega acesso a quem tem direito. Por isso a 0027 desliga o `FORCE`
-nessa tabela, e **só nessa**.
+`FORCE ROW LEVEL SECURITY` applies the policies **to the table owner as well**.
+With it on, the `SECURITY DEFINER` function stays trapped and returns `false`
+silently — denying access to people who are entitled to it. That is why 0027
+turns `FORCE` off on that table, and **only** on that table.
 
-Isso não afrouxa nada para a aplicação, e o motivo é simples: **papel que não é
-dono está sujeito a RLS sempre, com ou sem `FORCE`.** Medido no ambiente de
-verificação, com o app num papel não-dono:
+This loosens nothing for the application, and the reason is simple: **a role that
+is not the owner is subject to RLS always, with or without `FORCE`.** Measured in
+the verification environment, with the app on a non-owner role:
 
-| contexto | `group_members` | `group_messages` | `personal_access_tokens` |
+| context | `group_members` | `group_messages` | `personal_access_tokens` |
 |---|---|---|---|
-| sem usuário | 0 | 0 | 0 |
-| membro do grupo | 1 | 1 | 1 |
-| usuário estranho | 0 | 0 | 0 |
+| no user | 0 | 0 | 0 |
+| group member | 1 | 1 | 1 |
+| unrelated user | 0 | 0 | 0 |
 
-O único cenário que o `FORCE` cobria é o app conectando **como dono da tabela** —
-exatamente o que a separação de papéis elimina. Se um dia o app voltar a
-conectar como dono, este raciocínio deixa de valer.
+The only scenario `FORCE` covered is the app connecting **as the table owner** —
+exactly what the role separation eliminates. If the app ever goes back to
+connecting as the owner, this reasoning stops holding.
 
-Nada aqui **cria** um papel com `BYPASSRLS`. No Neon o `neondb_owner` já vem com
-ele, e é isso que o torna certo para migration e errado para o app.
+Nothing here **creates** a role with `BYPASSRLS`. On Neon, `neondb_owner` already
+has it, and that is what makes it right for migrations and wrong for the app.
 
-Consequência boa disso: como a função `SECURITY DEFINER` é criada pelas
-migrations, ela pertence ao `neondb_owner` e herda o `BYPASSRLS` dele — então no
-Neon o `NO FORCE` da 0027 nem precisa entrar em ação. Ele fica como garantia de
-portabilidade: se um dia o dono das tabelas não tiver `BYPASSRLS`, a função
-continua funcionando.
+A good consequence of this: since the `SECURITY DEFINER` function is created by
+the migrations, it belongs to `neondb_owner` and inherits its `BYPASSRLS` — so on
+Neon, 0027's `NO FORCE` never even has to kick in. It stays as a portability
+guarantee: if the table owner ever lacks `BYPASSRLS`, the function keeps working.
 
-### Migrations continuam precisando de papel privilegiado
+### Migrations still need a privileged role
 
-Dois motivos independentes:
+Two independent reasons:
 
-- `alembic upgrade head` cria e altera política. O app não deve poder fazer isso.
-- Adicionar FK a `group_members` dispara validação que avalia política. Num dono
-  **sem** `BYPASSRLS` e com `FORCE`, isso falha — foi o que aconteceu no ambiente
-  de verificação. No Neon não aparece, porque `neondb_owner` tem `BYPASSRLS`.
+- `alembic upgrade head` creates and alters policies. The app must not be able to
+  do that.
+- Adding an FK to `group_members` triggers a validation that evaluates policies.
+  On an owner **without** `BYPASSRLS` and with `FORCE`, this fails — which is
+  what happened in the verification environment. It does not show up on Neon,
+  because `neondb_owner` has `BYPASSRLS`.
 
-No Render isso já está separado na prática: o `alembic upgrade head` roda no
-pre-deploy, e é ele que lê `DATABASE_URL`. O app lê `DATABASE_APP_URL` quando
-existe.
+On Render this is already separated in practice: `alembic upgrade head` runs in
+the pre-deploy step, and that is what reads `DATABASE_URL`. The app reads
+`DATABASE_APP_URL` when it exists.
 
-### Procedimento da troca (Neon)
+### The switchover procedure (Neon)
 
-O banco é **Neon**; o backend roda no Render. `neondb_owner` é o papel
-privilegiado e **tem `BYPASSRLS`** — por isso as políticas não valem para ele, e
-por isso ele é o certo para migration e o errado para o app.
+The database is **Neon**; the backend runs on Render. `neondb_owner` is the
+privileged role and **has `BYPASSRLS`** — which is why the policies don't apply
+to it, and why it is right for migrations and wrong for the app.
 
-> **Ordem obrigatória:** o papel restrito só funciona depois que as migrations
-> 0024–0028 rodaram. Setar `DATABASE_APP_URL` antes disso derruba o app — as
-> políticas antigas têm os seis defeitos acima, e o login para de funcionar.
-> Primeiro faça o deploy (o pre-deploy roda `alembic upgrade head`), depois sete a
-> variável.
+> **Mandatory ordering:** the restricted role only works after migrations
+> 0024–0028 have run. Setting `DATABASE_APP_URL` before that takes the app down —
+> the old policies have the six defects above, and login stops working. Deploy
+> first (the pre-deploy runs `alembic upgrade head`), then set the variable.
 
-**1. Criar o papel restrito.** Rode no SQL Editor do Neon, conectado como
+**1. Create the restricted role.** Run this in Neon's SQL Editor, connected as
 `neondb_owner`:
 
 ```sql
@@ -261,98 +262,99 @@ GRANT USAGE ON SCHEMA public TO bookclub_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO bookclub_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO bookclub_app;
 
--- Para as tabelas que migrations futuras criarem. Tem de ser executado por
--- `neondb_owner`: `ALTER DEFAULT PRIVILEGES` vale para objetos criados pelo
--- papel que rodou o comando, e é ele quem roda as migrations.
+-- For tables that future migrations create. This has to be run by
+-- `neondb_owner`: `ALTER DEFAULT PRIVILEGES` applies to objects created by the
+-- role that ran the command, and it is the one that runs the migrations.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO bookclub_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO bookclub_app;
 ```
 
-Note o que **não** está aí: nenhum `SUPERUSER`, nenhum `BYPASSRLS`, nenhuma posse
-de tabela. É isso que faz as políticas valerem para ele. Papel criado por SQL no
-Neon também não entra em `neon_superuser` — o que vem pelo Console, API ou CLI
-entra, então crie por SQL.
+Note what is **not** there: no `SUPERUSER`, no `BYPASSRLS`, no table ownership.
+That is what makes the policies apply to it. A role created via SQL on Neon also
+does not join `neon_superuser` — roles created through the Console, API, or CLI
+do, so create it via SQL.
 
-**2. Setar `DATABASE_APP_URL` no serviço do Render.** Só isso. `DATABASE_URL`
-continua com `neondb_owner`, porque é ele que o `alembic upgrade head` do
-pre-deploy usa; o app passa a preferir a `DATABASE_APP_URL` quando ela existe
-(`app/db/engine.py`).
+**2. Set `DATABASE_APP_URL` on the Render service.** That's all. `DATABASE_URL`
+stays on `neondb_owner`, because that is what the pre-deploy's
+`alembic upgrade head` uses; the app starts preferring `DATABASE_APP_URL`
+whenever it exists (`app/db/engine.py`).
 
 ```
 DATABASE_URL      = postgresql://neondb_owner:...@ep-....neon.tech/neondb   # migrations
 DATABASE_APP_URL  = postgresql://bookclub_app:...@ep-....neon.tech/neondb   # app
 ```
 
-Use o endpoint **pooler** na do app e o **direto** (sem `-pooler`) na de
-migration — DDL não se beneficia do pooler e algumas operações se dão mal com
-ele.
+Use the **pooler** endpoint for the app's URL and the **direct** one (without
+`-pooler`) for the migration URL — DDL does not benefit from the pooler, and some
+operations behave badly with it.
 
-**3. Verificar.** Deve devolver `f`, `f`:
+**3. Verify.** This should return `f`, `f`:
 
 ```sql
 SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'bookclub_app';
 ```
 
-Depois o teste de fumaça: login, abrir um grupo, mandar uma mensagem. Se o login
-falhar com "credenciais inválidas" para uma senha certa, o sintoma é RLS barrando
-a busca por e-mail — confira se as 0025–0027 rodaram.
+Then the smoke test: log in, open a group, send a message. If login fails with
+"invalid credentials" for a correct password, the symptom is RLS blocking the
+lookup by email — check that 0025–0027 ran.
 
-**Rollback:** remover a variável `DATABASE_APP_URL` e reiniciar. O app volta ao
-`DATABASE_URL` e nada mais muda.
+**Rollback:** remove the `DATABASE_APP_URL` variable and restart. The app falls
+back to `DATABASE_URL` and nothing else changes.
 
-### Por que o pooler torna isto mais urgente, não menos
+### Why the pooler makes this more urgent, not less
 
-A URL do app usa o endpoint pooler do Neon, que é PgBouncer em modo transação:
-uma conexão de servidor é reaproveitada por requisições de **usuários
-diferentes**.
+The app's URL uses Neon's pooler endpoint, which is PgBouncer in transaction
+mode: one server connection is reused across requests from **different users**.
 
-Duas consequências, e as duas já estão tratadas no código:
+Two consequences, both already handled in the code:
 
-- O contexto de usuário **tem** de ser transaction-local (`set_config(..., true)`).
-  Fosse de sessão, o `app.current_user_id` de um usuário vazaria para a
-  requisição seguinte na mesma conexão de servidor — troca de identidade, não
-  vazamento de leitura.
-- O defeito nº 2 acima (a GUC virando `''` depois da transação) deixa de ser
-  eventual e passa a ser o caso comum, porque a conexão de servidor é sempre
-  reusada. Sem o `nullif` da 0026, seria erro de banco em quase toda requisição
-  sem usuário no contexto.
+- The user context **has** to be transaction-local (`set_config(..., true)`). If
+  it were session-scoped, one user's `app.current_user_id` would leak into the
+  next request on the same server connection — an identity swap, not just a read
+  leak.
+- Defect #2 above (the GUC becoming `''` after the transaction) stops being
+  occasional and becomes the common case, because the server connection is always
+  reused. Without 0026's `nullif`, it would be a database error on nearly every
+  request with no user in the context.
 
-**Rollback:** voltar o `DATABASE_URL` para o papel anterior. Nenhuma migration
-precisa ser revertida; as políticas corrigidas são inertes para quem ignora RLS.
-O rollback é imediato e não perde dados.
+**Rollback:** point `DATABASE_URL` back at the previous role. No migration needs
+reverting; the corrected policies are inert for anyone who bypasses RLS. The
+rollback is immediate and loses no data.
 
-### Ainda não coberto — leia antes de trocar
+### Not yet covered — read before switching
 
-A verificação rodou numa **branch do Neon** criada a partir da produção, com
-dados reais, endpoint pooler e o app no papel `bookclub_app`. Cobriu: registro,
-login, rota autenticada, criação de grupo, lista de membros, chat, stats,
-cria/usa/revoga token, entrada por código de convite e isolamento entre dois
-usuários. Tudo verde. A branch foi apagada.
+The verification ran on a **Neon branch** created from production, with real
+data, the pooler endpoint, and the app on the `bookclub_app` role. It covered:
+registration, login, an authenticated route, group creation, member list, chat,
+stats, token create/use/revoke, joining via invite code, and isolation between
+two users. All green. The branch was deleted.
 
-O que **não** foi exercitado, e onde eu esperaria problema:
+What was **not** exercised, and where I would expect trouble:
 
-- **`populate_shelf_cache`** (`app/services/shelf.py`) — background task, roda sem
-  usuário no contexto. A leitura do grupo já está coberta pela porta da 0028, mas
-  `_build_shelf_data` logo depois lê `rounds` e `book_reviews`, cujas políticas são
-  keyed em participação. Sob papel restrito isso falha, o `except Exception` do job
-  engole, e a estante pública apenas para de atualizar. **É a pendência mais
-  concreta**: degradação silenciosa, não erro visível.
-- **Workers** (`app/workers/`) — mesmo padrão: sessão própria, sem usuário.
-- **SSE do chat**, **export de dados** e **wrapped anual** — usam as mesmas sessões
-  e políticas dos caminhos testados, mas não passaram pelo teste de fumaça.
+- **`populate_shelf_cache`** (`app/services/shelf.py`) — a background task, running
+  with no user in the context. Reading the group is already covered by 0028's
+  gate, but `_build_shelf_data` right afterward reads `rounds` and `book_reviews`,
+  whose policies are keyed on membership. Under a restricted role that fails, the
+  job's `except Exception` swallows it, and the public shelf simply stops
+  updating. **This is the most concrete pending item**: silent degradation, not a
+  visible error.
+- **Workers** (`app/workers/`) — the same pattern: their own session, no user.
+- **Chat SSE**, **data export**, and **the annual wrapped** — they use the same
+  sessions and policies as the tested paths, but they did not go through the
+  smoke test.
 
-Recomendação: depois de setar `DATABASE_APP_URL`, exercite cada um desses uma vez
-e olhe o log. O rollback é remover a variável.
+Recommendation: after setting `DATABASE_APP_URL`, exercise each of those once and
+check the log. The rollback is removing the variable.
 
 ---
 
-## Checklist de Deploy em Produção
+## Production Deploy Checklist
 
-- [ ] `alembic upgrade head` rodou sem erros
-- [ ] Variáveis de ambiente obrigatórias presentes (ver `app/core/config.py`)
-- [ ] Sentry recebendo eventos de teste
-- [ ] Health check `/api/v1/health` retorna 200
-- [ ] Teste de login OAuth Google funciona
-- [ ] Upload de avatar funciona (valida R2 + presigned URL)
+- [ ] `alembic upgrade head` ran without errors
+- [ ] The required environment variables are present (see `app/core/config.py`)
+- [ ] Sentry is receiving test events
+- [ ] The `/api/v1/health` health check returns 200
+- [ ] The Google OAuth login test works
+- [ ] Avatar upload works (validates R2 + presigned URL)
